@@ -4,8 +4,25 @@
     <title>Voxel Space Game</title>
     <meta charset="UTF-8">
     <style>
-        html, body {margin: 0; height: 100%; overflow: hidden}
-        canvas { width: 100%; height: 100%; display: block; }
+        html, body {margin: 0; height: 100%; overflow: hidden; background: #000;}
+
+        /* Game container - holds canvas and HUD, gets centered */
+        #game-container {
+            position: absolute;
+            overflow: hidden;
+        }
+
+        #game-container canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
         #crosshair {
             position: absolute;
             top: 50%;
@@ -13,6 +30,7 @@
             width: 10px;
             height: 10px;
             margin: -5px 0 0 -5px;
+            z-index: 10;
             border: 2px solid white;
             border-radius: 50%;
             pointer-events: none;
@@ -28,6 +46,26 @@
             background: #333;
             border: 2px solid white;
             overflow: visible;
+            z-index: 10;
+        }
+
+        #jumpbar {
+            position: absolute;
+            bottom: 40px;
+            left: 10px;
+            width: 200px;
+            height: 10px;
+            background: #333;
+            border: 2px solid white;
+            display: none;
+            z-index: 10;
+        }
+
+        #jumpcharge {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(to right, #00ff00, #ffff00, #ff0000);
+            transition: width 0.05s;
         }
 
         .hud-item {
@@ -54,7 +92,7 @@
 </head>
 <body>
 
-    <div id="controls" style="position: absolute; top: 50px; left: 10px; background: rgba(0, 0, 0, 0.85); color: white; padding: 0; width: 280px; border-radius: 5px; overflow: hidden;">
+    <div id="controls" style="position: absolute; top: 50px; left: 10px; background: rgba(0, 0, 0, 0.85); color: white; padding: 0; width: 280px; border-radius: 5px; overflow: hidden; z-index: 100;">
   <!-- Panel Title -->
   <div style="background: #222; padding: 8px 10px; font-weight: bold; font-size: 13px; border-bottom: 1px solid #444;">Settings <span style="float:right; font-weight:normal; font-size:10px; color:#888;">[ESC] toggle</span></div>
   <!-- Tab buttons -->
@@ -64,6 +102,7 @@
     <button class="tab-btn" data-tab="bullet" style="flex:1;padding:8px 4px;border:none;background:#333;color:#aaa;cursor:pointer;font-size:11px;">Bullet</button>
     <button class="tab-btn" data-tab="gun" style="flex:1;padding:8px 4px;border:none;background:#333;color:#aaa;cursor:pointer;font-size:11px;">Gun</button>
     <button class="tab-btn" data-tab="barrel" style="flex:1;padding:8px 4px;border:none;background:#333;color:#aaa;cursor:pointer;font-size:11px;">Barrel</button>
+    <button class="tab-btn" data-tab="ui" style="flex:1;padding:8px 4px;border:none;background:#333;color:#aaa;cursor:pointer;font-size:11px;">UI</button>
     <button class="tab-btn" data-tab="debug" style="flex:1;padding:8px 4px;border:none;background:#333;color:#aaa;cursor:pointer;font-size:11px;">Debug</button>
   </div>
 
@@ -139,15 +178,15 @@
     <input type="range" id="barrelYaw" min="-45" max="45" value="0" style="width:100%;"><br>
 
     <hr style="border-color:#555;margin:8px 0;">
-    <b style="font-size:10px;">Barrel Position:</b><br>
-    <label for="barrelX">Barrel X: <span id="barrelX-value">0.26</span></label><br>
+    <b style="font-size:10px;">Barrel Tip (gun-relative):</b><br>
+    <label for="barrelX">Forward: <span id="barrelX-value">0.26</span></label><br>
     <input type="range" id="barrelX" min="-0.5" max="0.5" step="0.01" value="0.26" style="width:100%;"><br>
 
-    <label for="barrelY">Barrel Y: <span id="barrelY-value">0.08</span></label><br>
+    <label for="barrelY">Up: <span id="barrelY-value">0.08</span></label><br>
     <input type="range" id="barrelY" min="-0.3" max="0.3" step="0.01" value="0.08" style="width:100%;"><br>
 
-    <label for="barrelZ">Barrel Z: <span id="barrelZ-value">0</span></label><br>
-    <input type="range" id="barrelZ" min="-0.1" max="0.1" step="0.01" value="0" style="width:100%;"><br>
+    <label for="barrelZ">Right: <span id="barrelZ-value">0</span></label><br>
+    <input type="range" id="barrelZ" min="-0.3" max="0.3" step="0.01" value="0" style="width:100%;"><br>
 
     <hr style="border-color:#555;margin:8px 0;">
     <b style="font-size:10px;">Gun World Offset:</b><br>
@@ -159,6 +198,31 @@
 
     <label for="gunWorldDown">Down: <span id="gunWorldDown-value">8</span></label><br>
     <input type="range" id="gunWorldDown" min="-20" max="30" value="8" style="width:100%;">
+  </div>
+
+  <!-- UI Tab -->
+  <div class="tab-content" id="tab-ui" style="padding: 10px; display: none;">
+    <b style="font-size:10px;">Master Scale:</b><br>
+    <label for="uiScaleAll">All UI: <span id="uiScaleAll-value">1.0</span>x</label><br>
+    <input type="range" id="uiScaleAll" min="0.5" max="2.0" step="0.1" value="1.0" style="width:100%;"><br>
+
+    <hr style="border-color:#555;margin:8px 0;">
+    <b style="font-size:10px;">Individual Scales:</b><br>
+
+    <label for="uiScaleCrosshair">Crosshair: <span id="uiScaleCrosshair-value">1.0</span>x</label><br>
+    <input type="range" id="uiScaleCrosshair" min="0.5" max="3.0" step="0.1" value="1.0" style="width:100%;"><br>
+
+    <label for="uiScaleHealthbar">Health Bar: <span id="uiScaleHealthbar-value">1.0</span>x</label><br>
+    <input type="range" id="uiScaleHealthbar" min="0.5" max="2.0" step="0.1" value="1.0" style="width:100%;"><br>
+
+    <label for="uiScaleJumpbar">Jump Bar: <span id="uiScaleJumpbar-value">1.0</span>x</label><br>
+    <input type="range" id="uiScaleJumpbar" min="0.5" max="2.0" step="0.1" value="1.0" style="width:100%;"><br>
+
+    <label for="uiScaleMinimap">Minimap: <span id="uiScaleMinimap-value">1.0</span>x</label><br>
+    <input type="range" id="uiScaleMinimap" min="0.5" max="2.0" step="0.1" value="1.0" style="width:100%;"><br>
+
+    <label for="uiScaleWeaponUI">Weapon UI: <span id="uiScaleWeaponUI-value">1.0</span>x</label><br>
+    <input type="range" id="uiScaleWeaponUI" min="0.5" max="2.0" step="0.1" value="1.0" style="width:100%;">
   </div>
 
   <!-- Debug Tab -->
@@ -188,14 +252,21 @@
   </div>
 </div>
     
-<div id="crosshair"></div>
-<div id="healthbar">
-    <div id="health"></div>
-    <div class="hud-item" style="background-image: url('images/heart.png');"></div>
+<!-- Game Container - holds canvas and all HUD elements -->
+<div id="game-container">
+    <canvas id="fullscreenCanvas" width="800" height="450"></canvas>
+
+    <div id="crosshair"></div>
+    <div id="healthbar">
+        <div id="health"></div>
+        <div class="hud-item" style="background-image: url('images/heart.png');"></div>
+    </div>
+    <div id="jumpbar">
+        <div id="jumpcharge"></div>
+    </div>
 </div>
-<div id="jumpbar" style="position:absolute;bottom:40px;left:10px;width:200px;height:10px;background:#333;border:2px solid white;display:none;">
-    <div id="jumpcharge" style="width:0%;height:100%;background:linear-gradient(to right, #00ff00, #ffff00, #ff0000);transition:width 0.05s;"></div>
-</div>
+
+<!-- Debug elements (hidden) -->
 <div id="fps"></div>
 <div id="lastbulletdestroyedreason"></div>
 <div id="lastbulletdestroyedpos"></div>
@@ -206,7 +277,8 @@
 <div id="bulletcount"></div>
 <div id="info">Keyboard: WASD move, Mouse look, LMB shoot, RMB aim, HOLD Space jump, Shift sprint, C crouch, R reload, Q swap weapon, E pickup | Gamepad: Left Stick move, Right Stick look, RT shoot, LT aim, HOLD LB jump, B crouch, X reload, Y swap weapon, L3/A sprint</div>
 
-<canvas id="fullscreenCanvas" width="800" height="400"></canvas>
+<!-- Display Configuration -->
+<script src="config/displayConfig.js"></script>
 
 <script>
 "use strict";
@@ -331,6 +403,16 @@ var player={health:100,isCrouching:false,moveSpeed:1.5,sprintMultiplier:2,
     bulletHorizOffset=0,   // Horizontal offset for bullet spawn (left/right)
     bulletSize=0.75,       // Bullet rendering scale
     minimapZoomed=false,   // Toggle between far (200) and close (50) range
+    sideViewZoomed=false,  // Toggle side view zoom (close/far)
+    // UI Scale settings
+    uiScale={
+        all: 1.0,
+        crosshair: 1.0,
+        healthbar: 1.0,
+        jumpbar: 1.0,
+        minimap: 1.0,
+        weaponUI: 1.0
+    },
     gamepad={
         connected:false,
         deadzone:0.15,
@@ -519,10 +601,10 @@ var gunModel = {
     rotationX: 0,      // X-axis rotation in degrees
     rotationY: 0,      // Y-axis rotation in degrees
     rotationZ: 0,      // Z-axis rotation in degrees
-    // Barrel configuration (in model space, based on OBJ bounds)
-    barrelX: 0.26,     // barrel tip X in model coords (max X of model)
-    barrelY: 0.08,     // barrel tip Y in model coords
-    barrelZ: 0.0,      // barrel tip Z in model coords
+    // Barrel configuration (gun-relative: forward/up/right along gun direction)
+    barrelX: 0.26,     // forward along gun barrel
+    barrelY: 0.08,     // up from gun center
+    barrelZ: 0.0,      // right from gun center
     barrelDistance: 5, // world units in front of barrel to spawn bullet
     barrelYaw: 0,      // horizontal aim offset in degrees (left/right)
     // World-space offset from camera (where gun is held)
@@ -584,19 +666,46 @@ function getBarrelScreenPos() {
     var cosY = Math.cos(rotY), sinY = Math.sin(rotY);
     var cosZ = Math.cos(rotZ), sinZ = Math.sin(rotZ);
 
-    var x = gunModel.barrelX, y = gunModel.barrelY, z = gunModel.barrelZ;
+    // Gun's forward direction in screen space (after rotation)
+    // Forward is +X in model space, which becomes screen right/depth after rotation
+    var fwdX = 1, fwdY = 0, fwdZ = 0;
+    var fy1 = fwdY * cosX - fwdZ * sinX;
+    var fz1 = fwdY * sinX + fwdZ * cosX;
+    var fx2 = fwdX * cosY + fz1 * sinY;
+    var fz2 = -fwdX * sinY + fz1 * cosY;
+    var fx3 = fx2 * cosZ - fy1 * sinZ;
+    var fy3 = fx2 * sinZ + fy1 * cosZ;
 
-    // Apply rotations
-    var y1 = y * cosX - z * sinX;
-    var z1 = y * sinX + z * cosX;
-    var x2 = x * cosY + z1 * sinY;
-    var z2 = -x * sinY + z1 * cosY;
-    var x3 = x2 * cosZ - y1 * sinZ;
-    var y3 = x2 * sinZ + y1 * cosZ;
+    // Gun's up direction in screen space
+    var upX = 0, upY = 1, upZ = 0;
+    var uy1 = upY * cosX - upZ * sinX;
+    var uz1 = upY * sinX + upZ * cosX;
+    var ux2 = upX * cosY + uz1 * sinY;
+    var uz2 = -upX * sinY + uz1 * cosY;
+    var ux3 = ux2 * cosZ - uy1 * sinZ;
+    var uy3 = ux2 * sinZ + uy1 * cosZ;
+
+    // Gun's right direction in screen space
+    var rtX = 0, rtY = 0, rtZ = 1;
+    var ry1 = rtY * cosX - rtZ * sinX;
+    var rz1 = rtY * sinX + rtZ * cosX;
+    var rx2 = rtX * cosY + rz1 * sinY;
+    var rz2 = -rtX * sinY + rz1 * cosY;
+    var rx3 = rx2 * cosZ - ry1 * sinZ;
+    var ry3 = rx2 * sinZ + ry1 * cosZ;
+
+    // Barrel offset in gun-relative space (forward/up/right)
+    var fwd = gunModel.barrelX;   // forward along gun
+    var up = gunModel.barrelY;    // up from gun
+    var right = gunModel.barrelZ; // right from gun
+
+    // Combine offsets in screen space
+    var screenX = fx3 * fwd + ux3 * up + rx3 * right;
+    var screenY = fy3 * fwd + uy3 * up + ry3 * right;
 
     return {
-        x: centerX + x3 * gunModel.scale,
-        y: centerY - y3 * gunModel.scale
+        x: centerX + screenX * gunModel.scale,
+        y: centerY - screenY * gunModel.scale
     };
 }
 
@@ -605,42 +714,46 @@ function getBarrelWorldPos() {
     // Camera direction vectors
     var camSin = Math.sin(camera.angle);
     var camCos = Math.cos(camera.angle);
-    var fx = -camSin, fy = -camCos;  // forward
-    var rx = camCos, ry = -camSin;   // right
+    var fx = -camSin, fy = -camCos;  // forward (world)
+    var rx = camCos, ry = -camSin;   // right (world)
 
     // Gun base position in world (offset from camera)
     var gunWorldX = camera.x + fx * gunModel.worldForward + rx * gunModel.worldRight;
     var gunWorldY = camera.y + fy * gunModel.worldForward + ry * gunModel.worldRight;
     var gunWorldZ = camera.height - gunModel.worldDown;
 
-    // Apply gun rotations to barrel offset
-    var rotX = gunModel.rotationX * Math.PI / 180;
-    var rotY = gunModel.rotationY * Math.PI / 180;
-    var rotZ = gunModel.rotationZ * Math.PI / 180;
+    // Get the gun's aiming direction (already accounts for rotation)
+    var gunDir = getGunWorldDirection();
 
-    var cosX = Math.cos(rotX), sinX = Math.sin(rotX);
-    var cosY = Math.cos(rotY), sinY = Math.sin(rotY);
-    var cosZ = Math.cos(rotZ), sinZ = Math.sin(rotZ);
+    // Calculate up and right vectors perpendicular to gun direction
+    // Up is world up (0,0,1) adjusted to be perpendicular to gunDir
+    var worldUp = {x: 0, y: 0, z: 1};
 
-    // Barrel offset in model space (scaled to world units)
+    // Right = gunDir cross worldUp (perpendicular to gun in horizontal plane)
+    var rightX = gunDir.y * worldUp.z - gunDir.z * worldUp.y;
+    var rightY = gunDir.z * worldUp.x - gunDir.x * worldUp.z;
+    var rightZ = gunDir.x * worldUp.y - gunDir.y * worldUp.x;
+    var rightLen = Math.sqrt(rightX*rightX + rightY*rightY + rightZ*rightZ) || 1;
+    rightX /= rightLen; rightY /= rightLen; rightZ /= rightLen;
+
+    // Up = right cross gunDir (perpendicular to both)
+    var upX = rightY * gunDir.z - rightZ * gunDir.y;
+    var upY = rightZ * gunDir.x - rightX * gunDir.z;
+    var upZ = rightX * gunDir.y - rightY * gunDir.x;
+    var upLen = Math.sqrt(upX*upX + upY*upY + upZ*upZ) || 1;
+    upX /= upLen; upY /= upLen; upZ /= upLen;
+
+    // Barrel offset in gun-relative space (scaled to world units)
+    // barrelX = forward (along gun), barrelY = up, barrelZ = right
     var bScale = gunModel.scale / 30;  // scale factor from model to world
-    var bx = gunModel.barrelX * bScale;
-    var by = gunModel.barrelY * bScale;
-    var bz = gunModel.barrelZ * bScale;
+    var fwd = gunModel.barrelX * bScale;   // forward along gun direction
+    var up = gunModel.barrelY * bScale;    // up from gun
+    var right = gunModel.barrelZ * bScale; // right from gun
 
-    // Apply rotations to barrel offset
-    var y1 = by * cosX - bz * sinX;
-    var z1 = by * sinX + bz * cosX;
-    var x2 = bx * cosY + z1 * sinY;
-    var z2 = -bx * sinY + z1 * cosY;
-    var x3 = x2 * cosZ - y1 * sinZ;
-    var y3 = x2 * sinZ + y1 * cosZ;
-
-    // Convert rotated barrel offset to world space
-    // x3 = screen right direction, y3 = screen up, z2 = screen forward
-    var barrelOffsetX = x3 * rx - z2 * fx;
-    var barrelOffsetY = x3 * ry - z2 * fy;
-    var barrelOffsetZ = y3;
+    // Apply offsets in gun-direction space
+    var barrelOffsetX = gunDir.x * fwd + upX * up + rightX * right;
+    var barrelOffsetY = gunDir.y * fwd + upY * up + rightY * right;
+    var barrelOffsetZ = gunDir.z * fwd + upZ * up + rightZ * right;
 
     return {
         x: gunWorldX + barrelOffsetX,
@@ -1416,9 +1529,10 @@ function Draw(timestamp){
 // Minimap - top-down view with player triangle
 function DrawMinimap(){
     var ctx = screendata.context;
-    var size = 200;        // minimap size in pixels (same width as side view)
-    var range = minimapZoomed ? 50 : 200;  // world units to show (close or far)
-    var margin = 10;
+    var mmScale = uiScale.minimap;
+    var size = Math.floor(200 * mmScale);  // minimap size in pixels (scaled)
+    var range = minimapZoomed ? 25 : 200;  // world units to show (close or far)
+    var margin = Math.floor(10 * mmScale);
     var cx = screendata.canvas.width - size - margin;  // top-right corner
     var cy = margin;
 
@@ -1455,7 +1569,8 @@ function DrawMinimap(){
     // Draw player as triangle pointing in look direction
     var pcx = cx + size/2;  // player center on minimap
     var pcy = cy + size/2;
-    var triSize = 8;
+    var playerWorldSize = 3;  // player size in world units
+    var triSize = Math.max(4, playerWorldSize * scale);  // scale to world units, min 4px
     var angle = camera.angle;
 
     ctx.save();
@@ -1476,20 +1591,22 @@ function DrawMinimap(){
 
     ctx.restore();
 
-    // Draw FOV cone
+    // Draw FOV cone (scaled to world units)
+    var fovRange = 30 * scale;  // 30 world units
     ctx.save();
     ctx.translate(pcx, pcy);
     ctx.rotate(-angle);
     ctx.beginPath();
     ctx.moveTo(0, 0);
-    ctx.lineTo(-30, -60);
-    ctx.lineTo(30, -60);
+    ctx.lineTo(-fovRange * 0.5, -fovRange);
+    ctx.lineTo(fovRange * 0.5, -fovRange);
     ctx.closePath();
     ctx.fillStyle = 'rgba(255,255,0,0.2)';
     ctx.fill();
     ctx.restore();
 
     // Draw bullets as red dots on minimap
+    var bulletWorldRadius = bulletSize * 2;  // bullet radius in world units
     items.forEach(function(it){
         if(it.type === 'bullet'){
             var bx = (it.x - camera.x) * scale;
@@ -1497,7 +1614,8 @@ function DrawMinimap(){
             // Only draw if within minimap bounds
             if(Math.abs(bx) < size/2 && Math.abs(by) < size/2){
                 ctx.beginPath();
-                ctx.arc(pcx + bx, pcy + by, 3, 0, Math.PI * 2);
+                var bulletRadius = Math.max(2, bulletWorldRadius * scale);  // scale to world, min 2px
+                ctx.arc(pcx + bx, pcy + by, bulletRadius, 0, Math.PI * 2);
                 ctx.fillStyle = 'red';
                 ctx.fill();
             }
@@ -1505,12 +1623,13 @@ function DrawMinimap(){
     });
 
     // Draw view direction line (blue line - where camera is looking)
+    var viewLineLen = 25 * scale;  // 25 world units
     ctx.save();
     ctx.translate(pcx, pcy);
     ctx.rotate(-angle);
     ctx.beginPath();
     ctx.moveTo(0, 0);
-    ctx.lineTo(0, -50);  // line pointing in look direction
+    ctx.lineTo(0, -viewLineLen);  // line pointing in look direction
     ctx.strokeStyle = 'rgba(0,100,255,0.7)';
     ctx.lineWidth = 2;
     ctx.stroke();
@@ -1519,7 +1638,7 @@ function DrawMinimap(){
     // Draw barrel direction line (orange line - where gun is aiming)
     // Use actual gun direction from getGunWorldDirection()
     var gunDir = getGunWorldDirection();
-    var barrelLineLen = 45;
+    var barrelLineLen = 20 * scale;  // 20 world units
     ctx.beginPath();
     ctx.moveTo(pcx, pcy);
     ctx.lineTo(pcx + gunDir.x * barrelLineLen, pcy + gunDir.y * barrelLineLen);
@@ -1538,12 +1657,24 @@ function DrawMinimap(){
         var gunAngle = Math.atan2(-gunDir.y, -gunDir.x);
         ctx.rotate(gunAngle);
 
-        // Draw gun shape (top-down silhouette)
+        // Draw gun shape (top-down silhouette) - realistic size relative to player
+        // Pistol ~12% of player height, rifle would be ~50%
+        var gunWorldLength = playerHeightOffset * 0.12;  // pistol placeholder
+        var pxPerUnit = scale;  // pixels per world unit on minimap
+        var gunBodyLen = 0.5 * gunWorldLength * pxPerUnit;
+        var gunBodyWidth = 0.25 * gunWorldLength * pxPerUnit;
+        var barrelLen = 0.5 * gunWorldLength * pxPerUnit;
+        var barrelWidth = 0.15 * gunWorldLength * pxPerUnit;
+        // Ensure minimum visibility
+        gunBodyLen = Math.max(gunBodyLen, 8);
+        gunBodyWidth = Math.max(gunBodyWidth, 4);
+        barrelLen = Math.max(barrelLen, 6);
+        barrelWidth = Math.max(barrelWidth, 2);
         ctx.beginPath();
         // Gun body (rectangle)
-        ctx.rect(-8, -3, 12, 6);
+        ctx.rect(-gunBodyLen * 0.6, -gunBodyWidth/2, gunBodyLen, gunBodyWidth);
         // Barrel (longer rectangle)
-        ctx.rect(4, -2, 10, 4);
+        ctx.rect(gunBodyLen * 0.3, -barrelWidth/2, barrelLen, barrelWidth);
         ctx.fillStyle = 'rgba(80,80,80,0.9)';
         ctx.fill();
         ctx.strokeStyle = 'cyan';
@@ -1551,8 +1682,9 @@ function DrawMinimap(){
         ctx.stroke();
 
         // Barrel tip marker (cyan dot)
+        var tipRadius = Math.max(2, 0.1 * gunWorldLength * pxPerUnit);
         ctx.beginPath();
-        ctx.arc(14, 0, 2, 0, Math.PI * 2);
+        ctx.arc(gunBodyLen * 0.3 + barrelLen, 0, tipRadius, 0, Math.PI * 2);
         ctx.fillStyle = 'cyan';
         ctx.fill();
 
@@ -1564,9 +1696,10 @@ function DrawMinimap(){
     var spawnY = barrelPos.y + gunDir.y * gunModel.barrelDistance;
     var spx = (spawnX - camera.x) * scale;
     var spy = (spawnY - camera.y) * scale;
+    var spawnRadius = Math.max(3, bulletSize * 2 * scale);  // scaled to world units
     if(Math.abs(spx) < size/2 && Math.abs(spy) < size/2){
         ctx.beginPath();
-        ctx.arc(pcx + spx, pcy + spy, 4, 0, Math.PI * 2);
+        ctx.arc(pcx + spx, pcy + spy, spawnRadius, 0, Math.PI * 2);
         ctx.fillStyle = '#888';
         ctx.fill();
         ctx.strokeStyle = 'white';
@@ -1588,15 +1721,16 @@ function DrawMinimap(){
 
 // Side view showing terrain profile, player height, and bullets
 function DrawSideView(ctx){
-    var width = 200;       // minimap width
-    var height = 80;       // minimap height
-    var margin = 10;
+    var mmScale = uiScale.minimap;
+    var width = Math.floor(200 * mmScale);   // minimap width (scaled)
+    var height = Math.floor(80 * mmScale);   // minimap height (scaled)
+    var margin = Math.floor(10 * mmScale);
     var sx = screendata.canvas.width - width - margin;  // top-right, below main minimap
-    var sy = margin + 210; // below the square minimap (200 + 10 margin)
+    var sy = margin + Math.floor(210 * mmScale); // below the square minimap
 
-    var rangeForward = 300;  // world units to show forward
-    var rangeBack = 50;      // world units to show behind
-    var heightRange = 150;   // world units of height to show
+    var rangeForward = sideViewZoomed ? 40 : 300;  // world units to show forward
+    var rangeBack = sideViewZoomed ? 10 : 50;      // world units to show behind
+    var heightRange = sideViewZoomed ? 40 : 150;   // world units of height to show
 
     // Background
     ctx.fillStyle = 'rgba(0,0,0,0.8)';
@@ -1610,8 +1744,12 @@ function DrawSideView(ctx){
     var fy = -Math.cos(camera.angle);
 
     // Find min/max terrain height in view for scaling
-    var minH = camera.height - 50;
-    var maxH = camera.height + 100;
+    var minH = camera.height - (sideViewZoomed ? 20 : 50);
+    var maxH = camera.height + (sideViewZoomed ? 20 : 100);
+
+    // Calculate scale factors (pixels per world unit)
+    var scaleX = width / (rangeForward + rangeBack);
+    var scaleY = height / (maxH - minH);
 
     // Helper to convert world coords to screen coords
     function toScreen(dist, worldZ){
@@ -1658,25 +1796,29 @@ function DrawSideView(ctx){
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Draw camera/player as yellow circle
+    // Draw camera/player as yellow circle (scaled to world units)
+    var playerHeadSize = 2;  // head is ~2 world units diameter
+    var headRadius = Math.max(3, playerHeadSize * scaleY / 2);
     var camPos = toScreen(0, camera.height);
     ctx.beginPath();
-    ctx.arc(camPos.x, camPos.y, 6, 0, Math.PI * 2);
+    ctx.arc(camPos.x, camPos.y, headRadius, 0, Math.PI * 2);
     ctx.fillStyle = 'yellow';
     ctx.fill();
     ctx.strokeStyle = 'black';
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Draw player body (line from ground to camera)
+    // Draw player body (line from ground to camera) - width scaled
+    var bodyWidth = Math.max(2, 1 * scaleX);  // 1 world unit wide
     ctx.beginPath();
     ctx.moveTo(camPos.x, camPos.y);
     ctx.lineTo(groundLine.x, groundLine.y);
     ctx.strokeStyle = 'yellow';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = bodyWidth;
     ctx.stroke();
 
-    // Draw bullets as red dots with direction lines
+    // Draw bullets as red dots with direction lines (scaled to world units)
+    var bulletWorldSize = bulletSize * 2;  // bullet diameter in world units
     items.forEach(function(it){
         if(it.type === 'bullet'){
             // Calculate distance along look direction
@@ -1686,8 +1828,9 @@ function DrawSideView(ctx){
 
             if(dist > -rangeBack && dist < rangeForward){
                 var p = toScreen(dist, it.z);
+                var bulletR = Math.max(2, bulletWorldSize * Math.min(scaleX, scaleY) / 2);
                 ctx.beginPath();
-                ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                ctx.arc(p.x, p.y, bulletR, 0, Math.PI * 2);
                 ctx.fillStyle = 'red';
                 ctx.fill();
             }
@@ -1727,14 +1870,30 @@ function DrawSideView(ctx){
     ctx.translate(gunScreen.x, gunScreen.y);
     ctx.rotate(gunPitch);
 
-    // Draw gun shape (side silhouette)
+    // Draw gun shape (side silhouette) - realistic size relative to player
+    // Pistol ~12% of player height, rifle would be ~50%
+    var gunWorldLength = playerHeightOffset * 0.12;  // pistol placeholder
+    var pxPerUnit = Math.min(scaleX, scaleY);  // pixels per world unit on side view
+    var gunBodyLen = 0.5 * gunWorldLength * pxPerUnit;
+    var gunBodyH = 0.3 * gunWorldLength * pxPerUnit;
+    var barrelLen = 0.5 * gunWorldLength * pxPerUnit;
+    var barrelH = 0.15 * gunWorldLength * pxPerUnit;
+    var gripLen = 0.2 * gunWorldLength * pxPerUnit;
+    var gripH = 0.35 * gunWorldLength * pxPerUnit;
+    // Ensure minimum visibility
+    gunBodyLen = Math.max(gunBodyLen, 6);
+    gunBodyH = Math.max(gunBodyH, 3);
+    barrelLen = Math.max(barrelLen, 5);
+    barrelH = Math.max(barrelH, 2);
+    gripLen = Math.max(gripLen, 3);
+    gripH = Math.max(gripH, 4);
     ctx.beginPath();
     // Gun body
-    ctx.rect(-10, -4, 14, 8);
+    ctx.rect(-gunBodyLen * 0.7, -gunBodyH/2, gunBodyLen, gunBodyH);
     // Barrel
-    ctx.rect(4, -2, 12, 4);
+    ctx.rect(gunBodyLen * 0.3, -barrelH/2, barrelLen, barrelH);
     // Grip
-    ctx.rect(-6, 4, 6, 8);
+    ctx.rect(-gunBodyLen * 0.4, gunBodyH/2, gripLen, gripH);
     ctx.fillStyle = 'rgba(80,80,80,0.9)';
     ctx.fill();
     ctx.strokeStyle = 'cyan';
@@ -1742,8 +1901,9 @@ function DrawSideView(ctx){
     ctx.stroke();
 
     // Barrel tip marker
+    var tipR = Math.max(2, 0.05 * gunWorldLength * pxPerUnit);
     ctx.beginPath();
-    ctx.arc(16, 0, 2, 0, Math.PI * 2);
+    ctx.arc(gunBodyLen * 0.3 + barrelLen, 0, tipR, 0, Math.PI * 2);
     ctx.fillStyle = 'cyan';
     ctx.fill();
 
@@ -1757,10 +1917,11 @@ function DrawSideView(ctx){
     var bulletDy = bulletSpawnY - camera.y;
     var bulletDist = bulletDx * fx + bulletDy * fy;
 
-    // Draw bullet spawn position (gray dot)
+    // Draw bullet spawn position (gray dot) - scaled to world units
+    var spawnR = Math.max(3, bulletSize * 2 * Math.min(scaleX, scaleY));
     var bulletScreen = toScreen(bulletDist, bulletSpawnZ);
     ctx.beginPath();
-    ctx.arc(bulletScreen.x, bulletScreen.y, 4, 0, Math.PI * 2);
+    ctx.arc(bulletScreen.x, bulletScreen.y, spawnR, 0, Math.PI * 2);
     ctx.fillStyle = '#888';
     ctx.fill();
     ctx.strokeStyle = 'white';
@@ -1791,16 +1952,17 @@ function DrawSideView(ctx){
     // Title only (legend moved to separate box)
     ctx.fillStyle = 'white';
     ctx.font = '10px Arial';
-    ctx.fillText('SIDE VIEW', sx + 5, sy + 12);
+    ctx.fillText('SIDE VIEW ' + (sideViewZoomed ? '[CLOSE] Z=zoom' : '[FAR] Z=zoom'), sx + 5, sy + 12);
 }
 
 // Legend box below side view (shared by both minimaps)
 function DrawMinimapLegend(ctx){
-    var width = 200;
-    var height = 58;
-    var margin = 10;
+    var mmScale = uiScale.minimap;
+    var width = Math.floor(200 * mmScale);
+    var height = Math.floor(58 * mmScale);
+    var margin = Math.floor(10 * mmScale);
     var lx = screendata.canvas.width - width - margin;
-    var ly = margin + 210 + 80 + 5;  // below side view (overhead 200 + gap 10 + side 80 + gap 5)
+    var ly = margin + Math.floor((210 + 80 + 5) * mmScale);  // below side view (scaled)
 
     // Background
     ctx.fillStyle = 'rgba(0,0,0,0.8)';
@@ -1888,13 +2050,14 @@ function RenderGroundWeapons() {
 function DrawWeaponUI(ctx) {
     var sw = screendata.canvas.width;
     var sh = screendata.canvas.height;
-    var iconSize = 40;
-    var iconMargin = 5;
-    var cornerRadius = 8;
+    var wuScale = uiScale.weaponUI;
+    var iconSize = Math.floor(40 * wuScale);
+    var iconMargin = Math.floor(5 * wuScale);
+    var cornerRadius = Math.floor(8 * wuScale);
 
     // Draw weapon slots at bottom center
     var startX = sw / 2 - iconSize - iconMargin;
-    var startY = sh - iconSize - 15;
+    var startY = sh - iconSize - Math.floor(15 * wuScale);
 
     for (var i = 0; i < 2; i++) {
         var slot = playerWeapons[i];
@@ -2052,13 +2215,58 @@ function flattenTerrainUnderCube() {
 
 }
 
+// Apply UI scale transforms to HUD elements
+function applyUIScales() {
+    var crosshair = document.getElementById('crosshair');
+    var healthbar = document.getElementById('healthbar');
+    var jumpbar = document.getElementById('jumpbar');
 
+    // Crosshair - scale from center
+    if (crosshair) {
+        var cs = uiScale.crosshair;
+        crosshair.style.width = (10 * cs) + 'px';
+        crosshair.style.height = (10 * cs) + 'px';
+        crosshair.style.margin = (-5 * cs) + 'px 0 0 ' + (-5 * cs) + 'px';
+    }
+
+    // Health bar - scale from bottom-left
+    if (healthbar) {
+        var hs = uiScale.healthbar;
+        healthbar.style.width = (200 * hs) + 'px';
+        healthbar.style.height = (20 * hs) + 'px';
+        healthbar.style.bottom = (10 * hs) + 'px';
+        healthbar.style.left = (10 * hs) + 'px';
+        healthbar.style.borderWidth = (2 * hs) + 'px';
+    }
+
+    // Jump bar - scale from bottom-left
+    if (jumpbar) {
+        var js = uiScale.jumpbar;
+        jumpbar.style.width = (200 * js) + 'px';
+        jumpbar.style.height = (10 * js) + 'px';
+        jumpbar.style.bottom = (40 * js) + 'px';
+        jumpbar.style.left = (10 * js) + 'px';
+        jumpbar.style.borderWidth = (2 * js) + 'px';
+    }
+}
 
 function OnResizeWindow(){
     screendata.canvas=document.getElementById('fullscreenCanvas');
-    var aspect=window.innerWidth/window.innerHeight;
-    screendata.canvas.width=window.innerWidth<800?window.innerWidth:800;
-    screendata.canvas.height=screendata.canvas.width/aspect;
+    var gameContainer = document.getElementById('game-container');
+
+    // Use display config for resolution (16:9 locked)
+    var dims = DisplayConfig.getCanvasDimensions(window.innerWidth, window.innerHeight);
+
+    // Position and size the game container (holds canvas + HUD)
+    gameContainer.style.width = dims.canvasWidth + 'px';
+    gameContainer.style.height = dims.canvasHeight + 'px';
+    gameContainer.style.left = ((window.innerWidth - dims.canvasWidth) / 2) + 'px';
+    gameContainer.style.top = ((window.innerHeight - dims.canvasHeight) / 2) + 'px';
+
+    // Set canvas render resolution (internal)
+    screendata.canvas.width = dims.renderWidth;
+    screendata.canvas.height = dims.renderHeight;
+
     if(screendata.canvas.getContext){
         screendata.context=screendata.canvas.getContext('2d');
         screendata.imagedata=screendata.context.createImageData(screendata.canvas.width,screendata.canvas.height);
@@ -2213,6 +2421,56 @@ function Init(){
         document.getElementById('barrelDistance-value').innerText = gunModel.barrelDistance;
     });
 
+    // UI Scale sliders
+    document.getElementById('uiScaleAll').addEventListener('input', function(e){
+        var scale = parseFloat(e.target.value);
+        uiScale.all = scale;
+        document.getElementById('uiScaleAll-value').innerText = scale.toFixed(1);
+        // Update all individual scales
+        uiScale.crosshair = scale;
+        uiScale.healthbar = scale;
+        uiScale.jumpbar = scale;
+        uiScale.minimap = scale;
+        uiScale.weaponUI = scale;
+        // Update slider displays
+        document.getElementById('uiScaleCrosshair').value = scale;
+        document.getElementById('uiScaleCrosshair-value').innerText = scale.toFixed(1);
+        document.getElementById('uiScaleHealthbar').value = scale;
+        document.getElementById('uiScaleHealthbar-value').innerText = scale.toFixed(1);
+        document.getElementById('uiScaleJumpbar').value = scale;
+        document.getElementById('uiScaleJumpbar-value').innerText = scale.toFixed(1);
+        document.getElementById('uiScaleMinimap').value = scale;
+        document.getElementById('uiScaleMinimap-value').innerText = scale.toFixed(1);
+        document.getElementById('uiScaleWeaponUI').value = scale;
+        document.getElementById('uiScaleWeaponUI-value').innerText = scale.toFixed(1);
+        applyUIScales();
+    });
+    document.getElementById('uiScaleCrosshair').addEventListener('input', function(e){
+        uiScale.crosshair = parseFloat(e.target.value);
+        document.getElementById('uiScaleCrosshair-value').innerText = uiScale.crosshair.toFixed(1);
+        applyUIScales();
+    });
+    document.getElementById('uiScaleHealthbar').addEventListener('input', function(e){
+        uiScale.healthbar = parseFloat(e.target.value);
+        document.getElementById('uiScaleHealthbar-value').innerText = uiScale.healthbar.toFixed(1);
+        applyUIScales();
+    });
+    document.getElementById('uiScaleJumpbar').addEventListener('input', function(e){
+        uiScale.jumpbar = parseFloat(e.target.value);
+        document.getElementById('uiScaleJumpbar-value').innerText = uiScale.jumpbar.toFixed(1);
+        applyUIScales();
+    });
+    document.getElementById('uiScaleMinimap').addEventListener('input', function(e){
+        uiScale.minimap = parseFloat(e.target.value);
+        document.getElementById('uiScaleMinimap-value').innerText = uiScale.minimap.toFixed(1);
+        applyUIScales();
+    });
+    document.getElementById('uiScaleWeaponUI').addEventListener('input', function(e){
+        uiScale.weaponUI = parseFloat(e.target.value);
+        document.getElementById('uiScaleWeaponUI-value').innerText = uiScale.weaponUI.toFixed(1);
+        applyUIScales();
+    });
+
     // Save/Reset functionality
     var savedSettings = null;
 
@@ -2245,7 +2503,14 @@ function Init(){
             barrelYaw: parseInt(document.getElementById('barrelYaw').value),
             gunWorldFwd: parseInt(document.getElementById('gunWorldFwd').value),
             gunWorldRight: parseInt(document.getElementById('gunWorldRight').value),
-            gunWorldDown: parseInt(document.getElementById('gunWorldDown').value)
+            gunWorldDown: parseInt(document.getElementById('gunWorldDown').value),
+            // UI Scale
+            uiScaleAll: parseFloat(document.getElementById('uiScaleAll').value),
+            uiScaleCrosshair: parseFloat(document.getElementById('uiScaleCrosshair').value),
+            uiScaleHealthbar: parseFloat(document.getElementById('uiScaleHealthbar').value),
+            uiScaleJumpbar: parseFloat(document.getElementById('uiScaleJumpbar').value),
+            uiScaleMinimap: parseFloat(document.getElementById('uiScaleMinimap').value),
+            uiScaleWeaponUI: parseFloat(document.getElementById('uiScaleWeaponUI').value)
         };
     }
 
@@ -2341,6 +2606,39 @@ function Init(){
             document.getElementById('gunWorldDown-value').innerText = s.gunWorldDown;
             gunModel.worldDown = s.gunWorldDown;
         }
+        // UI Scale
+        if (s.uiScaleAll !== undefined) {
+            document.getElementById('uiScaleAll').value = s.uiScaleAll;
+            document.getElementById('uiScaleAll-value').innerText = s.uiScaleAll.toFixed(1);
+            uiScale.all = s.uiScaleAll;
+        }
+        if (s.uiScaleCrosshair !== undefined) {
+            document.getElementById('uiScaleCrosshair').value = s.uiScaleCrosshair;
+            document.getElementById('uiScaleCrosshair-value').innerText = s.uiScaleCrosshair.toFixed(1);
+            uiScale.crosshair = s.uiScaleCrosshair;
+        }
+        if (s.uiScaleHealthbar !== undefined) {
+            document.getElementById('uiScaleHealthbar').value = s.uiScaleHealthbar;
+            document.getElementById('uiScaleHealthbar-value').innerText = s.uiScaleHealthbar.toFixed(1);
+            uiScale.healthbar = s.uiScaleHealthbar;
+        }
+        if (s.uiScaleJumpbar !== undefined) {
+            document.getElementById('uiScaleJumpbar').value = s.uiScaleJumpbar;
+            document.getElementById('uiScaleJumpbar-value').innerText = s.uiScaleJumpbar.toFixed(1);
+            uiScale.jumpbar = s.uiScaleJumpbar;
+        }
+        if (s.uiScaleMinimap !== undefined) {
+            document.getElementById('uiScaleMinimap').value = s.uiScaleMinimap;
+            document.getElementById('uiScaleMinimap-value').innerText = s.uiScaleMinimap.toFixed(1);
+            uiScale.minimap = s.uiScaleMinimap;
+        }
+        if (s.uiScaleWeaponUI !== undefined) {
+            document.getElementById('uiScaleWeaponUI').value = s.uiScaleWeaponUI;
+            document.getElementById('uiScaleWeaponUI-value').innerText = s.uiScaleWeaponUI.toFixed(1);
+            uiScale.weaponUI = s.uiScaleWeaponUI;
+        }
+        // Apply the UI scales
+        applyUIScales();
     }
 
     // Save button - saves to localStorage and memory
@@ -2473,7 +2771,7 @@ function toggleDebugUI(){
 
 // ===============================
 // Controls
-function DetectKeysDown(e){switch(e.keyCode){case 87:input.forward=true;break;case 83:input.backward=true;break;case 65:input.left=true;break;case 68:input.right=true;break;case 32:input.jump=true;break;case 16:input.sprint=true;break;case 67:input.crouch=true;break;case 82:input.reload=true;break;case 81:input.swapWeapon=true;break;case 69:input.pickupWeapon=true;break;case 90:minimapZoomed=!minimapZoomed;break;case 27:var ctrl=document.getElementById('controls');ctrl.style.display=ctrl.style.display==='none'?'block':'none';break;}if(!updaterunning){time=Date.now();Draw();}}
+function DetectKeysDown(e){switch(e.keyCode){case 87:input.forward=true;break;case 83:input.backward=true;break;case 65:input.left=true;break;case 68:input.right=true;break;case 32:input.jump=true;break;case 16:input.sprint=true;break;case 67:input.crouch=true;break;case 82:input.reload=true;break;case 81:input.swapWeapon=true;break;case 69:input.pickupWeapon=true;break;case 90:minimapZoomed=!minimapZoomed;sideViewZoomed=!sideViewZoomed;break;case 27:var ctrl=document.getElementById('controls');ctrl.style.display=ctrl.style.display==='none'?'block':'none';break;}if(!updaterunning){time=Date.now();Draw();}}
 function DetectKeysUp(e){switch(e.keyCode){case 87:input.forward=false;break;case 83:input.backward=false;break;case 65:input.left=false;break;case 68:input.right=false;break;case 32:input.jump=false;break;case 16:input.sprint=false;break;case 67:input.crouch=false;break;case 82:input.reload=false;break;case 81:input.swapWeapon=false;break;case 69:input.pickupWeapon=false;break;}}
 function DetectMouseDown(e){
     if(e.button===0) input.shoot=true;
