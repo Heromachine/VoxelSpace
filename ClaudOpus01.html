@@ -275,10 +275,11 @@
 <div id="playerrotation"></div>
 <div id="playerposition"></div>
 <div id="bulletcount"></div>
-<div id="info">Keyboard: WASD move, Mouse look, LMB shoot, RMB aim, HOLD Space jump, Shift sprint, C crouch, R reload, Q swap weapon, E pickup | Gamepad: Left Stick move, Right Stick look, RT shoot, LT aim, HOLD LB jump, B crouch, X reload, Y swap weapon, L3/A sprint</div>
+<div id="info">Keyboard: WASD move, Mouse look, LMB shoot, RMB toggle ADS, HOLD Space jump, Shift sprint, C crouch, R reload, Q swap weapon, E pickup | Gamepad: Left Stick move, Right Stick look, RT shoot, LT toggle ADS, HOLD LB jump, B crouch, X reload, Y swap weapon, L3/A sprint</div>
 
 <!-- Display Configuration -->
 <script src="config/displayConfig.js"></script>
+<script src="config/weaponConfig.js"></script>
 
 <script>
 "use strict";
@@ -395,7 +396,9 @@ var player={health:100,isCrouching:false,moveSpeed:1.5,sprintMultiplier:2,
            // Gamepad button states (separate from keyboard/mouse)
            gpShoot:false,gpAim:false,gpCrouch:false,gpSprint:false,gpReload:false,gpJumpHeld:false,
            // Weapon controls
-           swapWeapon:false,gpSwapWeapon:false,pickupWeapon:false,gpPickupWeapon:false},
+           swapWeapon:false,gpSwapWeapon:false,pickupWeapon:false,gpPickupWeapon:false,
+           // ADS toggle state
+           aimToggled:false,prevGpAim:false},
     debugUIVisible=true,  // Toggle with Start button
     playerHeightOffset=30, // Player eye height above terrain (min 30)
     bulletVertOffset=0,    // Vertical offset for bullet spawn (negative = below eye level)
@@ -1213,7 +1216,7 @@ function UpdateCamera(){
 
     // Shooting - Hip fire or Iron sights (ADS)
     var isShooting = input.shoot || input.gpShoot;
-    var isAiming = input.aim || input.gpAim;
+    var isAiming = input.aimToggled;
 
     // ADS - move camera forward instead of changing focal length
     // Use adsZoom value to determine forward distance (higher zoom = more forward movement)
@@ -1661,9 +1664,10 @@ function DrawMinimap(){
         var gunAngle = Math.atan2(-gunDir.y, -gunDir.x);
         ctx.rotate(gunAngle);
 
-        // Draw gun shape (top-down silhouette) - realistic size relative to player
-        // Pistol ~12% of player height, rifle would be ~50%
-        var gunWorldLength = playerHeightOffset * 0.12;  // pistol placeholder
+        // Draw gun shape (top-down silhouette) - realistic size from WeaponConfig
+        var currentSlot = playerWeapons[currentWeaponIndex];
+        var totalPlayerHeight = playerHeightOffset / 0.93;  // Convert eye height to total height
+        var gunWorldLength = WeaponConfig.getWeaponLength(currentSlot.type, totalPlayerHeight);
         var pxPerUnit = scale;  // pixels per world unit on minimap
         var gunBodyLen = 0.5 * gunWorldLength * pxPerUnit;
         var gunBodyWidth = 0.25 * gunWorldLength * pxPerUnit;
@@ -1957,9 +1961,10 @@ function DrawSideView(ctx){
     ctx.translate(gunScreen.x, gunScreen.y);
     ctx.rotate(gunPitch);
 
-    // Draw gun shape (side silhouette) - realistic size relative to player
-    // Pistol ~12% of player height, rifle would be ~50%
-    var gunWorldLength = playerHeightOffset * 0.12;  // pistol placeholder
+    // Draw gun shape (side silhouette) - realistic size from WeaponConfig
+    var currentSlot = playerWeapons[currentWeaponIndex];
+    var totalPlayerHeight = playerHeightOffset / 0.93;  // Convert eye height to total height
+    var gunWorldLength = WeaponConfig.getWeaponLength(currentSlot.type, totalPlayerHeight);
     var pxPerUnit = Math.min(scaleX, scaleY);  // pixels per world unit on side view
     var gunBodyLen = 0.5 * gunWorldLength * pxPerUnit;
     var gunBodyH = 0.3 * gunWorldLength * pxPerUnit;
@@ -2026,7 +2031,8 @@ function DrawSideView(ctx){
     // Draw barrel direction line (orange - where bullets will go)
     var barrelEndDist = 200;  // world units ahead
     var barrelFwdComponent = gunDir.x * fx + gunDir.y * fy;
-    var barrelEndZ = barrelPos.z + (gunDir.z / Math.abs(barrelFwdComponent || 0.01)) * barrelEndDist;
+    // Negate gunDir.z to match view coordinate convention
+    var barrelEndZ = barrelPos.z + (-gunDir.z / Math.abs(barrelFwdComponent || 0.01)) * barrelEndDist;
     var barrelStart = toScreen(gunDist, barrelPos.z);
     var barrelEnd = toScreen(gunDist + barrelEndDist, barrelEndZ);
     ctx.beginPath();
@@ -2628,6 +2634,8 @@ function Init(){
         // Camera
         document.getElementById('fov').value = s.fov;
         document.getElementById('fov-value').innerText = s.fov;
+        camera.baseFocalLength = s.fov;
+        camera.focalLength = s.fov;
         document.getElementById('pitchOffset').value = s.pitchOffset;
         document.getElementById('pitchOffset-value').innerText = s.pitchOffset;
         pitchOffset = s.pitchOffset;
@@ -2849,8 +2857,13 @@ function pollGamepad(){
     input.gpCrouch = gpCrouch;
     input.gpSprint = gpSprint;
     input.gpShoot = gpShoot;
-    input.gpAim = gpAim;
     input.gpReload = gpReload;
+
+    // ADS toggle for gamepad (edge detection: toggle on press)
+    if(gpAim && !input.prevGpAim){
+        input.aimToggled = !input.aimToggled;
+    }
+    input.prevGpAim = gpAim;
 
     // Start button - toggle debug UI (edge detection: only on press)
     var gpStart = isPressed(gamepad.buttons.start);
@@ -2885,11 +2898,11 @@ function DetectKeysDown(e){switch(e.keyCode){case 87:input.forward=true;break;ca
 function DetectKeysUp(e){switch(e.keyCode){case 87:input.forward=false;break;case 83:input.backward=false;break;case 65:input.left=false;break;case 68:input.right=false;break;case 32:input.jump=false;break;case 16:input.sprint=false;break;case 67:input.crouch=false;break;case 82:input.reload=false;break;case 81:input.swapWeapon=false;break;case 69:input.pickupWeapon=false;break;}}
 function DetectMouseDown(e){
     if(e.button===0) input.shoot=true;
-    if(e.button===2) input.aim=true; // Right-click for ADS
+    if(e.button===2) input.aimToggled = !input.aimToggled; // Right-click toggles ADS
 }
 function DetectMouseUp(e){
     if(e.button===0) input.shoot=false;
-    if(e.button===2) input.aim=false;
+    // ADS is now toggle, no action on mouse up
 }
 function DetectMouseMove(e){camera.angle=(camera.angle-e.movementX*0.002)%(2*Math.PI);if(camera.angle<0)camera.angle+=2*Math.PI;camera.horizon=Math.max(-400,Math.min(600,camera.horizon-e.movementY*0.2));}
 
