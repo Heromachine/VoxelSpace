@@ -1,0 +1,2213 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Voxel Space Game</title>
+    <meta charset="UTF-8">
+    <style>
+        html, body {margin: 0; height: 100%; overflow: hidden}
+        canvas { width: 100%; height: 100%; display: block; }
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 10px;
+            height: 10px;
+            margin: -5px 0 0 -5px;
+            border: 2px solid white;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        #healthbar {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            width: 200px;
+            height: 20px;
+            background: #333;
+            border: 2px solid white;
+            overflow: visible;
+        }
+
+        .hud-item {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 28px;
+            height: 28px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            image-rendering: pixelated;
+            pointer-events: none;
+        }
+
+        #health {width: 100%;height: 100%;background: #ff0000;}
+        #info, #fps, #bulletcount, #lastbulletpos, #lastbulletscreen, #playerrotation,
+        #playerposition, #lastbulletdestroyedpos, #lastbulletdestroyedreason {
+            position: absolute;
+            padding: 5px;
+            z-index: 100;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+        }
+        #info {top: 0;left: 10px;}
+        #fps {top: 0;right: 10px;}
+        #bulletcount {bottom: 10px;right: 10px;}
+        #playerposition {bottom: 35px;right: 10px;}
+        #playerrotation {bottom: 60px;right: 10px;}
+        #lastbulletpos {bottom: 85px;right: 10px;}
+        #lastbulletscreen {bottom: 110px;right: 10px;}
+        #lastbulletdestroyedpos {bottom: 135px;right: 10px;}
+        #lastbulletdestroyedreason {bottom: 160px;right: 10px;}
+    </style>
+</head>
+<body>
+
+    <div id="controls" style="position: absolute; top: 50px; left: 10px; background: rgba(0, 0, 0, 0.85); color: white; padding: 0; width: 220px; border-radius: 5px; overflow: hidden;">
+  <!-- Tab buttons -->
+  <div style="display: flex; background: #333;">
+    <button class="tab-btn active" data-tab="camera" style="flex:1;padding:8px 4px;border:none;background:#555;color:white;cursor:pointer;font-size:11px;">Camera</button>
+    <button class="tab-btn" data-tab="player" style="flex:1;padding:8px 4px;border:none;background:#333;color:#aaa;cursor:pointer;font-size:11px;">Player</button>
+    <button class="tab-btn" data-tab="bullet" style="flex:1;padding:8px 4px;border:none;background:#333;color:#aaa;cursor:pointer;font-size:11px;">Bullet</button>
+    <button class="tab-btn" data-tab="gun" style="flex:1;padding:8px 4px;border:none;background:#333;color:#aaa;cursor:pointer;font-size:11px;">Gun</button>
+  </div>
+
+  <!-- Camera Tab -->
+  <div class="tab-content" id="tab-camera" style="padding: 10px;">
+    <label for="fov">FOV: <span id="fov-value">50</span></label><br>
+    <input type="range" id="fov" min="10" max="120" value="50" style="width:100%;"><br>
+
+    <label for="pitchOffset">Pitch Offset: <span id="pitchOffset-value">250</span></label><br>
+    <input type="range" id="pitchOffset" min="0" max="500" value="250" style="width:100%;"><br>
+
+    <label for="targetFPS">Target FPS: <span id="targetFPS-value">60</span></label><br>
+    <input type="range" id="targetFPS" min="30" max="120" value="60" style="width:100%;"><br>
+
+    <label for="frames">Frames: <span id="frames-value">0</span></label><br>
+    <input type="range" id="frames" min="0" max="1000" value="0" style="width:100%;">
+  </div>
+
+  <!-- Player Tab -->
+  <div class="tab-content" id="tab-player" style="padding: 10px; display: none;">
+    <label for="playerHeight">Eye Height: <span id="playerHeight-value">30</span></label><br>
+    <input type="range" id="playerHeight" min="5" max="150" value="30" style="width:100%;"><br>
+
+    <label for="normalHeight">Standing: <span id="normalHeight-value">78</span></label><br>
+    <input type="range" id="normalHeight" min="40" max="150" value="78" style="width:100%;"><br>
+
+    <label for="crouchHeight">Crouch: <span id="crouchHeight-value">40</span></label><br>
+    <input type="range" id="crouchHeight" min="20" max="100" value="40" style="width:100%;"><br>
+
+    <label for="jumpMin">Jump Min: <span id="jumpMin-value">3</span></label><br>
+    <input type="range" id="jumpMin" min="1" max="10" value="3" style="width:100%;"><br>
+
+    <label for="jumpMax">Jump Max: <span id="jumpMax-value">12</span></label><br>
+    <input type="range" id="jumpMax" min="5" max="30" value="12" style="width:100%;">
+  </div>
+
+  <!-- Bullet Tab -->
+  <div class="tab-content" id="tab-bullet" style="padding: 10px; display: none;">
+    <label for="bulletSize">Size: <span id="bulletSize-value">0.75</span></label><br>
+    <input type="range" id="bulletSize" min="0.1" max="3" step="0.1" value="0.75" style="width:100%;"><br>
+
+    <label for="barrelDistance">Barrel Dist: <span id="barrelDistance-value">5</span></label><br>
+    <input type="range" id="barrelDistance" min="1" max="50" value="5" style="width:100%;">
+  </div>
+
+  <!-- Gun Tab -->
+  <div class="tab-content" id="tab-gun" style="padding: 10px; display: none;">
+    <label for="gunX">X Offset: <span id="gunX-value">100</span></label><br>
+    <input type="range" id="gunX" min="-200" max="400" value="100" style="width:100%;"><br>
+
+    <label for="gunY">Y Offset: <span id="gunY-value">50</span></label><br>
+    <input type="range" id="gunY" min="-200" max="400" value="50" style="width:100%;"><br>
+
+    <label for="gunZ">Z Depth: <span id="gunZ-value">0</span></label><br>
+    <input type="range" id="gunZ" min="-100" max="100" value="0" style="width:100%;"><br>
+
+    <label for="gunScale">Scale: <span id="gunScale-value">300</span></label><br>
+    <input type="range" id="gunScale" min="50" max="1000" value="300" style="width:100%;"><br>
+
+    <label for="gunRotX">Rot X: <span id="gunRotX-value">0</span></label><br>
+    <input type="range" id="gunRotX" min="-180" max="180" value="0" style="width:100%;"><br>
+
+    <label for="gunRotY">Rot Y: <span id="gunRotY-value">0</span></label><br>
+    <input type="range" id="gunRotY" min="-180" max="180" value="0" style="width:100%;"><br>
+
+    <label for="gunRotZ">Rot Z: <span id="gunRotZ-value">0</span></label><br>
+    <input type="range" id="gunRotZ" min="-180" max="180" value="0" style="width:100%;"><br>
+
+    <hr style="border-color:#555;margin:8px 0;">
+    <b style="font-size:10px;">Barrel Position:</b><br>
+    <label for="barrelX">Barrel X: <span id="barrelX-value">0.26</span></label><br>
+    <input type="range" id="barrelX" min="-0.5" max="0.5" step="0.01" value="0.26" style="width:100%;"><br>
+
+    <label for="barrelY">Barrel Y: <span id="barrelY-value">0.08</span></label><br>
+    <input type="range" id="barrelY" min="-0.3" max="0.3" step="0.01" value="0.08" style="width:100%;"><br>
+
+    <label for="barrelZ">Barrel Z: <span id="barrelZ-value">0</span></label><br>
+    <input type="range" id="barrelZ" min="-0.1" max="0.1" step="0.01" value="0" style="width:100%;"><br>
+
+    <hr style="border-color:#555;margin:8px 0;">
+    <b style="font-size:10px;">Gun World Offset:</b><br>
+    <label for="gunWorldFwd">Forward: <span id="gunWorldFwd-value">10</span></label><br>
+    <input type="range" id="gunWorldFwd" min="0" max="50" value="10" style="width:100%;"><br>
+
+    <label for="gunWorldRight">Right: <span id="gunWorldRight-value">15</span></label><br>
+    <input type="range" id="gunWorldRight" min="-30" max="30" value="15" style="width:100%;"><br>
+
+    <label for="gunWorldDown">Down: <span id="gunWorldDown-value">8</span></label><br>
+    <input type="range" id="gunWorldDown" min="-20" max="30" value="8" style="width:100%;">
+  </div>
+
+  <!-- Save/Reset Buttons -->
+  <div style="padding: 10px; border-top: 1px solid #555; display: flex; gap: 10px;">
+    <button id="saveSettings" style="flex:1; padding:8px; background:#2a6; color:white; border:none; border-radius:4px; cursor:pointer;">Save</button>
+    <button id="resetSettings" style="flex:1; padding:8px; background:#a62; color:white; border:none; border-radius:4px; cursor:pointer;">Reset</button>
+  </div>
+</div>
+    
+<div id="crosshair"></div>
+<div id="healthbar">
+    <div id="health"></div>
+    <div class="hud-item" style="background-image: url('images/heart.png');"></div>
+</div>
+<div id="jumpbar" style="position:absolute;bottom:40px;left:10px;width:200px;height:10px;background:#333;border:2px solid white;display:none;">
+    <div id="jumpcharge" style="width:0%;height:100%;background:linear-gradient(to right, #00ff00, #ffff00, #ff0000);transition:width 0.05s;"></div>
+</div>
+<div id="fps"></div>
+<div id="lastbulletdestroyedreason"></div>
+<div id="lastbulletdestroyedpos"></div>
+<div id="lastbulletpos"></div>
+<div id="lastbulletscreen"></div>
+<div id="playerrotation"></div>
+<div id="playerposition"></div>
+<div id="bulletcount"></div>
+<div id="info">Keyboard: WASD move, Mouse look, LMB shoot, RMB aim, HOLD Space jump, Shift sprint, C crouch, R reload, Q swap weapon, E pickup | Gamepad: Left Stick move, Right Stick look, RT shoot, LT aim, HOLD LB jump, B crouch, X reload, Y swap weapon, L3/A sprint</div>
+
+<canvas id="fullscreenCanvas" width="800" height="400"></canvas>
+
+<script>
+"use strict";
+
+// Polyfill for roundRect (not available in all browsers)
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+        if (w < 2 * r) r = w / 2;
+        if (h < 2 * r) r = h / 2;
+        this.moveTo(x + r, y);
+        this.arcTo(x + w, y, x + w, y + h, r);
+        this.arcTo(x + w, y + h, x, y + h, r);
+        this.arcTo(x, y + h, x, y, r);
+        this.arcTo(x, y, x + w, y, r);
+        this.closePath();
+        return this;
+    };
+}
+
+var camera = {
+    x: 0, y: 0, height: 78, angle: 0, horizon: 100,
+    distance: 2000, velocityY: 0,
+    baseFocalLength: 300,  // normal FOV
+    focalLength: 300,      // current focal length
+    // ADS camera offset (moves camera forward for zoom effect)
+    adsOffset: 0,          // current offset
+    baseX: 0, baseY: 0     // actual player position (before ADS offset)
+};
+
+var player={health:100,isCrouching:false,moveSpeed:1.5,sprintMultiplier:2,
+            // Charged jump system
+            jumpMinStrength:3,      // tap jump
+            jumpMaxStrength:12,     // fully charged (basketball player ~1m vertical)
+            jumpChargeTime:0,       // current charge time in ms
+            jumpMaxChargeTime:1000, // 1 second to fully charge
+            isChargingJump:false,
+            crouchHeight:40,normalHeight:78,
+            // Weapon state
+            wasSwapping:false,wasPickingUp:false,wasShooting:false},
+
+    // Weapon definitions
+    weapons = {
+        rifle: {
+            name: "Rifle",
+            letter: "R",
+            color: "#8B00FF",      // Purple
+            bgColor: "#4B0082",
+            magazine: 30,
+            maxMagazine: 30,
+            reloadTime: 2000,
+            fireRate: 100,         // Fast auto fire
+            fireMode: "auto",
+            hipSpread: 0.06,
+            adsSpread: 0.02,
+            damage: 15,
+            bulletSpeed: 12,
+            adsZoom: 1.8           // 1.8x zoom when aiming
+        },
+        pistol: {
+            name: "Pistol",
+            letter: "P",
+            color: "#C0C0C0",      // Silver
+            bgColor: "#808080",
+            magazine: 12,
+            maxMagazine: 12,
+            reloadTime: 1000,
+            fireRate: 200,         // Semi-auto
+            fireMode: "semi",
+            hipSpread: 0.04,
+            adsSpread: 0.01,
+            damage: 25,
+            bulletSpeed: 10,
+            adsZoom: 1.3           // 1.3x zoom (minimal for pistol)
+        },
+        sniper: {
+            name: "Sniper",
+            letter: "S",
+            color: "#228B22",      // Forest green
+            bgColor: "#006400",
+            magazine: 5,
+            maxMagazine: 5,
+            reloadTime: 3000,
+            fireRate: 1000,        // Slow but powerful
+            fireMode: "semi",
+            hipSpread: 0.1,
+            adsSpread: 0.005,
+            damage: 100,
+            bulletSpeed: 20,
+            adsZoom: 4.0           // 4x scope zoom
+        }
+    },
+
+    // Player's current weapons (2 slots)
+    playerWeapons = [
+        { type: "rifle", ammo: 30, isReloading: false, lastShot: 0 },
+        { type: "pistol", ammo: 12, isReloading: false, lastShot: 0 }
+    ],
+    currentWeaponIndex = 0,  // Which weapon is active (0 or 1)
+    prevSwapButton = false,  // For edge detection on Y button
+
+    // Weapons on ground
+    groundWeapons = [],
+    nearbyWeapon = null,     // Weapon player can pick up
+
+    // Legacy gun object for compatibility
+    gun={magazine:200,maxMagazine:200,reloadTime:1000,isReloading:false,lastShot:0,fireRate:300,hipSpread:0.08,adsSpread:0.01},
+    items=[], // unified bullets + hearts + pickups
+    lastBullet=null,lastBulletDestroyedPos=null,lastBulletDestroyedReason=null,lastBulletScreen=null,
+    map={width:1024,height:1024,shift:10,altitude:new Uint8Array(1024*1024),color:new Uint32Array(1024*1024)},
+    screendata={canvas:null,context:null,imagedata:null,bufarray:null,buf8:null,buf32:null,backgroundcolor:0xFFE09090,depthBuffer:null},
+    input={forward:false,backward:false,left:false,right:false,jump:false,sprint:false,crouch:false,shoot:false,reload:false,aim:false,mouseX:0,mouseY:0,
+           // Gamepad analog values (for smooth movement)
+           moveX:0,moveY:0,lookX:0,lookY:0,
+           // Gamepad button states (separate from keyboard/mouse)
+           gpShoot:false,gpAim:false,gpCrouch:false,gpSprint:false,gpReload:false,gpJumpHeld:false,
+           // Weapon controls
+           swapWeapon:false,gpSwapWeapon:false,pickupWeapon:false,gpPickupWeapon:false},
+    debugUIVisible=true,  // Toggle with Start button
+    playerHeightOffset=30, // Player eye height above terrain (min 30)
+    bulletVertOffset=0,    // Vertical offset for bullet spawn (negative = below eye level)
+    bulletFwdOffset=0,     // Forward offset for bullet spawn (weapon distance from camera)
+    bulletHorizOffset=0,   // Horizontal offset for bullet spawn (left/right)
+    bulletSize=0.75,       // Bullet rendering scale
+    gamepad={
+        connected:false,
+        deadzone:0.15,
+        lookSensitivity:0.05,
+        // Previous button states for edge detection
+        prevJump:false,
+        prevStart:false,
+        // Standard gamepad mapping (Xbox-style, works with most controllers)
+        buttons:{
+            jump:4,        // LB (Left Bumper) - hold to charge, release to jump
+            crouch:1,      // B
+            reload:2,      // X
+            sprint:10,     // Left Stick Click
+            sprintAlt:0,   // A button (alternative sprint)
+            shoot:7,       // RT (Right Trigger as button)
+            aim:6,         // LT (Left Trigger as button)
+            start:9,       // Start button - toggle debug UI
+            swapWeapon:3,  // Y button - swap weapons
+            pickup:2       // X button - also pickup (context sensitive)
+        },
+        axes:{
+            moveX:0,       // Left Stick X
+            moveY:1,       // Left Stick Y
+            lookX:2,       // Right Stick X
+            lookY:3        // Right Stick Y
+        }
+    },
+    updaterunning=false,time=Date.now(),timelastframe=Date.now(),frames=0,pitchOffset=250,targetFPS=60,frameDuration=1000/targetFPS,lastFrameTime=0,hiddeny;
+
+// ===============================
+// Item textures
+var textures = {
+    bullet: (() => { let i = new Image(); i.src = "images/bullet.png"; return i; })(),
+    heart:  (() => { let i = new Image(); i.src = "images/heart.png";  return i; })(),
+    tree:   (() => { let i = new Image(); i.src = "images/tree.png";   return i; })() // NEW
+};
+
+// ===============================
+// 3D Cube - Blue, 100 units tall, placed near player start
+var cube = {
+    x: 80,      // world X position (not far from player start at 0,0)
+    y: 80,      // world Y position
+    z: 0,       // base height (will sit on terrain)
+    size: 100,  // 100 feet/units tall (and wide/deep)
+    color: 0xFF0000FF  // Blue in ABGR format
+};
+
+// Get cube vertices in world space (8 corners of a cube)
+function getCubeVertices() {
+    var s = cube.size;
+    var baseZ = getRawTerrainHeight(cube.x, cube.y);  // Sit on terrain
+    return [
+        // Bottom face (z = baseZ)
+        {x: cube.x - s/2, y: cube.y - s/2, z: baseZ},       // 0: back-left-bottom
+        {x: cube.x + s/2, y: cube.y - s/2, z: baseZ},       // 1: back-right-bottom
+        {x: cube.x + s/2, y: cube.y + s/2, z: baseZ},       // 2: front-right-bottom
+        {x: cube.x - s/2, y: cube.y + s/2, z: baseZ},       // 3: front-left-bottom
+        // Top face (z = baseZ + size)
+        {x: cube.x - s/2, y: cube.y - s/2, z: baseZ + s},   // 4: back-left-top
+        {x: cube.x + s/2, y: cube.y - s/2, z: baseZ + s},   // 5: back-right-top
+        {x: cube.x + s/2, y: cube.y + s/2, z: baseZ + s},   // 6: front-right-top
+        {x: cube.x - s/2, y: cube.y + s/2, z: baseZ + s}    // 7: front-left-top
+    ];
+}
+
+// Project a 3D point to screen coordinates
+// Must match RenderItems projection exactly to avoid shifting
+function projectPoint(p) {
+    var dx = p.x - camera.x;
+    var dy = p.y - camera.y;
+
+    // Use precomputed trig values from RenderCube
+    var sinYaw = cubeSinYaw;
+    var cosYaw = cubeCosYaw;
+
+    // Ground-plane distance (same as RenderItems uses)
+    var groundForward = -dx * sinYaw - dy * cosYaw;
+
+    // Check if behind camera
+    if (groundForward < 1) return null;
+
+    var sw = screendata.canvas.width;
+
+    // Right offset (same as RenderItems)
+    var right = dx * cosYaw - dy * sinYaw;
+
+    // Use same projection formula as RenderItems
+    return {
+        x: right * (sw / 2) / groundForward + sw / 2,
+        y: (camera.height - p.z) * camera.focalLength / groundForward + camera.horizon,
+        depth: groundForward
+    };
+}
+
+// Draw a filled quad (4 vertices) into the pixel buffer with depth testing
+function drawFilledQuad(v0, v1, v2, v3, color) {
+    var sw = screendata.canvas.width;
+    var sh = screendata.canvas.height;
+    var buf32 = screendata.buf32;
+    var depth = screendata.depthBuffer;
+
+    // Project all vertices
+    var p0 = projectPoint(v0);
+    var p1 = projectPoint(v1);
+    var p2 = projectPoint(v2);
+    var p3 = projectPoint(v3);
+
+    // Skip if any vertex is behind camera
+    if (!p0 || !p1 || !p2 || !p3) return;
+
+    // Backface culling - check if face is facing away from camera
+    // Calculate 2D cross product of two edges in screen space
+    var ax = p1.x - p0.x, ay = p1.y - p0.y;
+    var bx = p2.x - p0.x, by = p2.y - p0.y;
+    var cross = ax * by - ay * bx;
+    // Skip culling for now to debug the door effect
+    // if (cross < 0) return;
+
+    // Get bounding box
+    var minX = Math.max(0, Math.floor(Math.min(p0.x, p1.x, p2.x, p3.x)));
+    var maxX = Math.min(sw - 1, Math.ceil(Math.max(p0.x, p1.x, p2.x, p3.x)));
+    var minY = Math.max(0, Math.floor(Math.min(p0.y, p1.y, p2.y, p3.y)));
+    var maxY = Math.min(sh - 1, Math.ceil(Math.max(p0.y, p1.y, p2.y, p3.y)));
+
+    if (minX > maxX || minY > maxY) return;
+
+    // Extract RGB and convert to ABGR for buffer
+    var r = color & 0xFF;
+    var g = (color >> 8) & 0xFF;
+    var b = (color >> 16) & 0xFF;
+
+    // Apply simple shading based on average depth
+    var avgDepth = (p0.depth + p1.depth + p2.depth + p3.depth) / 4;
+    var shade = Math.max(0.3, Math.min(1.0, 1.0 - avgDepth / 1000));
+    r = Math.floor(r * shade);
+    g = Math.floor(g * shade);
+    b = Math.floor(b * shade);
+
+    var pixelColor = 0xFF000000 | (b << 16) | (g << 8) | r;
+
+    // Use average depth for the entire face, with small bias to avoid z-fighting
+    var faceDepth = (p0.depth + p1.depth + p2.depth + p3.depth) / 4 - 0.5;
+
+    // Helper to check if point is inside quad using cross products
+    function isInsideQuad(px, py) {
+        function cross(ax, ay, bx, by) { return ax * by - ay * bx; }
+        var c0 = cross(p1.x - p0.x, p1.y - p0.y, px - p0.x, py - p0.y);
+        var c1 = cross(p2.x - p1.x, p2.y - p1.y, px - p1.x, py - p1.y);
+        var c2 = cross(p3.x - p2.x, p3.y - p2.y, px - p2.x, py - p2.y);
+        var c3 = cross(p0.x - p3.x, p0.y - p3.y, px - p3.x, py - p3.y);
+        return (c0 >= 0 && c1 >= 0 && c2 >= 0 && c3 >= 0) ||
+               (c0 <= 0 && c1 <= 0 && c2 <= 0 && c3 <= 0);
+    }
+
+    // Rasterize the quad
+    for (var py = minY; py <= maxY; py++) {
+        for (var px = minX; px <= maxX; px++) {
+            if (!isInsideQuad(px + 0.5, py + 0.5)) continue;
+
+            var bufIdx = py * sw + px;
+
+            // Depth test - only draw if in front of existing pixel
+            if (faceDepth < depth[bufIdx]) {
+                buf32[bufIdx] = pixelColor;
+                depth[bufIdx] = faceDepth;
+            }
+        }
+    }
+}
+
+// Precomputed trig values for current frame (set in RenderCube)
+var cubeSinYaw = 0, cubeCosYaw = 0;
+
+// ===============================
+// Gun Viewmodel (first-person weapon)
+var gunModel = {
+    vertices: [],      // Array of {x, y, z}
+    faces: [],         // Array of vertex indices
+    loaded: false,
+    texture: null,
+    // Screen-space position (relative to bottom-right of screen)
+    offsetX: 100,      // pixels from right
+    offsetY: 50,       // pixels from bottom
+    offsetZ: 0,        // depth offset
+    scale: 300,        // rendering scale
+    rotationX: 0,      // X-axis rotation in degrees
+    rotationY: 0,      // Y-axis rotation in degrees
+    rotationZ: 0,      // Z-axis rotation in degrees
+    // Barrel configuration (in model space, based on OBJ bounds)
+    barrelX: 0.26,     // barrel tip X in model coords (max X of model)
+    barrelY: 0.08,     // barrel tip Y in model coords
+    barrelZ: 0.0,      // barrel tip Z in model coords
+    barrelDistance: 5, // world units in front of barrel to spawn bullet
+    // World-space offset from camera (where gun is held)
+    worldForward: 10,  // how far forward from camera
+    worldRight: 15,    // how far right from camera
+    worldDown: 8       // how far down from camera eye level
+};
+
+// Get the gun's forward direction in world space (based on gun rotation + camera angle)
+function getGunWorldDirection() {
+    var rotX = gunModel.rotationX * Math.PI / 180;
+    var rotY = gunModel.rotationY * Math.PI / 180;
+    var rotZ = gunModel.rotationZ * Math.PI / 180;
+
+    var cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+    var cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+    var cosZ = Math.cos(rotZ), sinZ = Math.sin(rotZ);
+
+    // Gun's forward is +X in model space
+    var x = 1, y = 0, z = 0;
+
+    // Apply same rotations as rendering
+    var y1 = y * cosX - z * sinX;
+    var z1 = y * sinX + z * cosX;
+    var x2 = x * cosY + z1 * sinY;
+    var z2 = -x * sinY + z1 * cosY;
+    var x3 = x2 * cosZ - y1 * sinZ;
+    var y3 = x2 * sinZ + y1 * cosZ;
+
+    // x3 = screen right, y3 = screen up, z2 = screen depth (into screen)
+    // Convert screen-space direction to world-space using camera angle
+    var camSin = Math.sin(camera.angle);
+    var camCos = Math.cos(camera.angle);
+
+    // World forward is -sin(angle), -cos(angle)
+    // Negate all to flip bullet direction 180 degrees
+    var worldX = -x3 * camCos - z2 * camSin;
+    var worldY = x3 * camSin - z2 * camCos;
+    var worldZ = y3;
+
+    // Normalize
+    var len = Math.sqrt(worldX*worldX + worldY*worldY + worldZ*worldZ) || 1;
+    return { x: worldX/len, y: worldY/len, z: worldZ/len };
+}
+
+// Get barrel position in screen coordinates (for debug drawing)
+function getBarrelScreenPos() {
+    var sw = screendata.canvas.width;
+    var sh = screendata.canvas.height;
+    var centerX = sw - gunModel.offsetX;
+    var centerY = sh - gunModel.offsetY;
+
+    var rotX = gunModel.rotationX * Math.PI / 180;
+    var rotY = gunModel.rotationY * Math.PI / 180;
+    var rotZ = gunModel.rotationZ * Math.PI / 180;
+
+    var cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+    var cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+    var cosZ = Math.cos(rotZ), sinZ = Math.sin(rotZ);
+
+    var x = gunModel.barrelX, y = gunModel.barrelY, z = gunModel.barrelZ;
+
+    // Apply rotations
+    var y1 = y * cosX - z * sinX;
+    var z1 = y * sinX + z * cosX;
+    var x2 = x * cosY + z1 * sinY;
+    var z2 = -x * sinY + z1 * cosY;
+    var x3 = x2 * cosZ - y1 * sinZ;
+    var y3 = x2 * sinZ + y1 * cosZ;
+
+    return {
+        x: centerX + x3 * gunModel.scale,
+        y: centerY - y3 * gunModel.scale
+    };
+}
+
+// Get barrel position in world coordinates (for bullet spawning)
+function getBarrelWorldPos() {
+    // Camera direction vectors
+    var camSin = Math.sin(camera.angle);
+    var camCos = Math.cos(camera.angle);
+    var fx = -camSin, fy = -camCos;  // forward
+    var rx = camCos, ry = -camSin;   // right
+
+    // Gun base position in world (offset from camera)
+    var gunWorldX = camera.x + fx * gunModel.worldForward + rx * gunModel.worldRight;
+    var gunWorldY = camera.y + fy * gunModel.worldForward + ry * gunModel.worldRight;
+    var gunWorldZ = camera.height - gunModel.worldDown;
+
+    // Apply gun rotations to barrel offset
+    var rotX = gunModel.rotationX * Math.PI / 180;
+    var rotY = gunModel.rotationY * Math.PI / 180;
+    var rotZ = gunModel.rotationZ * Math.PI / 180;
+
+    var cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+    var cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+    var cosZ = Math.cos(rotZ), sinZ = Math.sin(rotZ);
+
+    // Barrel offset in model space (scaled to world units)
+    var bScale = gunModel.scale / 30;  // scale factor from model to world
+    var bx = gunModel.barrelX * bScale;
+    var by = gunModel.barrelY * bScale;
+    var bz = gunModel.barrelZ * bScale;
+
+    // Apply rotations to barrel offset
+    var y1 = by * cosX - bz * sinX;
+    var z1 = by * sinX + bz * cosX;
+    var x2 = bx * cosY + z1 * sinY;
+    var z2 = -bx * sinY + z1 * cosY;
+    var x3 = x2 * cosZ - y1 * sinZ;
+    var y3 = x2 * sinZ + y1 * cosZ;
+
+    // Convert rotated barrel offset to world space
+    // x3 = screen right direction, y3 = screen up, z2 = screen forward
+    var barrelOffsetX = x3 * rx - z2 * fx;
+    var barrelOffsetY = x3 * ry - z2 * fy;
+    var barrelOffsetZ = y3;
+
+    return {
+        x: gunWorldX + barrelOffsetX,
+        y: gunWorldY + barrelOffsetY,
+        z: gunWorldZ + barrelOffsetZ
+    };
+}
+
+// Load OBJ file
+function loadGunModel() {
+    fetch('3d_models/Gun _obj/Gun.obj')
+        .then(response => response.text())
+        .then(text => {
+            var lines = text.split('\n');
+            var vertices = [];
+            var faces = [];
+
+            lines.forEach(line => {
+                var parts = line.trim().split(/\s+/);
+                if (parts[0] === 'v') {
+                    // Vertex: v x y z
+                    vertices.push({
+                        x: parseFloat(parts[1]),
+                        y: parseFloat(parts[2]),
+                        z: parseFloat(parts[3])
+                    });
+                } else if (parts[0] === 'f') {
+                    // Face: f v1/vt1/vn1 v2/vt2/vn2 v3/vt3/vn3 ...
+                    var faceVerts = [];
+                    for (var i = 1; i < parts.length; i++) {
+                        var idx = parseInt(parts[i].split('/')[0]) - 1;  // OBJ is 1-indexed
+                        faceVerts.push(idx);
+                    }
+                    // Triangulate quads (split into triangles)
+                    if (faceVerts.length === 3) {
+                        faces.push(faceVerts);
+                    } else if (faceVerts.length === 4) {
+                        faces.push([faceVerts[0], faceVerts[1], faceVerts[2]]);
+                        faces.push([faceVerts[0], faceVerts[2], faceVerts[3]]);
+                    }
+                }
+            });
+
+            gunModel.vertices = vertices;
+            gunModel.faces = faces;
+            gunModel.loaded = true;
+            console.log('Gun model loaded:', vertices.length, 'vertices,', faces.length, 'faces');
+        })
+        .catch(err => console.error('Failed to load gun model:', err));
+
+    // Load gun texture
+    gunModel.texture = new Image();
+    gunModel.texture.src = '3d_models/Gun _obj/Gun.png';
+}
+
+// Render gun viewmodel (first-person weapon overlay)
+function RenderGunViewmodel(ctx) {
+    if (!gunModel.loaded) return;
+
+    var sw = screendata.canvas.width;
+    var sh = screendata.canvas.height;
+
+    // Screen position (from bottom-right)
+    var centerX = sw - gunModel.offsetX;
+    var centerY = sh - gunModel.offsetY;
+
+    // Rotation angles
+    var rotX = gunModel.rotationX * Math.PI / 180;
+    var rotY = gunModel.rotationY * Math.PI / 180;
+    var rotZ = gunModel.rotationZ * Math.PI / 180;
+
+    var cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+    var cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+    var cosZ = Math.cos(rotZ), sinZ = Math.sin(rotZ);
+
+    var scale = gunModel.scale;
+
+    // Project all vertices to screen space
+    var projected = gunModel.vertices.map(v => {
+        var x = v.x, y = v.y, z = v.z;
+
+        // Apply X rotation (pitch)
+        var y1 = y * cosX - z * sinX;
+        var z1 = y * sinX + z * cosX;
+
+        // Apply Y rotation (yaw)
+        var x2 = x * cosY + z1 * sinY;
+        var z2 = -x * sinY + z1 * cosY;
+
+        // Apply Z rotation (roll)
+        var x3 = x2 * cosZ - y1 * sinZ;
+        var y3 = x2 * sinZ + y1 * cosZ;
+
+        // Simple orthographic projection for viewmodel
+        // X goes right, Y goes up, Z is depth (for sorting)
+        return {
+            x: centerX + x3 * scale,
+            y: centerY - y3 * scale,  // Y is inverted in screen coords
+            z: z2 + gunModel.offsetZ / 100  // depth for sorting
+        };
+    });
+
+    // Sort faces by average depth (painter's algorithm)
+    var sortedFaces = gunModel.faces.map((face, i) => {
+        var avgZ = 0;
+        face.forEach(idx => avgZ += projected[idx].z);
+        avgZ /= face.length;
+        return { face, avgZ, index: i };
+    }).sort((a, b) => a.avgZ - b.avgZ);  // far faces first
+
+    // Draw faces
+    sortedFaces.forEach(item => {
+        var face = item.face;
+        var p0 = projected[face[0]];
+        var p1 = projected[face[1]];
+        var p2 = projected[face[2]];
+
+        // Backface culling using cross product (disabled for now to debug)
+        var ax = p1.x - p0.x, ay = p1.y - p0.y;
+        var bx = p2.x - p0.x, by = p2.y - p0.y;
+        var cross = ax * by - ay * bx;
+        // Skip culling - draw all faces for now
+        // if (cross < 0) return;  // back-facing
+
+        // Calculate shading based on face normal (simple lighting)
+        var shade = 0.5 + 0.5 * Math.abs(cross) / (Math.sqrt(ax*ax + ay*ay) * Math.sqrt(bx*bx + by*by) + 0.001);
+        shade = Math.min(1, Math.max(0.3, shade));
+
+        // Get current weapon color for tinting
+        var wepSlot = playerWeapons[currentWeaponIndex];
+        var wepDef = weapons[wepSlot.type];
+
+        // Base gun color (dark gray with weapon tint)
+        var r = Math.floor(60 * shade);
+        var g = Math.floor(60 * shade);
+        var b = Math.floor(70 * shade);
+
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.closePath();
+
+        ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+        ctx.fill();
+
+        // Optional: draw edges for definition
+        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+    });
+
+    // Draw barrel position marker (red dot)
+    var barrel = getBarrelScreenPos();
+    ctx.beginPath();
+    ctx.arc(barrel.x, barrel.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = 'red';
+    ctx.fill();
+    ctx.strokeStyle = 'yellow';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+}
+
+// Render the 3D cube
+function RenderCube() {
+    // Precompute trig values once per frame
+    cubeSinYaw = Math.sin(camera.angle);
+    cubeCosYaw = Math.cos(camera.angle);
+
+    var v = getCubeVertices();
+
+    // Define the 6 faces with consistent CCW winding when viewed from outside
+    // Each face uses slightly different shade of blue for visual distinction
+    var faces = [
+        {verts: [v[0], v[1], v[5], v[4]], color: 0xFF0000CC}, // Back face (y- side): 0->1->5->4
+        {verts: [v[2], v[3], v[7], v[6]], color: 0xFF0000FF}, // Front face (y+ side): 2->3->7->6
+        {verts: [v[3], v[0], v[4], v[7]], color: 0xFF0000AA}, // Left face (x- side): 3->0->4->7
+        {verts: [v[1], v[2], v[6], v[5]], color: 0xFF0000DD}, // Right face (x+ side): 1->2->6->5
+        {verts: [v[4], v[5], v[6], v[7]], color: 0xFF3333FF}, // Top face (z+ side): 4->5->6->7
+        {verts: [v[3], v[2], v[1], v[0]], color: 0xFF000088}  // Bottom face (z- side): 3->2->1->0
+    ];
+
+    // Sort faces by average depth (painter's algorithm - draw far faces first)
+    faces.forEach(function(face) {
+        var totalDepth = 0;
+        face.verts.forEach(function(vert) {
+            var dx = vert.x - camera.x;
+            var dy = vert.y - camera.y;
+            totalDepth += -dx * cubeSinYaw - dy * cubeCosYaw;
+        });
+        face.avgDepth = totalDepth / 4;
+    });
+
+    faces.sort(function(a, b) { return b.avgDepth - a.avgDepth; });
+
+    // Draw each face
+    faces.forEach(function(face) {
+        drawFilledQuad(face.verts[0], face.verts[1], face.verts[2], face.verts[3], face.color);
+    });
+}
+
+
+
+function spawnRandomItems(type, texture, options = {}) {
+    let step = options.step || 8;               // spacing (avoid too many)
+    let chance = options.chance || 0.01;        // probability per tile
+    let colorCheck = options.colorCheck || (()=>true); // which terrain allowed
+
+    for (let y = 0; y < map.height; y += step) {
+        for (let x = 0; x < map.width; x += step) {
+            let idx = (y << map.shift) + x;
+            let col = map.color[idx] & 0xFFFFFF;  // strip alpha
+
+            if (colorCheck(col)) {
+                if (Math.random() < chance) {
+                    let wx = x;
+                    let wy = y;
+                    // Use raw terrain for static items so they sit on actual ground
+                    let wz = getRawTerrainHeight(wx, wy);
+                    items.push({
+                        type: type,
+                        x: wx, y: wy, z: wz,
+                        dx: 0, dy: 0, dz: 0,
+                        image: texture
+                    });
+                }
+            }
+        }
+    }
+}
+
+
+// ===============================
+var getRawTerrainHeight=(x,y)=>map.altitude[((Math.floor(y)&(map.width-1))<<map.shift)+(Math.floor(x)&(map.height-1))];
+var getGroundHeight=(x,y)=>getRawTerrainHeight(x,y)+playerHeightOffset;
+var MAX_SLOPE=2;
+var isOnGround=()=>camera.height<=getGroundHeight(camera.x,camera.y)+0.1;
+var canMoveTo=(nx,ny)=>{if(!isOnGround())return true;var curH=getGroundHeight(camera.x,camera.y),newH=getGroundHeight(nx,ny);if(newH<=curH)return true;var horizDist=Math.hypot(nx-camera.x,ny-camera.y);if(!horizDist)return true;return (newH-curH)/horizDist<=MAX_SLOPE};
+
+function horizonToPitchRad(h){return h*90/500*Math.PI/180;}
+
+// ===============================
+// Camera + item updates
+function UpdateCamera(){
+    var current=Date.now(),deltaTime=(current-time)*0.03,
+        isSprinting = input.sprint || input.gpSprint,
+        baseSpeed=player.moveSpeed*(isSprinting?player.sprintMultiplier:1)*deltaTime,nx,ny,slopeMult;
+
+    // Gamepad look (Right Stick)
+    if(input.lookX !== 0 || input.lookY !== 0){
+        camera.angle = (camera.angle - input.lookX * gamepad.lookSensitivity) % (2 * Math.PI);
+        if(camera.angle < 0) camera.angle += 2 * Math.PI;
+        camera.horizon = Math.max(-400, Math.min(600, camera.horizon - input.lookY * gamepad.lookSensitivity * 100));
+    }
+
+    // Keyboard Movement
+    if(input.forward){nx=camera.x-Math.sin(camera.angle)*baseSpeed;ny=camera.y-Math.cos(camera.angle)*baseSpeed;slopeMult=canMoveTo(nx,ny);camera.x+=(nx-camera.x)*slopeMult;camera.y+=(ny-camera.y)*slopeMult;}
+    if(input.backward){nx=camera.x+Math.sin(camera.angle)*baseSpeed;ny=camera.y+Math.cos(camera.angle)*baseSpeed;slopeMult=canMoveTo(nx,ny);camera.x+=(nx-camera.x)*slopeMult;camera.y+=(ny-camera.y)*slopeMult;}
+    if(input.left){nx=camera.x-Math.cos(camera.angle)*baseSpeed;ny=camera.y+Math.sin(camera.angle)*baseSpeed;slopeMult=canMoveTo(nx,ny);camera.x+=(nx-camera.x)*slopeMult;camera.y+=(ny-camera.y)*slopeMult;}
+    if(input.right){nx=camera.x+Math.cos(camera.angle)*baseSpeed;ny=camera.y-Math.sin(camera.angle)*baseSpeed;slopeMult=canMoveTo(nx,ny);camera.x+=(nx-camera.x)*slopeMult;camera.y+=(ny-camera.y)*slopeMult;}
+
+    // Gamepad Movement (Left Stick) - analog for smooth control
+    if(input.moveX !== 0 || input.moveY !== 0){
+        var fx = -Math.sin(camera.angle), fy = -Math.cos(camera.angle); // forward
+        var rx = Math.cos(camera.angle), ry = -Math.sin(camera.angle);  // right
+        var moveSpeed = baseSpeed * Math.min(1, Math.hypot(input.moveX, input.moveY));
+
+        nx = camera.x + (fx * -input.moveY + rx * input.moveX) * moveSpeed;
+        ny = camera.y + (fy * -input.moveY + ry * input.moveX) * moveSpeed;
+        slopeMult = canMoveTo(nx, ny);
+        camera.x += (nx - camera.x) * slopeMult;
+        camera.y += (ny - camera.y) * slopeMult;
+    }
+
+    camera.velocityY-=0.5*deltaTime;camera.height+=camera.velocityY*deltaTime;
+
+    // Ground clamping FIRST - ensures consistent state for jump check
+    var groundHeight=getGroundHeight(camera.x,camera.y);
+    var wasInAir = camera.height > groundHeight + 1; // track if falling
+    if(camera.height < groundHeight){
+        camera.height = groundHeight;
+        camera.velocityY = 0;
+    }
+
+    // Crouch handling
+    var isCrouching = input.crouch || input.gpCrouch;
+    if(isCrouching){if(!player.isCrouching){player.isCrouching=true;}}
+    else if(player.isCrouching){player.isCrouching=false;}
+
+    // Charged jump system - hold to charge, release to jump
+    var jumpHeld = input.jump || input.gpJumpHeld;
+    var jumpBar = document.getElementById('jumpbar');
+    var jumpCharge = document.getElementById('jumpcharge');
+    // More forgiving ground check: within 2 units of ground and not moving up fast
+    var onGround = (camera.height <= groundHeight + 2) && (camera.velocityY <= 0.5);
+
+    if(jumpHeld){
+        // Button is held
+        if(onGround && !player.isChargingJump){
+            // Just started pressing while on ground - begin charging
+            player.isChargingJump = true;
+            player.jumpChargeTime = 0;
+        }
+
+        if(player.isChargingJump){
+            // Continue charging (don't require ground check each frame)
+            player.jumpChargeTime = Math.min(player.jumpChargeTime + (current - time), player.jumpMaxChargeTime);
+
+            // Show and update charge bar
+            if(jumpBar) jumpBar.style.display = 'block';
+            if(jumpCharge){
+                var chargePercent = (player.jumpChargeTime / player.jumpMaxChargeTime) * 100;
+                jumpCharge.style.width = chargePercent + '%';
+            }
+        }
+    } else {
+        // Button released
+        if(player.isChargingJump){
+            // Was charging - JUMP!
+            var chargeRatio = player.jumpChargeTime / player.jumpMaxChargeTime;
+            var jumpStrength = player.jumpMinStrength + (player.jumpMaxStrength - player.jumpMinStrength) * chargeRatio;
+            camera.velocityY = jumpStrength;
+        }
+
+        // Reset charge state
+        player.isChargingJump = false;
+        player.jumpChargeTime = 0;
+        if(jumpBar) jumpBar.style.display = 'none';
+        if(jumpCharge) jumpCharge.style.width = '0%';
+    }
+
+    // Weapon swap (Q key or Y button)
+    var wantSwap = input.swapWeapon || input.gpSwapWeapon;
+    if(wantSwap && !player.wasSwapping){
+        currentWeaponIndex = (currentWeaponIndex + 1) % 2;
+    }
+    player.wasSwapping = wantSwap;
+    input.swapWeapon = false;  // Reset edge-triggered input
+    input.gpSwapWeapon = false;
+
+    // Get current weapon info
+    var currentSlot = playerWeapons[currentWeaponIndex];
+    var currentWeapon = weapons[currentSlot.type];
+
+    // Check for nearby ground weapons (within 15 degrees of view and close enough)
+    nearbyWeapon = null;
+    var fx = -Math.sin(camera.angle), fy = -Math.cos(camera.angle);
+    groundWeapons.forEach(function(gw) {
+        var dx = gw.x - camera.x;
+        var dy = gw.y - camera.y;
+        var dist = Math.hypot(dx, dy);
+        if(dist < 50) {  // Within pickup range
+            // Check if facing it (within 15 degrees)
+            var dot = (dx * fx + dy * fy) / dist;
+            if(dot > Math.cos(15 * Math.PI / 180)) {  // cos(15°) ≈ 0.966
+                nearbyWeapon = gw;
+            }
+        }
+    });
+
+    // Pickup weapon (E key or X button when near weapon)
+    var wantPickup = input.pickupWeapon || input.gpPickupWeapon;
+    if(wantPickup && nearbyWeapon && !player.wasPickingUp){
+        // Swap current weapon with ground weapon
+        var oldType = currentSlot.type;
+        var oldAmmo = currentSlot.ammo;
+        currentSlot.type = nearbyWeapon.type;
+        currentSlot.ammo = weapons[nearbyWeapon.type].maxMagazine;
+        currentSlot.isReloading = false;
+        // Put old weapon on ground
+        nearbyWeapon.type = oldType;
+        nearbyWeapon.ammo = oldAmmo;
+    }
+    player.wasPickingUp = wantPickup;
+
+    // Shooting - Hip fire or Iron sights (ADS)
+    var isShooting = input.shoot || input.gpShoot;
+    var isAiming = input.aim || input.gpAim;
+
+    // ADS - move camera forward instead of changing focal length
+    // Use adsZoom value to determine forward distance (higher zoom = more forward movement)
+    var adsForwardDistance = (currentWeapon.adsZoom - 1) * 30;  // e.g., 1.8x zoom = 24 units forward
+    var targetOffset = isAiming ? adsForwardDistance : 0;
+    camera.adsOffset += (targetOffset - camera.adsOffset) * 0.15;  // smooth transition
+
+    // Apply offset along look direction
+    var fx = -Math.sin(camera.angle);
+    var fy = -Math.cos(camera.angle);
+    camera.baseX = camera.x - fx * camera.adsOffset;  // Remove old offset
+    camera.baseY = camera.y - fy * camera.adsOffset;
+    camera.x = camera.baseX + fx * camera.adsOffset;  // Apply new offset
+    camera.y = camera.baseY + fy * camera.adsOffset;
+
+    // Keep focal length constant (no vertical stretching)
+    camera.focalLength = camera.baseFocalLength;
+
+    // Update crosshair style based on ADS and current weapon
+    var crosshair = document.getElementById('crosshair');
+    if(crosshair){
+        if(isAiming){
+            crosshair.style.borderColor = currentWeapon.color;
+            crosshair.style.width = '6px';
+            crosshair.style.height = '6px';
+            crosshair.style.margin = '-3px 0 0 -3px';
+        } else {
+            crosshair.style.borderColor = 'white';
+            crosshair.style.width = '10px';
+            crosshair.style.height = '10px';
+            crosshair.style.margin = '-5px 0 0 -5px';
+        }
+    }
+
+    // Check fire mode - semi-auto requires trigger release between shots
+    var canShoot = true;
+    if(currentWeapon.fireMode === "semi" && player.wasShooting){
+        canShoot = false;
+    }
+    player.wasShooting = isShooting;
+
+    if(isShooting && canShoot && !currentSlot.isReloading && currentSlot.ammo > 0 && current - currentSlot.lastShot > currentWeapon.fireRate){
+        var bulletSpeed = currentWeapon.bulletSpeed;
+
+        // Get bullet direction from gun's barrel orientation
+        var gunDir = getGunWorldDirection();
+
+        // Apply spread based on hip fire vs ADS
+        var spread = isAiming ? currentWeapon.adsSpread : currentWeapon.hipSpread;
+        var spreadX = (Math.random() - 0.5) * spread;
+        var spreadY = (Math.random() - 0.5) * spread;
+
+        // Add spread to gun direction
+        var fx = -Math.sin(camera.angle), fy = -Math.cos(camera.angle);
+        var rx = Math.cos(camera.angle), ry = -Math.sin(camera.angle);
+
+        var dirx = gunDir.x + rx * spreadX;
+        var diry = gunDir.y + ry * spreadX;
+        var dirz = gunDir.z + spreadY;
+
+        var mag = Math.hypot(dirx, diry, dirz) || 1;
+        dirx = (dirx / mag) * bulletSpeed;
+        diry = (diry / mag) * bulletSpeed;
+        dirz = (dirz / mag) * bulletSpeed;
+
+        // Spawn bullet from gun barrel position in world space
+        var barrelPos = getBarrelWorldPos();
+        var spawnX = barrelPos.x + gunDir.x * gunModel.barrelDistance;
+        var spawnY = barrelPos.y + gunDir.y * gunModel.barrelDistance;
+        var spawnZ = barrelPos.z + gunDir.z * gunModel.barrelDistance;
+
+        lastBulletDestroyedPos = null;
+        lastBulletDestroyedReason = null;
+        // Create bullet object once and reference it for tracking
+        var bullet = {type: "bullet", x: spawnX, y: spawnY, z: spawnZ, dx: dirx, dy: diry, dz: dirz, distance: 0, image: textures.bullet, damage: currentWeapon.damage};
+        lastBullet = bullet;
+        items.push(bullet);
+        currentSlot.ammo--;
+        currentSlot.lastShot = current;
+    }
+
+    // Reload current weapon
+    var isReloading = input.reload || input.gpReload;
+    if(isReloading && !currentSlot.isReloading && currentSlot.ammo < currentWeapon.maxMagazine){
+        currentSlot.isReloading = true;
+        setTimeout(function(){
+            currentSlot.ammo = currentWeapon.maxMagazine;
+            currentSlot.isReloading = false;
+        }, currentWeapon.reloadTime);
+    }
+
+    // Update moving items (bullets only)
+    items = items.filter(it=>{
+        if(it.type==="bullet"){
+            it.x+=it.dx*deltaTime;it.y+=it.dy*deltaTime;it.z+=it.dz*deltaTime;it.distance+=Math.hypot(it.dx,it.dy,it.dz)*deltaTime;
+            var terrainHeight=getRawTerrainHeight(it.x,it.y);
+            if(it.z<=terrainHeight){if(it===lastBullet){lastBullet=null;lastBulletDestroyedPos={x:it.x,y:it.y,z:it.z};lastBulletDestroyedReason="Terrain Collision";}return false;}
+            if(it.distance>=camera.distance){if(it===lastBullet){lastBullet=null;lastBulletDestroyedPos={x:it.x,y:it.y,z:it.z};lastBulletDestroyedReason="Too Far";}return false;}
+        }
+        return true;
+    });
+
+    // HUD updates
+    document.getElementById('health').style.width=player.health+'%';
+    var wepSlot = playerWeapons[currentWeaponIndex];
+    var wepDef = weapons[wepSlot.type];
+    document.getElementById('bulletcount').innerText=`${wepDef.name}: ${wepSlot.ammo}/${wepDef.maxMagazine}${wepSlot.isReloading ? ' [RELOADING]' : ''}`;
+    document.getElementById('playerposition').innerText=`Pos: (${camera.x.toFixed(1)}, ${camera.y.toFixed(1)}, ${camera.height.toFixed(1)})`;
+    document.getElementById('playerrotation').innerText=`Rot: ${(camera.angle*180/Math.PI).toFixed(1)}°, ${(camera.horizon*90/500).toFixed(1)}°`;
+    document.getElementById('lastbulletpos').innerText=lastBullet?`Bullet: (${lastBullet.x.toFixed(1)}, ${lastBullet.y.toFixed(1)}, ${lastBullet.z.toFixed(1)})`:`Bullet: None`;
+    document.getElementById('lastbulletscreen').innerText=lastBulletScreen?`Screen: (${lastBulletScreen.x.toFixed(0)}, ${lastBulletScreen.y.toFixed(0)}) z:${lastBulletScreen.z.toFixed(1)} camH:${lastBulletScreen.camH.toFixed(1)} gf:${lastBulletScreen.gf.toFixed(1)}`:`Screen: None`;
+    document.getElementById('lastbulletdestroyedpos').innerText=lastBulletDestroyedPos?`Destroyed Pos: (${lastBulletDestroyedPos.x.toFixed(1)}, ${lastBulletDestroyedPos.y.toFixed(1)}, ${lastBulletDestroyedPos.z.toFixed(1)})`:`Destroyed Pos: None`;
+    document.getElementById('lastbulletdestroyedreason').innerText=lastBulletDestroyedReason?`Destroyed: ${lastBulletDestroyedReason}`:`Destroyed: None`;
+
+    time=current;
+}
+
+// ===============================
+function DrawBackground(){
+    var buf32=screendata.buf32,len=buf32.length,bg=screendata.backgroundcolor;
+    screendata.depthBuffer.fill(Infinity);
+    for(var i=0;i<len;i++)buf32[i]=bg;
+}
+function Flip(){screendata.imagedata.data.set(screendata.buf8);screendata.context.putImageData(screendata.imagedata,0,0);}
+
+// ===============================
+// Render terrain + items
+function Render(){
+    var sw=screendata.canvas.width,sh=screendata.canvas.height,
+        sinang=Math.sin(camera.angle),cosang=Math.cos(camera.angle),
+        deltaz=1,depth=screendata.depthBuffer;
+
+    hiddeny.fill(sh);
+    for(var z=1;z<camera.distance;z+=deltaz){
+        var plx=-cosang*z-sinang*z,ply=sinang*z-cosang*z,prx=cosang*z-sinang*z,pry=-sinang*z-cosang*z,dx=(prx-plx)/sw,dy=(pry-ply)/sw;
+        plx+=camera.x;ply+=camera.y;var invz = camera.focalLength / z;
+        for(var i=0;i<sw;i++){
+            var mapoffset=((Math.floor(ply)&(map.width-1))<<map.shift)+(Math.floor(plx)&(map.height-1));
+            var heightonscreen=(camera.height-map.altitude[mapoffset])*invz+camera.horizon;
+            if(heightonscreen<hiddeny[i]){
+                for(var k=heightonscreen|0;k<hiddeny[i];k++){
+                    var idx=k*sw+i;
+                    if(z<depth[idx]){screendata.buf32[idx]=map.color[mapoffset];depth[idx]=z;}
+                }
+                hiddeny[i]=heightonscreen;
+            }
+            plx+=dx;ply+=dy;
+        }
+        if(z>1000)deltaz+=0.02;else deltaz+=0.005;
+    }
+
+    // Project & draw items
+    var pitch=horizonToPitchRad(camera.horizon-pitchOffset),
+        sinYaw=Math.sin(camera.angle),cosYaw=Math.cos(camera.angle),
+        sinPitch=Math.sin(pitch),cosPitch=Math.cos(pitch),
+        fx=-sinYaw*cosPitch,fy=-cosYaw*cosPitch,fz=sinPitch,
+        rx=Math.cos(camera.angle),ry=-Math.sin(camera.angle),focal=camera.focalLength;
+
+
+    items.forEach(it=>{
+        var dx=it.x-camera.x,dy=it.y-camera.y,dz=it.z-camera.height,
+            forward=dx*fx+dy*fy+dz*fz;
+        if(forward<=0.1||forward>camera.distance)return;
+        var right=dx*rx+dy*ry,invz=focal/forward,
+            screenX=right*invz+sw/2,screenY=(camera.height-it.z)*invz+camera.horizon;
+        if(screenX<-50||screenX>sw+50||screenY<-50||screenY>sh+50)return;
+
+        var scale=10*invz;
+        if(it.image.complete){
+            screendata.context.drawImage(it.image, screenX-scale/2, screenY-scale/2, scale, scale);
+        }
+    });
+}
+
+
+// Cache for image pixel data at fixed base resolution
+var imageDataCache = {};
+var BASE_SIZE = 64; // single cached size per image
+
+function getImagePixelData(img) {
+    var key = img.src;
+    if (imageDataCache[key]) return imageDataCache[key];
+
+    var canvas = document.createElement('canvas');
+    canvas.width = BASE_SIZE;
+    canvas.height = BASE_SIZE;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, BASE_SIZE, BASE_SIZE);
+    var data = ctx.getImageData(0, 0, BASE_SIZE, BASE_SIZE);
+    imageDataCache[key] = data;
+    return data;
+}
+
+function RenderItems(){
+    var sw = screendata.canvas.width,
+        sh = screendata.canvas.height,
+        depth = screendata.depthBuffer,
+        buf32 = screendata.buf32,
+        sinYaw = Math.sin(camera.angle),
+        cosYaw = Math.cos(camera.angle),
+        rx = cosYaw, ry = -sinYaw,
+        focal = camera.focalLength;
+
+    // Project items using ground-plane distance (consistent with terrain rendering)
+    let projected = items.map(it => {
+        var dx = it.x - camera.x,
+            dy = it.y - camera.y;
+        var groundForward = -dx*sinYaw - dy*cosYaw;
+        return {it, dx, dy, groundForward};
+    });
+
+    // Filter valid + sort back-to-front (far items first)
+    projected = projected
+        .filter(obj => obj.groundForward > 0.1 && obj.groundForward < camera.distance)
+        .sort((a,b) => b.groundForward - a.groundForward);
+
+    // Draw each item pixel-by-pixel with depth testing
+    projected.forEach(obj => {
+        let it = obj.it;
+        let dx = obj.dx, dy = obj.dy;
+        let groundForward = obj.groundForward;
+
+        var right = dx*rx + dy*ry;
+        var screenX = right * (sw / 2) / groundForward + sw/2;
+        var screenY = (camera.height - it.z) * focal / groundForward + camera.horizon;
+
+        var scale = 12 * focal / groundForward;
+        var scaleX = scale;
+        var scaleY = scale;
+        if (it.type === "tree") {
+            scaleX *= 6;   // wider trees
+            scaleY *= 12;  // much taller trees (stretched)
+        }
+        if (it.type === "bullet") {
+            scaleX *= bulletSize;
+            scaleY *= bulletSize;
+            // Track screen position for debugging
+            lastBulletScreen = {x: screenX, y: screenY, z: it.z, camH: camera.height, gf: groundForward};
+        }
+
+        // Quick bounds check
+        if (screenX < -scaleX || screenX >= sw + scaleX || screenY < -scaleY || screenY >= sh + scaleY) return;
+        if (!it.image || !it.image.complete) return;
+
+        // Get cached image pixel data (fixed size)
+        var imgData = getImagePixelData(it.image);
+        var srcSize = imgData.width; // BASE_SIZE
+        var pixels = imgData.data;
+
+        // Destination size and position using actual scale
+        var destW = Math.max(1, Math.ceil(scaleX));
+        var destH = Math.max(1, Math.ceil(scaleY));
+        var destX = Math.floor(screenX - destW/2);
+        var destY = Math.floor(screenY - destH);
+
+        // Draw each destination pixel, sampling from source
+        for (var py = 0; py < destH; py++) {
+            var sy = destY + py;
+            if (sy < 0 || sy >= sh) continue;
+
+            // Map destination Y to source Y
+            var srcY = Math.floor(py * srcSize / destH);
+
+            for (var px = 0; px < destW; px++) {
+                var sx = destX + px;
+                if (sx < 0 || sx >= sw) continue;
+
+                var bufIdx = sy * sw + sx;
+
+                // Depth test - only draw if in front of terrain
+                if (groundForward >= depth[bufIdx]) continue;
+
+                // Map destination X to source X
+                var srcX = Math.floor(px * srcSize / destW);
+                var srcIdx = (srcY * srcSize + srcX) * 4;
+
+                var a = pixels[srcIdx + 3];
+                if (a < 128) continue; // skip transparent pixels
+
+                var r = pixels[srcIdx];
+                var g = pixels[srcIdx + 1];
+                var b = pixels[srcIdx + 2];
+
+                // Write to buffer (ABGR format for Uint32Array on little-endian)
+                buf32[bufIdx] = 0xFF000000 | (b << 16) | (g << 8) | r;
+            }
+        }
+    });
+}
+
+
+
+function Draw(timestamp){
+    updaterunning=true;
+    if(timestamp-lastFrameTime>=frameDuration){
+        lastFrameTime=timestamp;
+        pollGamepad();  // Check gamepad input
+        UpdateCamera();
+        DrawBackground();
+        RenderCube();   // 3D cube first - sets depth buffer
+        Render();       // terrain respects cube's depth
+        RenderItems();  // items into buffer with depth testing
+        Flip();         // push buffer to screen
+        RenderGroundWeapons();  // floating weapon pickups
+        RenderGunViewmodel(screendata.context);  // first-person gun model
+        DrawMinimap();  // overlay minimap PiP
+        DrawWeaponUI(screendata.context);  // weapon selection UI
+        frames++;
+    }
+    requestAnimationFrame(Draw);
+}
+
+// Minimap - top-down view with player triangle
+function DrawMinimap(){
+    var ctx = screendata.context;
+    var size = 120;        // minimap size in pixels
+    var range = 200;       // world units to show around player
+    var margin = 10;
+    var cx = screendata.canvas.width - size - margin;  // top-right corner
+    var cy = margin;
+
+    // Draw background
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(cx, cy, size, size);
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(cx, cy, size, size);
+
+    // Draw terrain colors from color map
+    var scale = size / (range * 2);
+    for(var py = 0; py < size; py += 2){
+        for(var px = 0; px < size; px += 2){
+            // Map screen pos to world pos
+            var wx = camera.x + (px - size/2) / scale;
+            var wy = camera.y + (py - size/2) / scale;
+
+            // Sample color map
+            var mapX = Math.floor(wx) & (map.width - 1);
+            var mapY = Math.floor(wy) & (map.height - 1);
+            var col = map.color[(mapY << map.shift) + mapX];
+
+            // Extract RGB (stored as ABGR)
+            var r = col & 0xFF;
+            var g = (col >> 8) & 0xFF;
+            var b = (col >> 16) & 0xFF;
+
+            ctx.fillStyle = 'rgb('+r+','+g+','+b+')';
+            ctx.fillRect(cx + px, cy + py, 2, 2);
+        }
+    }
+
+    // Draw player as triangle pointing in look direction
+    var pcx = cx + size/2;  // player center on minimap
+    var pcy = cy + size/2;
+    var triSize = 8;
+    var angle = camera.angle;
+
+    ctx.save();
+    ctx.translate(pcx, pcy);
+    ctx.rotate(-angle);  // rotate to face direction
+
+    ctx.beginPath();
+    ctx.moveTo(0, -triSize);           // front point
+    ctx.lineTo(-triSize * 0.6, triSize * 0.6);  // back left
+    ctx.lineTo(triSize * 0.6, triSize * 0.6);   // back right
+    ctx.closePath();
+
+    ctx.fillStyle = 'red';
+    ctx.fill();
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.restore();
+
+    // Draw FOV cone
+    ctx.save();
+    ctx.translate(pcx, pcy);
+    ctx.rotate(-angle);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-30, -60);
+    ctx.lineTo(30, -60);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(255,255,0,0.2)';
+    ctx.fill();
+    ctx.restore();
+
+    // === SIDE VIEW MINIMAP ===
+    DrawSideView(ctx);
+}
+
+// Side view showing terrain profile, player height, and bullets
+function DrawSideView(ctx){
+    var width = 200;       // minimap width
+    var height = 80;       // minimap height
+    var margin = 10;
+    var sx = screendata.canvas.width - width - margin;  // top-right, below main minimap
+    var sy = margin + 130; // below the square minimap
+
+    var rangeForward = 300;  // world units to show forward
+    var rangeBack = 50;      // world units to show behind
+    var heightRange = 150;   // world units of height to show
+
+    // Background
+    ctx.fillStyle = 'rgba(0,0,0,0.8)';
+    ctx.fillRect(sx, sy, width, height);
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(sx, sy, width, height);
+
+    // Calculate look direction
+    var fx = -Math.sin(camera.angle);
+    var fy = -Math.cos(camera.angle);
+
+    // Find min/max terrain height in view for scaling
+    var minH = camera.height - 50;
+    var maxH = camera.height + 100;
+
+    // Helper to convert world coords to screen coords
+    function toScreen(dist, worldZ){
+        var px = sx + ((dist + rangeBack) / (rangeForward + rangeBack)) * width;
+        var py = sy + height - ((worldZ - minH) / (maxH - minH)) * height;
+        return {x: px, y: py};
+    }
+
+    // Draw terrain profile (raw terrain without player height offset)
+    ctx.beginPath();
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 2;
+    var firstPoint = true;
+    for(var d = -rangeBack; d <= rangeForward; d += 5){
+        var wx = camera.x + fx * d;
+        var wy = camera.y + fy * d;
+        var terrainZ = getRawTerrainHeight(wx, wy);
+        var p = toScreen(d, terrainZ);
+        if(firstPoint){
+            ctx.moveTo(p.x, p.y);
+            firstPoint = false;
+        } else {
+            ctx.lineTo(p.x, p.y);
+        }
+    }
+    ctx.stroke();
+
+    // Fill terrain area
+    ctx.lineTo(sx + width, sy + height);
+    ctx.lineTo(sx, sy + height);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(100,100,100,0.5)';
+    ctx.fill();
+
+    // Draw raw ground level line at camera position (for reference)
+    var rawGroundAtCam = getRawTerrainHeight(camera.x, camera.y);
+    var groundLine = toScreen(0, rawGroundAtCam);
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(sx, groundLine.y);
+    ctx.lineTo(sx + width, groundLine.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Draw camera/player as yellow circle
+    var camPos = toScreen(0, camera.height);
+    ctx.beginPath();
+    ctx.arc(camPos.x, camPos.y, 6, 0, Math.PI * 2);
+    ctx.fillStyle = 'yellow';
+    ctx.fill();
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Draw player body (line from ground to camera)
+    ctx.beginPath();
+    ctx.moveTo(camPos.x, camPos.y);
+    ctx.lineTo(groundLine.x, groundLine.y);
+    ctx.strokeStyle = 'yellow';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Draw bullets as red dots
+    items.forEach(function(it){
+        if(it.type === 'bullet'){
+            // Calculate distance along look direction
+            var dx = it.x - camera.x;
+            var dy = it.y - camera.y;
+            var dist = dx * fx + dy * fy;  // project onto look direction
+
+            if(dist > -rangeBack && dist < rangeForward){
+                var p = toScreen(dist, it.z);
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                ctx.fillStyle = 'red';
+                ctx.fill();
+            }
+        }
+    });
+
+    // Draw view direction (blue line - where you're looking)
+    var pitch = horizonToPitchRad(camera.horizon - pitchOffset);
+    var viewEndDist = 200;
+    var viewEndZ = camera.height + Math.tan(pitch) * viewEndDist;
+    var viewStart = toScreen(0, camera.height);
+    var viewEnd = toScreen(viewEndDist, viewEndZ);
+    ctx.beginPath();
+    ctx.moveTo(viewStart.x, viewStart.y);
+    ctx.lineTo(viewEnd.x, viewEnd.y);
+    ctx.strokeStyle = 'rgba(0,100,255,0.7)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Get gun barrel position in world space
+    var barrelPos = getBarrelWorldPos();
+    var gunDir = getGunWorldDirection();
+
+    // Calculate gun distance along look direction
+    var gunDx = barrelPos.x - camera.x;
+    var gunDy = barrelPos.y - camera.y;
+    var gunDist = gunDx * fx + gunDy * fy;
+
+    // Draw gun position (red dot)
+    var gunScreen = toScreen(gunDist, barrelPos.z);
+    ctx.beginPath();
+    ctx.arc(gunScreen.x, gunScreen.y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = 'red';
+    ctx.fill();
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Calculate bullet spawn position (offset from barrel by barrelDistance)
+    var bulletSpawnX = barrelPos.x + gunDir.x * gunModel.barrelDistance;
+    var bulletSpawnY = barrelPos.y + gunDir.y * gunModel.barrelDistance;
+    var bulletSpawnZ = barrelPos.z + gunDir.z * gunModel.barrelDistance;
+    var bulletDx = bulletSpawnX - camera.x;
+    var bulletDy = bulletSpawnY - camera.y;
+    var bulletDist = bulletDx * fx + bulletDy * fy;
+
+    // Draw bullet spawn position (gray dot)
+    var bulletScreen = toScreen(bulletDist, bulletSpawnZ);
+    ctx.beginPath();
+    ctx.arc(bulletScreen.x, bulletScreen.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#888';
+    ctx.fill();
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Draw line from gun to bullet spawn
+    ctx.beginPath();
+    ctx.moveTo(gunScreen.x, gunScreen.y);
+    ctx.lineTo(bulletScreen.x, bulletScreen.y);
+    ctx.strokeStyle = 'rgba(255,100,100,0.7)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Labels
+    ctx.fillStyle = 'white';
+    ctx.font = '10px Arial';
+    ctx.fillText('SIDE VIEW', sx + 5, sy + 12);
+    ctx.fillStyle = 'yellow';
+    ctx.fillText('●player', sx + width - 55, sy + 12);
+    ctx.fillStyle = 'red';
+    ctx.fillText('●gun', sx + width - 55, sy + 22);
+    ctx.fillStyle = '#888';
+    ctx.fillText('●bullet', sx + width - 55, sy + 32);
+}
+
+// Render ground weapons as floating 3D icons
+function RenderGroundWeapons() {
+    var ctx = screendata.context;
+    var sw = screendata.canvas.width;
+    var sh = screendata.canvas.height;
+    var sinYaw = Math.sin(camera.angle);
+    var cosYaw = Math.cos(camera.angle);
+
+    groundWeapons.forEach(function(gw) {
+        var wep = weapons[gw.type];
+        var dx = gw.x - camera.x;
+        var dy = gw.y - camera.y;
+
+        // Ground-plane distance
+        var groundForward = -dx * sinYaw - dy * cosYaw;
+        if (groundForward < 1 || groundForward > camera.distance) return;
+
+        // Right offset
+        var right = dx * cosYaw - dy * sinYaw;
+
+        // Screen position (floating above ground)
+        var floatHeight = gw.z + 20 + Math.sin(Date.now() / 300) * 5;  // Bob up and down
+        var screenX = right * (sw / 2) / groundForward + sw / 2;
+        var screenY = (camera.height - floatHeight) * camera.focalLength / groundForward + camera.horizon;
+
+        // Size based on distance
+        var size = 300 / groundForward;
+        size = Math.max(15, Math.min(50, size));
+
+        // Draw rounded rectangle with weapon letter
+        var cornerRadius = size / 5;
+        ctx.beginPath();
+        ctx.roundRect(screenX - size/2, screenY - size/2, size, size, cornerRadius);
+        ctx.fillStyle = wep.bgColor;
+        ctx.fill();
+        ctx.strokeStyle = wep.color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Draw letter
+        ctx.fillStyle = wep.color;
+        ctx.font = 'bold ' + Math.floor(size * 0.6) + 'px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(wep.letter, screenX, screenY);
+    });
+
+    ctx.textAlign = 'left';  // Reset
+}
+
+// Draw weapon UI - shows current weapons and pickup prompt
+function DrawWeaponUI(ctx) {
+    var sw = screendata.canvas.width;
+    var sh = screendata.canvas.height;
+    var iconSize = 40;
+    var iconMargin = 5;
+    var cornerRadius = 8;
+
+    // Draw weapon slots at bottom center
+    var startX = sw / 2 - iconSize - iconMargin;
+    var startY = sh - iconSize - 15;
+
+    for (var i = 0; i < 2; i++) {
+        var slot = playerWeapons[i];
+        var wep = weapons[slot.type];
+        var x = startX + i * (iconSize + iconMargin * 2);
+        var y = startY;
+
+        // Draw rounded rectangle background
+        ctx.beginPath();
+        ctx.roundRect(x, y, iconSize, iconSize, cornerRadius);
+        ctx.fillStyle = wep.bgColor;
+        ctx.fill();
+
+        // Highlight current weapon
+        if (i === currentWeaponIndex) {
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        } else {
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+
+        // Draw weapon letter
+        ctx.fillStyle = wep.color;
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(wep.letter, x + iconSize/2, y + iconSize/2);
+
+        // Draw ammo count below
+        ctx.fillStyle = 'white';
+        ctx.font = '10px Arial';
+        ctx.fillText(slot.ammo + '/' + wep.maxMagazine, x + iconSize/2, y + iconSize + 10);
+    }
+
+    // Draw swap hint
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.font = '10px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Q to swap', sw/2, startY - 5);
+
+    // Draw pickup prompt if near a ground weapon
+    if (nearbyWeapon) {
+        var gwep = weapons[nearbyWeapon.type];
+        var promptY = sh / 2 + 50;
+
+        // Draw weapon icon
+        ctx.beginPath();
+        ctx.roundRect(sw/2 - iconSize/2, promptY, iconSize, iconSize, cornerRadius);
+        ctx.fillStyle = gwep.bgColor;
+        ctx.fill();
+        ctx.strokeStyle = 'yellow';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = gwep.color;
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(gwep.letter, sw/2, promptY + iconSize/2);
+
+        // Draw pickup text
+        ctx.fillStyle = 'yellow';
+        ctx.font = '14px Arial';
+        ctx.fillText('Press E to pick up ' + gwep.name, sw/2, promptY + iconSize + 15);
+    }
+
+    ctx.textAlign = 'left';  // Reset
+}
+
+// ===============================
+function DownloadImagesAsync(urls){
+    return new Promise(function(resolve){
+        var pending=urls.length,result=[];if(!pending){resolve([]);return;}
+        urls.forEach(function(url,i){var img=new Image();img.onload=function(){var tcv=document.createElement("canvas"),tcx=tcv.getContext("2d");tcv.width=map.width;tcv.height=map.height;tcx.drawImage(img,0,0,map.width,map.height);result[i]=tcx.getImageData(0,0,map.width,map.height).data;pending--;if(!pending)resolve(result);};img.src=url;});
+    });
+}
+function LoadMap(files){var f=files.split(";");DownloadImagesAsync(["maps/"+f[0]+".png","maps/"+f[1]+".png"]).then(OnLoadedImages);}
+
+
+
+function OnLoadedImages(result){
+    var datac = result[0], datah = result[1];
+    for (var i = 0; i < map.width * map.height; i++) {
+        map.color[i] = 0xFF000000 |
+                       (datac[(i<<2)+2] << 16) |
+                       (datac[(i<<2)+1] << 8) |
+                        datac[(i<<2)+0];
+        map.altitude[i] = datah[i<<2];
+    }
+
+    // Flatten terrain under the cube
+    flattenTerrainUnderCube();
+
+    // Start draw loop
+    Draw();
+}
+
+// Flatten terrain within the cube's footprint to prevent terrain poking through
+function flattenTerrainUnderCube() {
+    var s = cube.size;
+    var minX = Math.floor(cube.x - s/2);
+    var maxX = Math.ceil(cube.x + s/2);
+    var minY = Math.floor(cube.y - s/2);
+    var maxY = Math.ceil(cube.y + s/2);
+
+    // Find the minimum height within the cube's footprint
+    var minHeight = 255;
+    for (var y = minY; y <= maxY; y++) {
+        for (var x = minX; x <= maxX; x++) {
+            var mx = x & (map.width - 1);
+            var my = y & (map.height - 1);
+            var idx = (my << map.shift) + mx;
+            if (map.altitude[idx] < minHeight) {
+                minHeight = map.altitude[idx];
+            }
+        }
+    }
+
+    // Set all terrain within cube footprint to that minimum height
+    for (var y = minY; y <= maxY; y++) {
+        for (var x = minX; x <= maxX; x++) {
+            var mx = x & (map.width - 1);
+            var my = y & (map.height - 1);
+            var idx = (my << map.shift) + mx;
+            map.altitude[idx] = minHeight;
+        }
+    }
+
+    // Add one fixed heart as a test
+    items.push({
+        type: "heart",
+        x: 20, y: 110, z: getGroundHeight(20,110)+50,
+        dx: 0, dy: 0, dz: 0,
+        image: textures.heart
+    });
+
+    // Spawn a sniper rifle on the ground near player start
+    groundWeapons.push({
+        type: "sniper",
+        x: 40,
+        y: 40,
+        z: getRawTerrainHeight(40, 40)
+    });
+
+    // 🌳 Spawn random trees on green-ish terrain
+    spawnRandomItems("tree", textures.tree, {
+        step: 8,         // check every 8 pixels
+        chance: 0.01,    // 1% chance
+        colorCheck: (col) => ((col & 0x00FF00) > 0x004000) // must be green-ish
+    });
+
+
+}
+
+
+
+function OnResizeWindow(){
+    screendata.canvas=document.getElementById('fullscreenCanvas');
+    var aspect=window.innerWidth/window.innerHeight;
+    screendata.canvas.width=window.innerWidth<800?window.innerWidth:800;
+    screendata.canvas.height=screendata.canvas.width/aspect;
+    if(screendata.canvas.getContext){
+        screendata.context=screendata.canvas.getContext('2d');
+        screendata.imagedata=screendata.context.createImageData(screendata.canvas.width,screendata.canvas.height);
+    }
+    screendata.bufarray=new ArrayBuffer(screendata.imagedata.width*screendata.imagedata.height*4);
+    screendata.buf8=new Uint8Array(screendata.bufarray);
+    screendata.buf32=new Uint32Array(screendata.bufarray);
+    screendata.depthBuffer=new Float32Array(screendata.canvas.width*screendata.canvas.height);
+    hiddeny=new Int32Array(screendata.canvas.width);
+}
+function Init(){
+    for(var i=0;i<map.width*map.height;i++){map.color[i]=0xFF007050;map.altitude[i]=0;}
+    LoadMap("C1W;D1");OnResizeWindow();
+    loadGunModel();  // Load first-person gun model
+    var canvas=document.getElementById("fullscreenCanvas");
+
+    // Tab switching for controls panel
+    document.querySelectorAll('.tab-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var tabId = this.getAttribute('data-tab');
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(function(tab) {
+                tab.style.display = 'none';
+            });
+            // Deactivate all buttons
+            document.querySelectorAll('.tab-btn').forEach(function(b) {
+                b.style.background = '#333';
+                b.style.color = '#aaa';
+            });
+            // Show selected tab
+            document.getElementById('tab-' + tabId).style.display = 'block';
+            // Activate button
+            this.style.background = '#555';
+            this.style.color = 'white';
+        });
+    });
+    window.onkeydown=DetectKeysDown;window.onkeyup=DetectKeysUp;
+    canvas.onmousedown=DetectMouseDown;canvas.onmouseup=DetectMouseUp;
+    canvas.oncontextmenu=function(e){e.preventDefault();return false;}; // Disable right-click menu
+    window.onresize=OnResizeWindow;
+    canvas.requestPointerLock=canvas.requestPointerLock||canvas.mozRequestPointerLock;
+    canvas.onclick=function(){canvas.requestPointerLock();};
+    document.addEventListener('pointerlockchange',function(){
+        if(document.pointerLockElement===canvas||document.mozPointerLockElement===canvas){canvas.onmousemove=DetectMouseMove;}
+        else{canvas.onmousemove=null;}
+    },false);
+    setInterval(function(){var current=Date.now();document.getElementById('fps').innerText=(frames/(current-timelastframe)*1000).toFixed(1)+" fps";frames=0;timelastframe=current;},2000);
+
+    // Player height slider
+    document.getElementById('playerHeight').addEventListener('input', function(e){
+        playerHeightOffset = parseInt(e.target.value);
+        document.getElementById('playerHeight-value').innerText = playerHeightOffset;
+    });
+
+    // Standing height slider
+    document.getElementById('normalHeight').addEventListener('input', function(e){
+        player.normalHeight = parseInt(e.target.value);
+        document.getElementById('normalHeight-value').innerText = player.normalHeight;
+    });
+
+    // Crouch height slider
+    document.getElementById('crouchHeight').addEventListener('input', function(e){
+        player.crouchHeight = parseInt(e.target.value);
+        document.getElementById('crouchHeight-value').innerText = player.crouchHeight;
+    });
+
+    // Jump min strength slider
+    document.getElementById('jumpMin').addEventListener('input', function(e){
+        player.jumpMinStrength = parseInt(e.target.value);
+        document.getElementById('jumpMin-value').innerText = player.jumpMinStrength;
+    });
+
+    // Jump max strength slider
+    document.getElementById('jumpMax').addEventListener('input', function(e){
+        player.jumpMaxStrength = parseInt(e.target.value);
+        document.getElementById('jumpMax-value').innerText = player.jumpMaxStrength;
+    });
+
+    // Gun viewmodel sliders
+    document.getElementById('gunX').addEventListener('input', function(e){
+        gunModel.offsetX = parseInt(e.target.value);
+        document.getElementById('gunX-value').innerText = gunModel.offsetX;
+    });
+    document.getElementById('gunY').addEventListener('input', function(e){
+        gunModel.offsetY = parseInt(e.target.value);
+        document.getElementById('gunY-value').innerText = gunModel.offsetY;
+    });
+    document.getElementById('gunZ').addEventListener('input', function(e){
+        gunModel.offsetZ = parseInt(e.target.value);
+        document.getElementById('gunZ-value').innerText = gunModel.offsetZ;
+    });
+    document.getElementById('gunScale').addEventListener('input', function(e){
+        gunModel.scale = parseInt(e.target.value);
+        document.getElementById('gunScale-value').innerText = gunModel.scale;
+    });
+    document.getElementById('gunRotX').addEventListener('input', function(e){
+        gunModel.rotationX = parseInt(e.target.value);
+        document.getElementById('gunRotX-value').innerText = gunModel.rotationX;
+    });
+    document.getElementById('gunRotY').addEventListener('input', function(e){
+        gunModel.rotationY = parseInt(e.target.value);
+        document.getElementById('gunRotY-value').innerText = gunModel.rotationY;
+    });
+    document.getElementById('gunRotZ').addEventListener('input', function(e){
+        gunModel.rotationZ = parseInt(e.target.value);
+        document.getElementById('gunRotZ-value').innerText = gunModel.rotationZ;
+    });
+
+    // Barrel position sliders
+    document.getElementById('barrelX').addEventListener('input', function(e){
+        gunModel.barrelX = parseFloat(e.target.value);
+        document.getElementById('barrelX-value').innerText = gunModel.barrelX.toFixed(2);
+    });
+    document.getElementById('barrelY').addEventListener('input', function(e){
+        gunModel.barrelY = parseFloat(e.target.value);
+        document.getElementById('barrelY-value').innerText = gunModel.barrelY.toFixed(2);
+    });
+    document.getElementById('barrelZ').addEventListener('input', function(e){
+        gunModel.barrelZ = parseFloat(e.target.value);
+        document.getElementById('barrelZ-value').innerText = gunModel.barrelZ.toFixed(2);
+    });
+
+    // Gun world offset sliders
+    document.getElementById('gunWorldFwd').addEventListener('input', function(e){
+        gunModel.worldForward = parseInt(e.target.value);
+        document.getElementById('gunWorldFwd-value').innerText = gunModel.worldForward;
+    });
+    document.getElementById('gunWorldRight').addEventListener('input', function(e){
+        gunModel.worldRight = parseInt(e.target.value);
+        document.getElementById('gunWorldRight-value').innerText = gunModel.worldRight;
+    });
+    document.getElementById('gunWorldDown').addEventListener('input', function(e){
+        gunModel.worldDown = parseInt(e.target.value);
+        document.getElementById('gunWorldDown-value').innerText = gunModel.worldDown;
+    });
+
+    // Bullet size slider
+    document.getElementById('bulletSize').addEventListener('input', function(e){
+        bulletSize = parseFloat(e.target.value);
+        document.getElementById('bulletSize-value').innerText = bulletSize;
+    });
+
+    // Barrel distance slider
+    document.getElementById('barrelDistance').addEventListener('input', function(e){
+        gunModel.barrelDistance = parseInt(e.target.value);
+        document.getElementById('barrelDistance-value').innerText = gunModel.barrelDistance;
+    });
+
+    // Save/Reset functionality
+    var savedSettings = null;
+
+    function getAllSettings() {
+        return {
+            // Camera
+            fov: parseInt(document.getElementById('fov').value),
+            pitchOffset: parseInt(document.getElementById('pitchOffset').value),
+            targetFPS: parseInt(document.getElementById('targetFPS').value),
+            // Player
+            playerHeight: parseInt(document.getElementById('playerHeight').value),
+            normalHeight: parseInt(document.getElementById('normalHeight').value),
+            crouchHeight: parseInt(document.getElementById('crouchHeight').value),
+            jumpMin: parseInt(document.getElementById('jumpMin').value),
+            jumpMax: parseInt(document.getElementById('jumpMax').value),
+            // Bullet
+            bulletSize: parseFloat(document.getElementById('bulletSize').value),
+            barrelDistance: parseInt(document.getElementById('barrelDistance').value),
+            // Gun
+            gunX: parseInt(document.getElementById('gunX').value),
+            gunY: parseInt(document.getElementById('gunY').value),
+            gunZ: parseInt(document.getElementById('gunZ').value),
+            gunScale: parseInt(document.getElementById('gunScale').value),
+            gunRotX: parseInt(document.getElementById('gunRotX').value),
+            gunRotY: parseInt(document.getElementById('gunRotY').value),
+            gunRotZ: parseInt(document.getElementById('gunRotZ').value),
+            barrelX: parseFloat(document.getElementById('barrelX').value),
+            barrelY: parseFloat(document.getElementById('barrelY').value),
+            barrelZ: parseFloat(document.getElementById('barrelZ').value),
+            gunWorldFwd: parseInt(document.getElementById('gunWorldFwd').value),
+            gunWorldRight: parseInt(document.getElementById('gunWorldRight').value),
+            gunWorldDown: parseInt(document.getElementById('gunWorldDown').value)
+        };
+    }
+
+    function applySettings(s) {
+        // Camera
+        document.getElementById('fov').value = s.fov;
+        document.getElementById('fov-value').innerText = s.fov;
+        document.getElementById('pitchOffset').value = s.pitchOffset;
+        document.getElementById('pitchOffset-value').innerText = s.pitchOffset;
+        pitchOffset = s.pitchOffset;
+        document.getElementById('targetFPS').value = s.targetFPS;
+        document.getElementById('targetFPS-value').innerText = s.targetFPS;
+        targetFPS = s.targetFPS;
+        frameDuration = 1000 / targetFPS;
+
+        // Player
+        document.getElementById('playerHeight').value = s.playerHeight;
+        document.getElementById('playerHeight-value').innerText = s.playerHeight;
+        playerHeightOffset = s.playerHeight;
+        document.getElementById('normalHeight').value = s.normalHeight;
+        document.getElementById('normalHeight-value').innerText = s.normalHeight;
+        player.normalHeight = s.normalHeight;
+        document.getElementById('crouchHeight').value = s.crouchHeight;
+        document.getElementById('crouchHeight-value').innerText = s.crouchHeight;
+        player.crouchHeight = s.crouchHeight;
+        document.getElementById('jumpMin').value = s.jumpMin;
+        document.getElementById('jumpMin-value').innerText = s.jumpMin;
+        player.jumpMinStrength = s.jumpMin;
+        document.getElementById('jumpMax').value = s.jumpMax;
+        document.getElementById('jumpMax-value').innerText = s.jumpMax;
+        player.jumpMaxStrength = s.jumpMax;
+
+        // Bullet
+        document.getElementById('bulletSize').value = s.bulletSize;
+        document.getElementById('bulletSize-value').innerText = s.bulletSize;
+        bulletSize = s.bulletSize;
+        document.getElementById('barrelDistance').value = s.barrelDistance;
+        document.getElementById('barrelDistance-value').innerText = s.barrelDistance;
+        gunModel.barrelDistance = s.barrelDistance;
+
+        // Gun
+        document.getElementById('gunX').value = s.gunX;
+        document.getElementById('gunX-value').innerText = s.gunX;
+        gunModel.offsetX = s.gunX;
+        document.getElementById('gunY').value = s.gunY;
+        document.getElementById('gunY-value').innerText = s.gunY;
+        gunModel.offsetY = s.gunY;
+        document.getElementById('gunZ').value = s.gunZ;
+        document.getElementById('gunZ-value').innerText = s.gunZ;
+        gunModel.offsetZ = s.gunZ;
+        document.getElementById('gunScale').value = s.gunScale;
+        document.getElementById('gunScale-value').innerText = s.gunScale;
+        gunModel.scale = s.gunScale;
+        document.getElementById('gunRotX').value = s.gunRotX;
+        document.getElementById('gunRotX-value').innerText = s.gunRotX;
+        gunModel.rotationX = s.gunRotX;
+        document.getElementById('gunRotY').value = s.gunRotY;
+        document.getElementById('gunRotY-value').innerText = s.gunRotY;
+        gunModel.rotationY = s.gunRotY;
+        document.getElementById('gunRotZ').value = s.gunRotZ;
+        document.getElementById('gunRotZ-value').innerText = s.gunRotZ;
+        gunModel.rotationZ = s.gunRotZ;
+        document.getElementById('barrelX').value = s.barrelX;
+        document.getElementById('barrelX-value').innerText = s.barrelX.toFixed(2);
+        gunModel.barrelX = s.barrelX;
+        document.getElementById('barrelY').value = s.barrelY;
+        document.getElementById('barrelY-value').innerText = s.barrelY.toFixed(2);
+        gunModel.barrelY = s.barrelY;
+        document.getElementById('barrelZ').value = s.barrelZ;
+        document.getElementById('barrelZ-value').innerText = s.barrelZ.toFixed(2);
+        gunModel.barrelZ = s.barrelZ;
+
+        // Gun world offset
+        if (s.gunWorldFwd !== undefined) {
+            document.getElementById('gunWorldFwd').value = s.gunWorldFwd;
+            document.getElementById('gunWorldFwd-value').innerText = s.gunWorldFwd;
+            gunModel.worldForward = s.gunWorldFwd;
+        }
+        if (s.gunWorldRight !== undefined) {
+            document.getElementById('gunWorldRight').value = s.gunWorldRight;
+            document.getElementById('gunWorldRight-value').innerText = s.gunWorldRight;
+            gunModel.worldRight = s.gunWorldRight;
+        }
+        if (s.gunWorldDown !== undefined) {
+            document.getElementById('gunWorldDown').value = s.gunWorldDown;
+            document.getElementById('gunWorldDown-value').innerText = s.gunWorldDown;
+            gunModel.worldDown = s.gunWorldDown;
+        }
+    }
+
+    // Save button - saves to localStorage and memory
+    document.getElementById('saveSettings').addEventListener('click', function() {
+        savedSettings = getAllSettings();
+        localStorage.setItem('voxelSpaceSettings', JSON.stringify(savedSettings));
+        this.textContent = 'Saved!';
+        setTimeout(() => this.textContent = 'Save', 1000);
+    });
+
+    // Reset button - restores last saved settings
+    document.getElementById('resetSettings').addEventListener('click', function() {
+        if (savedSettings) {
+            applySettings(savedSettings);
+            this.textContent = 'Reset!';
+            setTimeout(() => this.textContent = 'Reset', 1000);
+        }
+    });
+
+    // Load saved settings on startup
+    var stored = localStorage.getItem('voxelSpaceSettings');
+    if (stored) {
+        try {
+            savedSettings = JSON.parse(stored);
+            applySettings(savedSettings);
+        } catch(e) {
+            console.log('Could not load saved settings');
+        }
+    }
+}
+// ===============================
+// Gamepad Support
+function pollGamepad(){
+    var gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+    var gp = null;
+
+    // Find first connected gamepad
+    for(var i = 0; i < gamepads.length; i++){
+        if(gamepads[i] && gamepads[i].connected){
+            gp = gamepads[i];
+            break;
+        }
+    }
+
+    if(!gp){
+        gamepad.connected = false;
+        input.moveX = 0;
+        input.moveY = 0;
+        input.lookX = 0;
+        input.lookY = 0;
+        input.gpShoot = false;
+        input.gpAim = false;
+        input.gpCrouch = false;
+        input.gpSprint = false;
+        input.gpReload = false;
+        input.gpJumpHeld = false;
+        return;
+    }
+
+    gamepad.connected = true;
+    var dz = gamepad.deadzone;
+
+    // Apply deadzone to axes
+    function applyDeadzone(val){
+        if(Math.abs(val) < dz) return 0;
+        return (val - Math.sign(val) * dz) / (1 - dz);
+    }
+
+    // Movement (Left Stick)
+    input.moveX = applyDeadzone(gp.axes[gamepad.axes.moveX] || 0);
+    input.moveY = applyDeadzone(gp.axes[gamepad.axes.moveY] || 0);
+
+    // Look (Right Stick)
+    input.lookX = applyDeadzone(gp.axes[gamepad.axes.lookX] || 0);
+    input.lookY = applyDeadzone(gp.axes[gamepad.axes.lookY] || 0);
+
+    // Buttons - read directly from gamepad
+    var btn = gp.buttons;
+
+    // Helper to check if a gamepad button is pressed
+    function isPressed(btnIndex){
+        return btn[btnIndex] && (btn[btnIndex].pressed || btn[btnIndex].value > 0.5);
+    }
+
+    // Read current gamepad button states
+    var gpJump = isPressed(gamepad.buttons.jump);
+    var gpCrouch = isPressed(gamepad.buttons.crouch);
+    var gpReload = isPressed(gamepad.buttons.reload);
+    var gpSprint = isPressed(gamepad.buttons.sprint) || isPressed(gamepad.buttons.sprintAlt);
+    var gpShoot = isPressed(gamepad.buttons.shoot);
+    var gpAim = isPressed(gamepad.buttons.aim);
+
+    // Jump - track held state for charged jump (jump on RELEASE)
+    input.gpJumpHeld = gpJump;
+
+    // These are held buttons - directly set state from gamepad
+    // (keyboard state is separate and handled by keyup/keydown)
+    input.gpCrouch = gpCrouch;
+    input.gpSprint = gpSprint;
+    input.gpShoot = gpShoot;
+    input.gpAim = gpAim;
+    input.gpReload = gpReload;
+
+    // Start button - toggle debug UI (edge detection: only on press)
+    var gpStart = isPressed(gamepad.buttons.start);
+    if(gpStart && !gamepad.prevStart){
+        toggleDebugUI();
+    }
+    gamepad.prevStart = gpStart;
+
+    // Y button - swap weapons (edge detection)
+    var gpSwap = isPressed(gamepad.buttons.swapWeapon);
+    input.gpSwapWeapon = gpSwap && !prevSwapButton;
+    prevSwapButton = gpSwap;
+
+    // X button for pickup when near a weapon
+    input.gpPickupWeapon = isPressed(gamepad.buttons.pickup);
+}
+
+function toggleDebugUI(){
+    debugUIVisible = !debugUIVisible;
+    var display = debugUIVisible ? 'block' : 'none';
+    // Hide/show non-gaming UI elements
+    var debugElements = ['controls', 'fps', 'info', 'lastbulletpos', 'lastbulletscreen', 'lastbulletdestroyedpos', 'lastbulletdestroyedreason', 'playerposition', 'playerrotation'];
+    debugElements.forEach(function(id){
+        var el = document.getElementById(id);
+        if(el) el.style.display = display;
+    });
+}
+
+// ===============================
+// Controls
+function DetectKeysDown(e){switch(e.keyCode){case 87:input.forward=true;break;case 83:input.backward=true;break;case 65:input.left=true;break;case 68:input.right=true;break;case 32:input.jump=true;break;case 16:input.sprint=true;break;case 67:input.crouch=true;break;case 82:input.reload=true;break;case 81:input.swapWeapon=true;break;case 69:input.pickupWeapon=true;break;}if(!updaterunning){time=Date.now();Draw();}}
+function DetectKeysUp(e){switch(e.keyCode){case 87:input.forward=false;break;case 83:input.backward=false;break;case 65:input.left=false;break;case 68:input.right=false;break;case 32:input.jump=false;break;case 16:input.sprint=false;break;case 67:input.crouch=false;break;case 82:input.reload=false;break;case 81:input.swapWeapon=false;break;case 69:input.pickupWeapon=false;break;}}
+function DetectMouseDown(e){
+    if(e.button===0) input.shoot=true;
+    if(e.button===2) input.aim=true; // Right-click for ADS
+}
+function DetectMouseUp(e){
+    if(e.button===0) input.shoot=false;
+    if(e.button===2) input.aim=false;
+}
+function DetectMouseMove(e){camera.angle=(camera.angle-e.movementX*0.002)%(2*Math.PI);if(camera.angle<0)camera.angle+=2*Math.PI;camera.horizon=Math.max(-400,Math.min(600,camera.horizon-e.movementY*0.2));}
+
+// ===============================
+Init();
+</script>
+</body>
+</html>

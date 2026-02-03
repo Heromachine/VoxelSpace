@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Voxel Space Game</title>
+    <meta charset="UTF-8">
+    <style>
+        html, body {margin: 0; height: 100%; overflow: hidden}
+        canvas { width: 100%; height: 100%; display: block; }
+        #crosshair {position: absolute;top: 50%;left: 50%;width: 10px;height: 10px;margin: -5px 0 0 -5px;border: 2px solid white;border-radius: 50%;pointer-events: none;z-index: 100;}
+        #healthbar {position: absolute;bottom: 10px;left: 10px;width: 200px;height: 20px;background: #333;border: 2px solid white;}
+        #health {width: 100%;height: 100%;background: #ff0000;}
+        #info, #fps, #bulletcount, #lastbulletpos, #playerrotation, #heartposition, #playerposition, #lastbulletdestroyedpos, #lastbulletdestroyedreason {
+            position: absolute;padding: 5px;z-index: 100;color: white;font-family: Arial, sans-serif;font-size: 16px;
+        }
+        #info {top: 0;left: 10px;}
+        #fps {top: 0;right: 10px;}
+        #bulletcount {bottom: 10px;right: 10px;}
+        #playerposition {bottom: 35px;right: 10px;}
+        #playerrotation {bottom: 60px;right: 10px;}
+        #lastbulletpos {bottom: 85px;right: 10px;}
+        #heartposition {bottom: 300px;right: 10px;}
+        #lastbulletdestroyedpos {bottom: 110px;right: 10px;}
+        #lastbulletdestroyedreason {bottom: 135px;right: 10px;}
+    </style>
+</head>
+<body>
+<div id="crosshair"></div>
+<div id="healthbar"><div id="health"></div></div>
+<div id="fps"></div>
+<div id="lastbulletdestroyedreason"></div>
+<div id="lastbulletdestroyedpos"></div>
+<div id="lastbulletpos"></div>
+<div id="playerrotation"></div>
+<div id="playerposition"></div>
+<div id="heartposition"></div>
+<div id="bulletcount"></div>
+<div id="info">Controls: WASD to move, Mouse to look, Left Click to shoot, Space to jump, Shift to sprint, C to crouch, R to reload</div>
+<canvas id="fullscreenCanvas" width="800" height="400"></canvas>
+<script>
+"use strict";
+var camera={x:0,y:0,height:78,angle:0,horizon:100,distance:2000,velocityY:0},player={health:100,isCrouching:false,moveSpeed:1.5,sprintMultiplier:2,jumpStrength:15,crouchHeight:40,normalHeight:78},gun={magazine:200,maxMagazine:200,reloadTime:1000,isReloading:false,lastShot:0,fireRate:300},bullets=[],lastBullet=null,lastBulletDestroyedPos=null,lastBulletDestroyedReason=null,map={width:1024,height:1024,shift:10,altitude:new Uint8Array(1024*1024),color:new Uint32Array(1024*1024)},screendata={canvas:null,context:null,imagedata:null,bufarray:null,buf8:null,buf32:null,backgroundcolor:0xFFE09090,depthBuffer:null},input={forward:false,backward:false,left:false,right:false,jump:false,sprint:false,crouch:false,shoot:false,reload:false,mouseX:0,mouseY:0},updaterunning=false,time=Date.now(),timelastframe=Date.now(),frames=0,pitchOffset=250,targetFPS=60,frameDuration=1000/targetFPS,lastFrameTime=0,hiddeny;
+//===============================
+var heartImage = new Image();
+heartImage.src = 'heart.png';// Assuming the file is accessible in the same folder or adjust path accordingly
+var heartRotation = 0; // rotation angle in radians
+var heartLogEveryMs = 3000;
+var lastHeartLogTime = 0;
+
+
+var feetToMapUnits = 1; // Assuming 1 unit = 1 foot as in your code you use units directly for distances
+function getHeartPosition() {
+    // Position 10 feet ahead in camera direction
+    var hx = camera.x - Math.sin(camera.angle) * 10;
+    var hy = camera.y - Math.cos(camera.angle) * 10;
+    var hz = getGroundHeight(hx, hy) + 200;
+    return {x: hx, y: hy, z: hz};
+}
+// Track when the heart image is loaded
+var heartLoaded = false;
+heartImage.onload = function () { 
+    heartLoaded = true; 
+    console.log("Heart loaded successfully:", heartImage.src);
+};
+heartImage.onerror = function () {
+    console.error("Could not load heart.png at path:", heartImage.src);
+};
+var heartWorld = { x: 0, y: 0, z: 100};
+
+
+
+function DrawHeart(sw, sh) {
+    if (!heartLoaded) return;
+
+    var now = performance.now();
+    var doLog = (now - lastHeartLogTime) > heartLogEveryMs;
+
+    var ctx = screendata.context;
+    var focal = 240; // same as bullets
+
+    // Bullet-style projection basis
+    var pitch = horizonToPitchRad(camera.horizon - pitchOffset);
+    var sinYaw = Math.sin(camera.angle);
+    var cosYaw = Math.cos(camera.angle);
+    var sinPitch = Math.sin(pitch);
+    var cosPitch = Math.cos(pitch);
+
+    var fx = -sinYaw * cosPitch;
+    var fy = -cosYaw * cosPitch;
+    var fz =  sinPitch;
+    var rx =  Math.cos(camera.angle);
+    var ry = -Math.sin(camera.angle);
+
+    // Vector from camera → heart
+    var dx = heartWorld.x - camera.x;
+    var dy = heartWorld.y - camera.y;
+    var dz = heartWorld.z - camera.height;
+
+    // Forward/right components
+    var forward = dx * fx + dy * fy + dz * fz;
+    if (forward <= 0.1) {
+        if (doLog) console.log("[HEART] culled: behind camera", {forward: forward.toFixed(3)});
+        return;
+    }
+    if (forward > camera.distance) {
+        if (doLog) console.log("[HEART] culled: too far", {forward: forward.toFixed(1), max: camera.distance});
+        return;
+    }
+
+    var right = dx * rx + dy * ry;
+
+    // Screen projection (same as bullets)
+    var invz = focal / forward;
+    var screenX = right * invz + sw / 2;
+    var screenY = (camera.height - heartWorld.z) * invz + camera.horizon;
+
+    // Cull if far outside viewport
+    if (screenX < -100 || screenX > sw + 100 || screenY < -100 || screenY > sh + 100) {
+        if (doLog) console.log("[HEART] culled: off-screen", {
+            screenX: screenX.toFixed(1),
+            screenY: screenY.toFixed(1),
+            sw, sh
+        });
+        return;
+    }
+
+    // Distance-based scaling
+    var scale = 500 * invz; // tweak as needed
+
+    if (doLog) {
+        console.log("[HEART] draw", {
+            world: { x: heartWorld.x, y: heartWorld.y, z: heartWorld.z },
+            cam:   { x: camera.x.toFixed(1), y: camera.y.toFixed(1), h: camera.height.toFixed(1) },
+            forward: forward.toFixed(3),
+            right: right.toFixed(3),
+            invz: invz.toFixed(4),
+            screenX: screenX.toFixed(1),
+            screenY: screenY.toFixed(1),
+            scale: scale.toFixed(2)
+        });
+        lastHeartLogTime = now;
+    }
+
+    ctx.save();
+    ctx.translate(screenX, screenY);
+    ctx.rotate(heartRotation);
+    ctx.drawImage(heartImage, -scale / 2, -scale / 2, scale, scale);
+    ctx.restore();
+
+    heartRotation += 0.01;
+}
+
+
+//===============================
+
+var getGroundHeight=(x,y)=>map.altitude[((Math.floor(y)&(map.width-1))<<map.shift)+(Math.floor(x)&(map.height-1))]+10;
+var MAX_SLOPE=2;
+var isOnGround=()=>camera.height<=getGroundHeight(camera.x,camera.y)+0.1;
+var canMoveTo=(nx,ny)=>{if(!isOnGround())return true;var curH=getGroundHeight(camera.x,camera.y),newH=getGroundHeight(nx,ny);if(newH<=curH)return true;var horizDist=Math.hypot(nx-camera.x,ny-camera.y);if(!horizDist)return true;return (newH-curH)/horizDist<=MAX_SLOPE};
+
+function canMoveTo(nx, ny) {
+    // Always full speed if in the air
+    if (!isOnGround()) return 1;
+
+    var curHeight = getGroundHeight(camera.x, camera.y);
+    var newHeight = getGroundHeight(nx, ny);
+
+    // Downhill or flat: full speed
+    if (newHeight <= curHeight) return 1;
+
+    var horizDist = Math.sqrt((nx - camera.x) ** 2 + (ny - camera.y) ** 2);
+    if (horizDist === 0) return 1;
+
+    var slope = (newHeight - curHeight) / horizDist;
+
+    if (slope <= MAX_SLOPE) {
+        // Reduce speed proportionally as slope approaches MAX_SLOPE
+        return 1 - (slope / MAX_SLOPE) * 0.3; // 0.3 speed at max slope
+    } else {
+        // Still allow movement, but very slow (like climbing a cliff)
+        return 0.1; 
+    }
+}
+
+
+
+var horizonToPitchRad=h=>h*90/500*Math.PI/180;
+
+function UpdateCamera(){
+    var current = Date.now(),
+    deltaTime = (current - time) * 0.03,
+    baseSpeed = player.moveSpeed * (input.sprint ? player.sprintMultiplier : 1) * deltaTime,
+    nx, ny, slopeMult;
+
+if (input.forward) {
+    nx = camera.x - Math.sin(camera.angle) * baseSpeed;
+    ny = camera.y - Math.cos(camera.angle) * baseSpeed;
+    slopeMult = canMoveTo(nx, ny);
+    camera.x += (nx - camera.x) * slopeMult;
+    camera.y += (ny - camera.y) * slopeMult;
+}
+if (input.backward) {
+    nx = camera.x + Math.sin(camera.angle) * baseSpeed;
+    ny = camera.y + Math.cos(camera.angle) * baseSpeed;
+    slopeMult = canMoveTo(nx, ny);
+    camera.x += (nx - camera.x) * slopeMult;
+    camera.y += (ny - camera.y) * slopeMult;
+}
+if (input.left) {
+    nx = camera.x - Math.cos(camera.angle) * baseSpeed;
+    ny = camera.y + Math.sin(camera.angle) * baseSpeed;
+    slopeMult = canMoveTo(nx, ny);
+    camera.x += (nx - camera.x) * slopeMult;
+    camera.y += (ny - camera.y) * slopeMult;
+}
+if (input.right) {
+    nx = camera.x + Math.cos(camera.angle) * baseSpeed;
+    ny = camera.y - Math.sin(camera.angle) * baseSpeed;
+    slopeMult = canMoveTo(nx, ny);
+    camera.x += (nx - camera.x) * slopeMult;
+    camera.y += (ny - camera.y) * slopeMult;
+}
+
+
+    camera.velocityY-=0.5*deltaTime;camera.height+=camera.velocityY*deltaTime;
+    if(input.jump&&isOnGround())camera.velocityY=player.jumpStrength;
+
+    if(input.crouch){if(!player.isCrouching){player.isCrouching=true;camera.height=player.crouchHeight;}}
+    else if(player.isCrouching){player.isCrouching=false;camera.height=player.normalHeight;}
+
+    var groundHeight=getGroundHeight(camera.x,camera.y);
+    if(camera.height<groundHeight){camera.height=groundHeight;camera.velocityY=0;if(input.jump)camera.velocityY=player.jumpStrength;}
+
+    if(input.shoot&&!gun.isReloading&&gun.magazine>0&&current-gun.lastShot>gun.fireRate){
+        var bulletSpeed=10,fx=-Math.sin(camera.angle),fy=-Math.cos(camera.angle),rx=Math.cos(camera.angle),ry=-Math.sin(camera.angle),
+            pitch=horizonToPitchRad(camera.horizon-pitchOffset),horizScale=Math.cos(pitch),
+            dirx=fx*horizScale,diry=fy*horizScale,dirz=Math.sin(pitch),mag=Math.hypot(dirx,diry,dirz)||1;
+        dirx=(dirx/mag)*bulletSpeed;diry=(diry/mag)*bulletSpeed;dirz=(dirz/mag)*bulletSpeed;
+        var muzzleOffset=1.0,spawnX=camera.x+fx*muzzleOffset,spawnY=camera.y+fy*muzzleOffset,spawnZ=camera.height;
+        lastBulletDestroyedPos=null;lastBulletDestroyedReason=null;
+        lastBullet={x:spawnX,y:spawnY,z:spawnZ,dx:dirx,dy:diry,dz:dirz,distance:0,spawnAngle:camera.angle};
+        bullets.push(lastBullet);gun.magazine--;gun.lastShot=current;
+    }
+
+    if(input.reload&&!gun.isReloading&&gun.magazine<gun.maxMagazine){
+        gun.isReloading=true;setTimeout(()=>{gun.magazine=gun.maxMagazine;gun.isReloading=false;},gun.reloadTime);
+    }
+
+    bullets=bullets.filter(b=>{
+        b.x+=b.dx*deltaTime;b.y+=b.dy*deltaTime;b.z+=b.dz*deltaTime;b.distance+=Math.hypot(b.dx,b.dy,b.dz)*deltaTime;
+        var terrainHeight=getGroundHeight(b.x,b.y);
+        if(b.z<=terrainHeight){if(b===lastBullet){lastBullet=null;lastBulletDestroyedPos={x:b.x,y:b.y,z:b.z};lastBulletDestroyedReason="Terrain Collision";}return false;}
+        if(b.distance>=camera.distance){if(b===lastBullet){lastBullet=null;lastBulletDestroyedPos={x:b.x,y:b.y,z:b.z};lastBulletDestroyedReason="Too Far";}return false;}
+        return true;
+    });
+
+    document.getElementById('health').style.width=player.health+'%';
+    document.getElementById('bulletcount').innerText=`Ammo: ${gun.magazine}/${gun.maxMagazine}`;
+
+    document.getElementById('heartposition').innerText=`Pos: (${heartWorld.x}, ${heartWorld.y}, ${heartWorld.z})`;
+
+    document.getElementById('playerposition').innerText=`Pos: (${camera.x.toFixed(1)}, ${camera.y.toFixed(1)}, ${camera.height.toFixed(1)})`;
+
+    document.getElementById('playerrotation').innerText=`Rot: ${(camera.angle*180/Math.PI).toFixed(1)}°, ${(camera.horizon*90/500).toFixed(1)}°`;
+    document.getElementById('lastbulletpos').innerText=lastBullet?`Bullet: (${lastBullet.x.toFixed(1)}, ${lastBullet.y.toFixed(1)}, ${lastBullet.z.toFixed(1)})`:`Bullet: None`;
+    document.getElementById('lastbulletdestroyedpos').innerText=lastBulletDestroyedPos?`Destroyed Pos: (${lastBulletDestroyedPos.x.toFixed(1)}, ${lastBulletDestroyedPos.y.toFixed(1)}, ${lastBulletDestroyedPos.z.toFixed(1)})`:`Destroyed Pos: None`;
+    document.getElementById('lastbulletdestroyedreason').innerText=lastBulletDestroyedReason?`Destroyed: ${lastBulletDestroyedReason}`:`Destroyed: None`;
+    time=current;
+}
+
+function DetectKeysDown(e){switch(e.keyCode){case 87:input.forward=true;break;case 83:input.backward=true;break;case 65:input.left=true;break;case 68:input.right=true;break;case 32:input.jump=true;break;case 16:input.sprint=true;break;case 67:input.crouch=true;break;case 82:input.reload=true;break;}if(!updaterunning){time=Date.now();Draw();}}
+
+function DetectKeysUp(e){switch(e.keyCode){case 87:input.forward=false;break;case 83:input.backward=false;break;case 65:input.left=false;break;case 68:input.right=false;break;case 32:input.jump=false;break;case 16:input.sprint=false;break;case 67:input.crouch=false;break;case 82:input.reload=false;break;}}
+
+function DetectMouseDown(e){if(e.button===0)input.shoot=true;}
+function DetectMouseUp(e){if(e.button===0)input.shoot=false;}
+function DetectMouseMove(e){camera.angle=(camera.angle-e.movementX*0.002)%(2*Math.PI);if(camera.angle<0)camera.angle+=2*Math.PI;camera.horizon=Math.max(-400,Math.min(600,camera.horizon-e.movementY*0.2));}
+
+function DrawCircle(x,y,r,col){
+    var buf32=screendata.buf32,sw=screendata.canvas.width,sh=screendata.canvas.height;
+    for(var i=-r;i<=r;i++){for(var j=-r;j<=r;j++){if(i*i+j*j<=r*r){var px=x+i,py=y+j;if(px>=0&&px<sw&&py>=0&&py<sh)buf32[(py*sw+px)|0]=col;}}}
+}
+
+function DrawBackground(){
+    var buf32=screendata.buf32,len=buf32.length,bg=screendata.backgroundcolor;
+    screendata.depthBuffer.fill(Infinity);
+    for(var i=0;i<len;i++)buf32[i]=bg;
+}
+
+function Flip(){screendata.imagedata.data.set(screendata.buf8);screendata.context.putImageData(screendata.imagedata,0,0);}
+
+function Render(){
+    var sw=screendata.canvas.width,sh=screendata.canvas.height,sinang=Math.sin(camera.angle),cosang=Math.cos(camera.angle),deltaz=1,depth=screendata.depthBuffer;
+    hiddeny.fill(sh);
+    for(var z=1;z<camera.distance;z+=deltaz){
+        var plx=-cosang*z-sinang*z,ply=sinang*z-cosang*z,prx=cosang*z-sinang*z,pry=-sinang*z-cosang*z,dx=(prx-plx)/sw,dy=(pry-ply)/sw;
+        plx+=camera.x;ply+=camera.y;var invz=240/z;
+        for(var i=0;i<sw;i++){
+            var mapoffset=((Math.floor(ply)&(map.width-1))<<map.shift)+(Math.floor(plx)&(map.height-1));
+            var heightonscreen=(camera.height-map.altitude[mapoffset])*invz+camera.horizon;
+            if(heightonscreen<hiddeny[i]){
+                for(var k=heightonscreen|0;k<hiddeny[i];k++){
+                    var idx=k*sw+i;
+                    if(z<depth[idx]){screendata.buf32[idx]=map.color[mapoffset];depth[idx]=z;}
+                }
+                hiddeny[i]=heightonscreen;
+            }
+            plx+=dx;ply+=dy;
+        }
+        if(z>1000)deltaz+=0.02;else deltaz+=0.005;
+    }
+
+    var pitch=horizonToPitchRad(camera.horizon-pitchOffset),sinYaw=Math.sin(camera.angle),cosYaw=Math.cos(camera.angle),
+        sinPitch=Math.sin(pitch),cosPitch=Math.cos(pitch),fx=-sinYaw*cosPitch,fy=-cosYaw*cosPitch,fz=sinPitch,rx=Math.cos(camera.angle),ry=-Math.sin(camera.angle),focal=240;
+
+    bullets.forEach(b=>{
+        var dx=b.x-camera.x,dy=b.y-camera.y,dz=b.z-camera.height,forward=dx*fx+dy*fy+dz*fz;if(forward<=0.1||forward>camera.distance)return;
+        var right=dx*rx+dy*ry,invz=focal/forward,screenX=right*invz+sw/2,screenY=(camera.height-b.z)*invz+camera.horizon;
+        if(screenX<-50||screenX>sw+50||screenY<-50||screenY>sh+50)return;
+        var t=Math.max(0,1-(forward/camera.distance));
+        var radius=Math.floor(2+Math.pow(t,2)*4);
+        if(radius<=1)return;
+        var bx=screenX|0,by=screenY|0;if(bx>=0&&bx<sw&&by>=0&&by<sh){if(forward<depth[by*sw+bx])DrawCircle(bx,by,radius,0xFFFFFF00);}
+    });
+
+    DrawHeart(screendata.canvas.width, screendata.canvas.height);
+}
+
+function Draw(timestamp){
+    updaterunning=true;
+    if(timestamp-lastFrameTime>=frameDuration){lastFrameTime=timestamp;UpdateCamera();DrawBackground();Render();Flip();frames++;}
+    requestAnimationFrame(Draw);
+}
+
+function DownloadImagesAsync(urls){
+    return new Promise(function(resolve){
+        var pending=urls.length,result=[];if(!pending){resolve([]);return;}
+        urls.forEach(function(url,i){var img=new Image();img.onload=function(){var tcv=document.createElement("canvas"),tcx=tcv.getContext("2d");tcv.width=map.width;tcv.height=map.height;tcx.drawImage(img,0,0,map.width,map.height);result[i]=tcx.getImageData(0,0,map.width,map.height).data;pending--;if(!pending)resolve(result);};img.src=url;});
+    });
+}
+
+function LoadMap(files){var f=files.split(";");DownloadImagesAsync(["maps/"+f[0]+".png","maps/"+f[1]+".png"]).then(OnLoadedImages);}
+
+
+function OnLoadedImages(result){
+    var datac=result[0],datah=result[1];
+    for(var i=0;i<map.width*map.height;i++){map.color[i]=0xFF000000|(datac[(i<<2)+2]<<16)|(datac[(i<<2)+1]<<8)|datac[(i<<2)+0];map.altitude[i]=datah[i<<2];}
+    Draw();
+    heartWorld.z = getGroundHeight(heartWorld.x, heartWorld.y) + 50; // lift it a bit above ground
+
+}
+
+function OnResizeWindow(){
+    screendata.canvas=document.getElementById('fullscreenCanvas');
+    var aspect=window.innerWidth/window.innerHeight;
+    screendata.canvas.width=window.innerWidth<800?window.innerWidth:800;
+    screendata.canvas.height=screendata.canvas.width/aspect;
+    if(screendata.canvas.getContext){
+        screendata.context=screendata.canvas.getContext('2d');
+        screendata.imagedata=screendata.context.createImageData(screendata.canvas.width,screendata.canvas.height);
+    }
+    screendata.bufarray=new ArrayBuffer(screendata.imagedata.width*screendata.imagedata.height*4);
+    screendata.buf8=new Uint8Array(screendata.bufarray);
+    screendata.buf32=new Uint32Array(screendata.bufarray);
+    screendata.depthBuffer=new Float32Array(screendata.canvas.width*screendata.canvas.height);
+    hiddeny=new Int32Array(screendata.canvas.width);
+    Draw();
+}
+
+
+
+function Init(){
+    for (var i=0; i<map.width*map.height; i++){ 
+        map.color[i]=0xFF007050; 
+        map.altitude[i]=0;
+    }
+
+    LoadMap("C1W;D1");
+    OnResizeWindow();
+
+    var canvas=document.getElementById("fullscreenCanvas");
+    window.onkeydown=DetectKeysDown;
+    window.onkeyup=DetectKeysUp;
+    canvas.onmousedown=DetectMouseDown;
+    canvas.onmouseup=DetectMouseUp;
+    window.onresize=OnResizeWindow;
+
+    canvas.requestPointerLock = canvas.requestPointerLock || canvas.mozRequestPointerLock;
+    canvas.onclick=function(){canvas.requestPointerLock();};
+    document.addEventListener('pointerlockchange',function(){
+        if(document.pointerLockElement===canvas||document.mozPointerLockElement===canvas){
+            canvas.onmousemove=DetectMouseMove;
+        }else{
+            canvas.onmousemove=null;
+        }
+    },false);
+
+    setInterval(function(){
+        var current=Date.now();
+        document.getElementById('fps').innerText=(frames/(current-timelastframe)*1000).toFixed(1)+" fps";
+        frames=0;
+        timelastframe=current;
+    },2000);
+
+    // ✅ only start drawing once heart is loaded
+    heartImage.onload = function () {
+        heartLoaded = true;
+        console.log("Heart ready, starting draw loop");
+        Draw();
+    };
+}
+
+Init();
+</script>
+</body>
+</html>
