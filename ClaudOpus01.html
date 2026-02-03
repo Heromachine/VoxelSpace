@@ -108,8 +108,8 @@
 
   <!-- Camera Tab -->
   <div class="tab-content" id="tab-camera" style="padding: 10px;">
-    <label for="fov">FOV: <span id="fov-value">50</span></label><br>
-    <input type="range" id="fov" min="10" max="120" value="50" style="width:100%;"><br>
+    <label for="fov">Focal Length: <span id="fov-value">300</span></label><br>
+    <input type="range" id="fov" min="100" max="800" value="300" style="width:100%;"><br>
 
     <label for="pitchOffset">Pitch Offset: <span id="pitchOffset-value">250</span></label><br>
     <input type="range" id="pitchOffset" min="0" max="500" value="250" style="width:100%;"><br>
@@ -1569,7 +1569,9 @@ function DrawMinimap(){
     // Draw player as triangle pointing in look direction
     var pcx = cx + size/2;  // player center on minimap
     var pcy = cy + size/2;
-    var playerWorldSize = 3;  // player size in world units
+    // Human proportions: shoulder width ≈ 1/5 of total height, eye height ≈ 93% of total
+    var totalPlayerHeight = playerHeightOffset / 0.93;
+    var playerWorldSize = totalPlayerHeight / 5;  // shoulder width in world units
     var triSize = Math.max(4, playerWorldSize * scale);  // scale to world units, min 4px
     var angle = camera.angle;
 
@@ -1591,15 +1593,17 @@ function DrawMinimap(){
 
     ctx.restore();
 
-    // Draw FOV cone (scaled to world units)
-    var fovRange = 30 * scale;  // 30 world units
+    // Draw FOV cone (scaled to actual camera horizontal FOV)
+    var hFov = DisplayConfig.fov.current * Math.PI / 180;  // horizontal FOV in radians
+    var fovConeLength = 30 * scale;  // 30 world units range
+    var fovHalfWidth = Math.tan(hFov / 2) * fovConeLength;  // half-width at end of cone
     ctx.save();
     ctx.translate(pcx, pcy);
     ctx.rotate(-angle);
     ctx.beginPath();
     ctx.moveTo(0, 0);
-    ctx.lineTo(-fovRange * 0.5, -fovRange);
-    ctx.lineTo(fovRange * 0.5, -fovRange);
+    ctx.lineTo(-fovHalfWidth, -fovConeLength);
+    ctx.lineTo(fovHalfWidth, -fovConeLength);
     ctx.closePath();
     ctx.fillStyle = 'rgba(255,255,0,0.2)';
     ctx.fill();
@@ -1728,9 +1732,9 @@ function DrawSideView(ctx){
     var sx = screendata.canvas.width - width - margin;  // top-right, below main minimap
     var sy = margin + Math.floor(210 * mmScale); // below the square minimap
 
-    var rangeForward = sideViewZoomed ? 40 : 300;  // world units to show forward
-    var rangeBack = sideViewZoomed ? 10 : 50;      // world units to show behind
-    var heightRange = sideViewZoomed ? 40 : 150;   // world units of height to show
+    var rangeForward = sideViewZoomed ? 20 : 300;  // world units to show forward
+    var rangeBack = sideViewZoomed ? 5 : 50;       // world units to show behind
+    var heightRange = sideViewZoomed ? 20 : 150;   // world units of height to show
 
     // Background
     ctx.fillStyle = 'rgba(0,0,0,0.8)';
@@ -1744,8 +1748,8 @@ function DrawSideView(ctx){
     var fy = -Math.cos(camera.angle);
 
     // Find min/max terrain height in view for scaling
-    var minH = camera.height - (sideViewZoomed ? 20 : 50);
-    var maxH = camera.height + (sideViewZoomed ? 20 : 100);
+    var minH = camera.height - (sideViewZoomed ? 10 : 50);
+    var maxH = camera.height + (sideViewZoomed ? 10 : 100);
 
     // Calculate scale factors (pixels per world unit)
     var scaleX = width / (rangeForward + rangeBack);
@@ -1796,26 +1800,109 @@ function DrawSideView(ctx){
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Draw camera/player as yellow circle (scaled to world units)
-    var playerHeadSize = 2;  // head is ~2 world units diameter
-    var headRadius = Math.max(3, playerHeadSize * scaleY / 2);
-    var camPos = toScreen(0, camera.height);
+    // Draw player with proper human proportions
+    // Human proportions: total height, head = 1/8, torso = 3/8, legs = 4/8
+    var totalPlayerHeight = playerHeightOffset / 0.93;
+    var headDiameter = totalPlayerHeight / 8;
+    var torsoHeight = totalPlayerHeight * 3 / 8;
+    var torsoWidth = totalPlayerHeight / 5;  // shoulder width
+    var legLength = totalPlayerHeight * 4 / 8;
+
+    // Calculate world Z positions (camera.height = eye level, eyes are ~40% down from head top)
+    var headTopZ = camera.height + headDiameter * 0.4;
+    var headBottomZ = camera.height - headDiameter * 0.6;  // chin/neck
+    var torsoBottomZ = headBottomZ - torsoHeight;  // waist
+    var feetZ = torsoBottomZ - legLength;  // feet position (moves with player)
+
+    // Convert to screen coordinates
+    var headCenter = toScreen(0, camera.height);
+    var headRadius = Math.max(3, headDiameter * scaleY / 2);
+    var torsoTop = toScreen(0, headBottomZ);
+    var torsoBottom = toScreen(0, torsoBottomZ);
+    var feetPos = toScreen(0, feetZ);
+    var torsoWidthPx = Math.max(4, torsoWidth * scaleX);
+
+    // Draw head (yellow circle)
     ctx.beginPath();
-    ctx.arc(camPos.x, camPos.y, headRadius, 0, Math.PI * 2);
+    ctx.arc(headCenter.x, headCenter.y, headRadius, 0, Math.PI * 2);
     ctx.fillStyle = 'yellow';
     ctx.fill();
     ctx.strokeStyle = 'black';
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Draw player body (line from ground to camera) - width scaled
-    var bodyWidth = Math.max(2, 1 * scaleX);  // 1 world unit wide
-    ctx.beginPath();
-    ctx.moveTo(camPos.x, camPos.y);
-    ctx.lineTo(groundLine.x, groundLine.y);
+    // Draw torso (yellow rectangle attached to bottom of head)
+    // Screen Y is inverted: higher world Z = lower screen Y, so torsoBottom.y > torsoTop.y
+    var torsoHeightPx = torsoBottom.y - torsoTop.y;
+    ctx.fillStyle = 'yellow';
+    ctx.fillRect(torsoTop.x - torsoWidthPx/2, torsoTop.y, torsoWidthPx, torsoHeightPx);
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(torsoTop.x - torsoWidthPx/2, torsoTop.y, torsoWidthPx, torsoHeightPx);
+
+    // Draw legs (two lines from waist to feet - fixed length, moves with player)
+    var legWidth = Math.max(1, torsoWidthPx / 4);
+    var legSpacing = torsoWidthPx / 3;
     ctx.strokeStyle = 'yellow';
-    ctx.lineWidth = bodyWidth;
+    ctx.lineWidth = legWidth;
+    // Left leg
+    ctx.beginPath();
+    ctx.moveTo(torsoBottom.x - legSpacing/2, torsoBottom.y);
+    ctx.lineTo(feetPos.x - legSpacing/2, feetPos.y);
     ctx.stroke();
+    // Right leg
+    ctx.beginPath();
+    ctx.moveTo(torsoBottom.x + legSpacing/2, torsoBottom.y);
+    ctx.lineTo(feetPos.x + legSpacing/2, feetPos.y);
+    ctx.stroke();
+
+    // Draw max jump height indicator (green line from feet to max jump apex)
+    // Physics: max height = v²/(2g), with gravity ~0.5 and typical deltaTime, roughly jumpStrength * 1.2
+    var maxJumpFeetZ = rawGroundAtCam + player.jumpMaxStrength * 1.2;  // max height feet can reach
+    var jumpApex = toScreen(0, maxJumpFeetZ);
+    // Vertical line from current feet to max jump feet position
+    ctx.beginPath();
+    ctx.moveTo(feetPos.x, feetPos.y);
+    ctx.lineTo(jumpApex.x, jumpApex.y);
+    ctx.strokeStyle = '#00ff88';  // light green (distinct from cyan gun)
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // Horizontal tick at jump apex
+    var tickWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(jumpApex.x - tickWidth, jumpApex.y);
+    ctx.lineTo(jumpApex.x + tickWidth, jumpApex.y);
+    ctx.strokeStyle = '#00ff88';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Draw vertical FOV cone (same as overhead view's horizontal cone)
+    // Calculate actual vertical FOV from aspect ratio (16:9) and horizontal FOV
+    var hFov = DisplayConfig.fov.current * Math.PI / 180;  // horizontal FOV in radians
+    var aspectRatio = DisplayConfig.resolution.aspectRatio;
+    var vFov = 2 * Math.atan(Math.tan(hFov / 2) / aspectRatio);  // vertical FOV in radians
+
+    var pitch = horizonToPitchRad(camera.horizon - pitchOffset);
+    var fovConeRange = 30;  // world units for cone length (matches overhead view)
+
+    // Calculate the top and bottom edges of the FOV cone
+    var topAngle = pitch + vFov / 2;
+    var bottomAngle = pitch - vFov / 2;
+
+    var topEndZ = camera.height + Math.tan(topAngle) * fovConeRange;
+    var bottomEndZ = camera.height + Math.tan(bottomAngle) * fovConeRange;
+
+    var coneStart = toScreen(0, camera.height);
+    var coneTopEnd = toScreen(fovConeRange, topEndZ);
+    var coneBottomEnd = toScreen(fovConeRange, bottomEndZ);
+
+    ctx.beginPath();
+    ctx.moveTo(coneStart.x, coneStart.y);
+    ctx.lineTo(coneTopEnd.x, coneTopEnd.y);
+    ctx.lineTo(coneBottomEnd.x, coneBottomEnd.y);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(255,255,0,0.2)';
+    ctx.fill();
 
     // Draw bullets as red dots with direction lines (scaled to world units)
     var bulletWorldSize = bulletSize * 2;  // bullet diameter in world units
@@ -1959,7 +2046,7 @@ function DrawSideView(ctx){
 function DrawMinimapLegend(ctx){
     var mmScale = uiScale.minimap;
     var width = Math.floor(200 * mmScale);
-    var height = Math.floor(58 * mmScale);
+    var height = Math.floor(72 * mmScale);  // increased for 4 rows
     var margin = Math.floor(10 * mmScale);
     var lx = screendata.canvas.width - width - margin;
     var ly = margin + Math.floor((210 + 80 + 5) * mmScale);  // below side view (scaled)
@@ -1994,6 +2081,9 @@ function DrawMinimapLegend(ctx){
     ctx.fillText('●spawn', col1, row3);
     ctx.fillStyle = 'rgba(0,100,255,1)';
     ctx.fillText('—view', col2, row3);
+
+    ctx.fillStyle = '#00ff88';
+    ctx.fillText('|jump', col1, row4);
 }
 
 // Render ground weapons as floating 3D icons
@@ -2314,6 +2404,26 @@ function Init(){
         else{canvas.onmousemove=null;}
     },false);
     setInterval(function(){var current=Date.now();document.getElementById('debug-fps').innerText=(frames/(current-timelastframe)*1000).toFixed(1)+" fps";frames=0;timelastframe=current;},2000);
+
+    // Camera FOV slider (focal length - higher = narrower FOV)
+    document.getElementById('fov').addEventListener('input', function(e){
+        camera.baseFocalLength = parseInt(e.target.value);
+        camera.focalLength = camera.baseFocalLength;
+        document.getElementById('fov-value').innerText = camera.baseFocalLength;
+    });
+
+    // Pitch offset slider
+    document.getElementById('pitchOffset').addEventListener('input', function(e){
+        pitchOffset = parseInt(e.target.value);
+        document.getElementById('pitchOffset-value').innerText = pitchOffset;
+    });
+
+    // Target FPS slider
+    document.getElementById('targetFPS').addEventListener('input', function(e){
+        targetFPS = parseInt(e.target.value);
+        frameDuration = 1000 / targetFPS;
+        document.getElementById('targetFPS-value').innerText = targetFPS;
+    });
 
     // Player height slider
     document.getElementById('playerHeight').addEventListener('input', function(e){
