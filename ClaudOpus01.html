@@ -104,6 +104,7 @@
     <button class="tab-btn" data-tab="gun" style="flex:1;padding:8px 4px;border:none;background:#333;color:#aaa;cursor:pointer;font-size:11px;">Gun</button>
     <button class="tab-btn" data-tab="barrel" style="flex:1;padding:8px 4px;border:none;background:#333;color:#aaa;cursor:pointer;font-size:11px;">Barrel</button>
     <button class="tab-btn" data-tab="ui" style="flex:1;padding:8px 4px;border:none;background:#333;color:#aaa;cursor:pointer;font-size:11px;">UI</button>
+    <button class="tab-btn" data-tab="gmd" style="flex:1;padding:8px 4px;border:none;background:#333;color:#aaa;cursor:pointer;font-size:11px;">GMD</button>
     <button class="tab-btn" data-tab="debug" style="flex:1;padding:8px 4px;border:none;background:#333;color:#aaa;cursor:pointer;font-size:11px;">Debug</button>
   </div>
 
@@ -244,6 +245,22 @@
 
     <label for="uiScaleWeaponUI">Weapon UI: <span id="uiScaleWeaponUI-value">1.0</span>x</label><br>
     <input type="range" id="uiScaleWeaponUI" min="0.5" max="2.0" step="0.1" value="1.0" style="width:100%;">
+  </div>
+
+  <!-- GMD (Gun Mechanics Debug) Tab -->
+  <div class="tab-content" id="tab-gmd" style="padding: 10px; display: none;">
+    <b style="font-size:11px; color:#00ff00;">Gun Mechanics Debug</b><br><br>
+    <label style="font-size:11px;"><input type="checkbox" id="showGMD" checked> Show debug overlay</label><br><br>
+    <label style="font-size:11px;"><input type="checkbox" id="showTestTarget" checked> Enable test target</label><br><br>
+
+    <b style="font-size:10px; color:#ffff00;">Target Controls</b><br>
+    <label for="targetDistance">Distance: <span id="targetDistance-value">25</span></label><br>
+    <input type="range" id="targetDistance" min="5" max="200" value="25" style="width:100%;"><br>
+
+    <label for="targetRadius">Radius: <span id="targetRadius-value">2.0</span></label><br>
+    <input type="range" id="targetRadius" min="0.5" max="10" step="0.5" value="2" style="width:100%;"><br>
+
+    <button id="resetHitCount" style="margin-top:8px;padding:4px 10px;background:#555;color:white;border:none;cursor:pointer;">Reset Hit/Miss Count</button>
   </div>
 
   <!-- Debug Tab -->
@@ -438,6 +455,7 @@ var player={health:100,isCrouching:false,moveSpeed:1.5,sprintMultiplier:2,
     hitscanDistance=50,    // Distance for instant hitscan (world units)
     ccdMaxDistance=500,    // Max distance for CCD bullets before despawn
     showHitRanges=true,    // Show hitscan/CCD radius circles on minimap
+    showGMD=true,          // Show Gun Mechanics Debug overlay
     minimapZoomed=false,   // Toggle between far (200) and close (50) range
     sideViewZoomed=false,  // Toggle side view zoom (close/far)
     // UI Scale settings
@@ -1887,7 +1905,7 @@ function RenderTestTarget() {
 
 // Draw gun mechanics debug info overlay
 function DrawGunDebugInfo() {
-    if (!testTarget.enabled) return;
+    if (!showGMD || !testTarget.enabled) return;
 
     var ctx = screendata.context;
     var x = 10;
@@ -3210,6 +3228,33 @@ function Init(){
     });
     document.getElementById('showHitRanges').addEventListener('change', function(e){
         showHitRanges = e.target.checked;
+    });
+
+    // GMD (Gun Mechanics Debug) controls
+    document.getElementById('showGMD').addEventListener('change', function(e){
+        showGMD = e.target.checked;
+    });
+    document.getElementById('showTestTarget').addEventListener('change', function(e){
+        testTarget.enabled = e.target.checked;
+    });
+    document.getElementById('targetDistance').addEventListener('input', function(e){
+        var dist = parseInt(e.target.value);
+        document.getElementById('targetDistance-value').innerText = dist;
+        // Reposition target at new distance
+        var fx = -Math.sin(camera.angle);
+        var fy = -Math.cos(camera.angle);
+        testTarget.x = camera.x + fx * dist;
+        testTarget.y = camera.y + fy * dist;
+        testTarget.z = camera.height;
+    });
+    document.getElementById('targetRadius').addEventListener('input', function(e){
+        testTarget.radius = parseFloat(e.target.value);
+        document.getElementById('targetRadius-value').innerText = testTarget.radius.toFixed(1);
+    });
+    document.getElementById('resetHitCount').addEventListener('click', function(){
+        testTarget.hits = 0;
+        testTarget.misses = 0;
+        testTarget.bulletHitPos = null;
     });
 
     // UI Scale sliders
