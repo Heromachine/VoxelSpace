@@ -17,12 +17,36 @@ var WeaponConfig = {
     // Weapon Definitions
     // ===================
     weapons: {
+        testgun: {
+            name: "Test Gun",
+            // Same size as pistol
+            lengthScale: 0.11,      // 11% of player height
+            widthScale: 0.02,       // Narrow profile
+            heightScale: 0.08,      // Grip height
+
+            // Accuracy - ZERO SPREAD for testing
+            hipSpread: 0,
+            adsSpread: 0,
+
+            // Visual representation
+            barrelLengthRatio: 0.5,
+            gripLengthRatio: 0.4,
+
+            // Icon display
+            iconColor: '#00FFFF',   // Cyan
+            iconOutline: '#00CCCC'
+        },
+
         pistol: {
             name: "Pistol",
             // Real: ~8 inches (Glock 17) vs 72 inch human = 0.11
             lengthScale: 0.11,      // 11% of player height
             widthScale: 0.02,       // Narrow profile
             heightScale: 0.08,      // Grip height
+
+            // Accuracy
+            hipSpread: 0.04,        // Tight hip fire spread
+            adsSpread: 0.01,        // Very accurate when aimed
 
             // Visual representation
             barrelLengthRatio: 0.5, // Barrel is 50% of total length
@@ -39,6 +63,10 @@ var WeaponConfig = {
             lengthScale: 0.46,      // 46% of player height
             widthScale: 0.03,       // Slightly wider than pistol
             heightScale: 0.12,      // With magazine
+
+            // Accuracy
+            hipSpread: 0.06,        // Moderate hip fire spread
+            adsSpread: 0.02,        // Good accuracy when aimed
 
             // Visual representation
             barrelLengthRatio: 0.45, // Barrel is 45% of total length
@@ -57,6 +85,10 @@ var WeaponConfig = {
             widthScale: 0.03,       // Similar to rifle
             heightScale: 0.10,      // Slimmer profile
 
+            // Accuracy
+            hipSpread: 0.10,        // Poor hip fire (long barrel)
+            adsSpread: 0.005,       // Extremely accurate when scoped
+
             // Visual representation
             barrelLengthRatio: 0.55, // Longer barrel
             stockLengthRatio: 0.30,  // Stock
@@ -74,6 +106,10 @@ var WeaponConfig = {
             widthScale: 0.04,       // Thicker barrel
             heightScale: 0.10,
 
+            // Accuracy
+            hipSpread: 0.15,        // Wide spread (pellets)
+            adsSpread: 0.10,        // Still wide when aimed
+
             // Visual representation
             barrelLengthRatio: 0.50,
             stockLengthRatio: 0.35,
@@ -89,6 +125,10 @@ var WeaponConfig = {
             lengthScale: 0.28,      // 28% of player height
             widthScale: 0.025,
             heightScale: 0.10,
+
+            // Accuracy
+            hipSpread: 0.05,        // Good hip fire (compact)
+            adsSpread: 0.025,       // Decent when aimed
 
             // Visual representation
             barrelLengthRatio: 0.35,
@@ -107,6 +147,10 @@ var WeaponConfig = {
             widthScale: 0.05,       // Bulkier
             heightScale: 0.14,      // Box magazine
 
+            // Accuracy
+            hipSpread: 0.08,        // Poor hip fire (heavy)
+            adsSpread: 0.04,        // Moderate when aimed
+
             // Visual representation
             barrelLengthRatio: 0.45,
             stockLengthRatio: 0.25,
@@ -123,6 +167,10 @@ var WeaponConfig = {
             lengthScale: 0.56,      // 56% of player height
             widthScale: 0.08,       // Wide tube
             heightScale: 0.08,
+
+            // Accuracy
+            hipSpread: 0.03,        // Rockets go straight
+            adsSpread: 0.01,        // Very accurate when aimed
 
             // Visual representation
             tubeDiameterRatio: 0.15, // Tube diameter relative to length
@@ -178,5 +226,21 @@ var WeaponConfig = {
     getWeaponScale: function(weaponType) {
         var weapon = this.weapons[weaponType];
         return weapon ? weapon.lengthScale : 0.2;
+    },
+
+    /**
+     * Get weapon spread values for accuracy calculations
+     * @param {string} weaponType - The weapon type key
+     * @returns {object} Object with hipSpread and adsSpread values
+     */
+    getWeaponSpread: function(weaponType) {
+        var weapon = this.weapons[weaponType];
+        if (!weapon) {
+            return { hipSpread: 0.08, adsSpread: 0.02 }; // Default fallback
+        }
+        return {
+            hipSpread: weapon.hipSpread,
+            adsSpread: weapon.adsSpread
+        };
     }
 };
