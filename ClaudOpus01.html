@@ -244,7 +244,15 @@
     <input type="range" id="uiScaleMinimap" min="0.5" max="2.0" step="0.1" value="1.0" style="width:100%;"><br>
 
     <label for="uiScaleWeaponUI">Weapon UI: <span id="uiScaleWeaponUI-value">1.0</span>x</label><br>
-    <input type="range" id="uiScaleWeaponUI" min="0.5" max="2.0" step="0.1" value="1.0" style="width:100%;">
+    <input type="range" id="uiScaleWeaponUI" min="0.5" max="2.0" step="0.1" value="1.0" style="width:100%;"><br>
+
+    <hr style="border-color:#555;margin:8px 0;">
+    <b style="font-size:10px;">Sniper Scope Mode:</b><br>
+    <div style="margin-top:5px;">
+      <button id="scopeModeForward" style="padding:4px 8px;background:#4CAF50;color:white;border:none;cursor:pointer;font-size:10px;">Forward Position</button>
+      <button id="scopeModeFocal" style="padding:4px 8px;background:#555;color:white;border:none;cursor:pointer;font-size:10px;">Focal Length</button>
+    </div>
+    <div id="scopeModeDesc" style="margin-top:5px;font-size:9px;color:#888;">Camera moves forward (may clip through walls)</div>
   </div>
 
   <!-- GMD (Gun Mechanics Debug) Tab -->
@@ -318,6 +326,8 @@
 <!-- Display Configuration -->
 <script src="config/displayConfig.js"></script>
 <script src="config/weaponConfig.js"></script>
+<script src="config/scopeForwardPosition.js"></script>
+<script src="config/scopeFocalLength.js"></script>
 
 <script>
 "use strict";
@@ -372,7 +382,8 @@ var player={health:100,isCrouching:false,moveSpeed:1.5,sprintMultiplier:2,
             fireMode: "auto",
             damage: 50,
             bulletSpeed: 15,
-            adsZoom: 1.5
+            adsZoom: 1.5,
+            useScope: true         // Has picture-in-picture scope for testing
         },
         rifle: {
             name: "Rifle",
@@ -414,14 +425,16 @@ var player={health:100,isCrouching:false,moveSpeed:1.5,sprintMultiplier:2,
             fireMode: "semi",
             damage: 100,
             bulletSpeed: 20,
-            adsZoom: 4.0           // 4x scope zoom
+            adsZoom: 4.0,          // 4x scope zoom (base)
+            useScope: true,        // Has picture-in-picture scope
+            ccdOnly: true          // No hitscan, CCD only for realistic bullet travel
         }
     },
 
     // Player's current weapons (2 slots)
     playerWeapons = [
-        { type: "rifle", ammo: 30, isReloading: false, lastShot: 0 },
-        { type: "testgun", ammo: Infinity, isReloading: false, lastShot: 0 }
+        { type: "testgun", ammo: Infinity, isReloading: false, lastShot: 0 },
+        { type: "sniper", ammo: 5, isReloading: false, lastShot: 0 }
     ],
     currentWeaponIndex = 0,  // Which weapon is active (0 or 1)
     prevSwapButton = false,  // For edge detection on Y button
@@ -458,6 +471,10 @@ var player={health:100,isCrouching:false,moveSpeed:1.5,sprintMultiplier:2,
     showGMD=true,          // Show Gun Mechanics Debug overlay
     minimapZoomed=false,   // Toggle between far (200) and close (50) range
     sideViewZoomed=false,  // Toggle side view zoom (close/far)
+    // Sniper scope mode - modular scope system
+    // Options: ScopeForwardPosition (camera ahead) or ScopeFocalLength (same pos, zoom FOV)
+    scopeMode = 'forward',  // 'forward' or 'focal'
+    activeScope = null,     // Will be set to ScopeForwardPosition or ScopeFocalLength
     // UI Scale settings
     uiScale={
         all: 1.0,
@@ -1375,22 +1392,28 @@ function UpdateCamera(){
     var isShooting = input.shoot || input.gpShoot;
     var isAiming = input.aimToggled;
 
-    // ADS - move camera forward instead of changing focal length
-    // Use adsZoom value to determine forward distance (higher zoom = more forward movement)
-    var adsForwardDistance = (currentWeapon.adsZoom - 1) * 30;  // e.g., 1.8x zoom = 24 units forward
-    var targetOffset = isAiming ? adsForwardDistance : 0;
-    camera.adsOffset += (targetOffset - camera.adsOffset) * 0.15;  // smooth transition
-
-    // Apply offset along look direction
+    // ADS handling - Camera 1 (main) stays normal, scope uses Camera 2
     var fx = -Math.sin(camera.angle);
     var fy = -Math.cos(camera.angle);
-    camera.baseX = camera.x - fx * camera.adsOffset;  // Remove old offset
-    camera.baseY = camera.y - fy * camera.adsOffset;
-    camera.x = camera.baseX + fx * camera.adsOffset;  // Apply new offset
-    camera.y = camera.baseY + fy * camera.adsOffset;
 
-    // Keep focal length constant (no vertical stretching)
+    // Update scope camera state (Camera 2 for PiP) - using modular scope system
+    if (activeScope) {
+        activeScope.updateCamera(isAiming, currentWeapon.useScope);
+    }
+
+    // Main camera (Camera 1) - normal ADS behavior, unchanged for scoped weapons
+    var adsForwardDistance = currentWeapon.useScope ? 0 : (currentWeapon.adsZoom - 1) * 30;
+    var targetOffset = isAiming && !currentWeapon.useScope ? adsForwardDistance : 0;
+    camera.adsOffset += (targetOffset - camera.adsOffset) * 0.15;
+
+    // Keep main camera focal length constant
     camera.focalLength = camera.baseFocalLength;
+
+    // Apply offset along look direction for main camera
+    camera.baseX = camera.x - fx * camera.adsOffset;
+    camera.baseY = camera.y - fy * camera.adsOffset;
+    camera.x = camera.baseX + fx * camera.adsOffset;
+    camera.y = camera.baseY + fy * camera.adsOffset;
 
     // Interpolate gun position between hip fire and ADS
     var targetLerp = isAiming ? 1 : 0;
@@ -1414,12 +1437,17 @@ function UpdateCamera(){
     // Update crosshair style based on ADS and current weapon
     var crosshair = document.getElementById('crosshair');
     if(crosshair){
-        if(isAiming){
+        // Hide crosshair when using scope (scope has its own reticle)
+        if(isAiming && currentWeapon.useScope){
+            crosshair.style.display = 'none';
+        } else if(isAiming){
+            crosshair.style.display = 'block';
             crosshair.style.borderColor = currentWeapon.color;
             crosshair.style.width = '6px';
             crosshair.style.height = '6px';
             crosshair.style.margin = '-3px 0 0 -3px';
         } else {
+            crosshair.style.display = 'block';
             crosshair.style.borderColor = 'white';
             crosshair.style.width = '10px';
             crosshair.style.height = '10px';
@@ -1493,8 +1521,9 @@ function UpdateCamera(){
         var rayDirZ = dirz / bulletSpeed;
 
         // Try hitscan first (for targets within hitscan range)
+        // Skip hitscan for weapons with ccdOnly flag (like sniper rifles)
         var hitscanHitPos = null;  // Will store hit position if hitscan succeeds
-        if (testTarget.enabled && hitscanDistance > 0) {
+        if (testTarget.enabled && hitscanDistance > 0 && !currentWeapon.ccdOnly) {
             // Ray-sphere intersection test
             // Ray origin: spawnX, spawnY, spawnZ
             // Ray direction: rayDirX, rayDirY, rayDirZ (normalized)
@@ -1979,6 +2008,43 @@ function DrawGunDebugInfo() {
     ctx.fillText('T = reposition target | G = toggle target', x, y);
 }
 
+// Render sniper scope - uses modular scope system
+// Scope modes: ScopeForwardPosition (camera ahead) or ScopeFocalLength (same pos, zoom FOV)
+function RenderSniperScope() {
+    if (!activeScope) return;
+
+    // Store main hiddeny reference for scope to restore
+    var mainHiddeny = hiddeny;
+
+    // Render functions to pass to scope module
+    var renderFuncs = {
+        DrawBackground: DrawBackground,
+        RenderCube: RenderCube,
+        Render: Render,
+        RenderItems: RenderItems,
+        RenderTestTarget: RenderTestTarget
+    };
+
+    // Call the active scope's render method
+    activeScope.render(screendata, camera, renderFuncs, mainHiddeny);
+}
+
+// Switch between scope modes
+function setScopeMode(mode) {
+    scopeMode = mode;
+    if (mode === 'forward') {
+        activeScope = ScopeForwardPosition;
+        document.getElementById('scopeModeForward').style.background = '#4CAF50';
+        document.getElementById('scopeModeFocal').style.background = '#555';
+        document.getElementById('scopeModeDesc').textContent = 'Camera moves forward (may clip through walls)';
+    } else {
+        activeScope = ScopeFocalLength;
+        document.getElementById('scopeModeForward').style.background = '#555';
+        document.getElementById('scopeModeFocal').style.background = '#4CAF50';
+        document.getElementById('scopeModeDesc').textContent = 'Same position, focal length zoom (no wall clipping)';
+    }
+}
+
 function Draw(timestamp){
     updaterunning=true;
     if(timestamp-lastFrameTime>=frameDuration){
@@ -1994,6 +2060,7 @@ function Draw(timestamp){
         RenderTestTarget();     // Test target circle
         RenderGroundWeapons();  // floating weapon pickups
         RenderGunViewmodel(screendata.context);  // first-person gun model
+        RenderSniperScope();  // sniper scope picture-in-picture (covers screen when active)
         DrawMinimap();  // overlay minimap PiP
         DrawWeaponUI(screendata.context);  // weapon selection UI
         DrawGunDebugInfo();     // Gun mechanics debug overlay
@@ -3022,8 +3089,20 @@ function Init(){
             this.style.color = 'white';
         });
     });
+    // Initialize scope mode (default to forward position)
+    setScopeMode('forward');
+
+    // Scope mode toggle buttons
+    document.getElementById('scopeModeForward').addEventListener('click', function() {
+        setScopeMode('forward');
+    });
+    document.getElementById('scopeModeFocal').addEventListener('click', function() {
+        setScopeMode('focal');
+    });
+
     window.onkeydown=DetectKeysDown;window.onkeyup=DetectKeysUp;
     canvas.onmousedown=DetectMouseDown;canvas.onmouseup=DetectMouseUp;
+    canvas.onwheel=DetectMouseWheel;  // Mouse wheel for sniper scope zoom
     canvas.oncontextmenu=function(e){e.preventDefault();return false;}; // Disable right-click menu
     window.onresize=OnResizeWindow;
     canvas.requestPointerLock=canvas.requestPointerLock||canvas.mozRequestPointerLock;
@@ -3362,7 +3441,9 @@ function Init(){
             hipScale: gunModel.hipScale,
             hipRotationX: gunModel.hipRotationX,
             hipRotationY: gunModel.hipRotationY,
-            hipRotationZ: gunModel.hipRotationZ
+            hipRotationZ: gunModel.hipRotationZ,
+            // Scope mode
+            scopeMode: scopeMode
         };
     }
 
@@ -3554,6 +3635,11 @@ function Init(){
         if (typeof updateGunSliders === 'function') {
             updateGunSliders();
         }
+
+        // Scope mode
+        if (s.scopeMode !== undefined) {
+            setScopeMode(s.scopeMode);
+        }
     }
 
     // Save button - saves to localStorage and memory
@@ -3715,6 +3801,15 @@ function DetectMouseUp(e){
     // ADS is now toggle, no action on mouse up
 }
 function DetectMouseMove(e){camera.angle=(camera.angle-e.movementX*0.002)%(2*Math.PI);if(camera.angle<0)camera.angle+=2*Math.PI;camera.horizon=Math.max(-400,Math.min(600,camera.horizon-e.movementY*0.2));}
+function DetectMouseWheel(e){
+    // Only handle zoom when ADS with sniper scope
+    var currentSlot = playerWeapons[currentWeaponIndex];
+    var currentWeapon = weapons[currentSlot.type];
+    if(input.aimToggled && currentWeapon.useScope && activeScope){
+        e.preventDefault();
+        activeScope.handleZoom(e.deltaY);
+    }
+}
 
 // ===============================
 Init();
