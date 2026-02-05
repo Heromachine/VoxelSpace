@@ -153,7 +153,14 @@
     <input type="range" id="jumpMin" min="1" max="10" value="3" style="width:100%;"><br>
 
     <label for="jumpMax">Jump Max: <span id="jumpMax-value">12</span></label><br>
-    <input type="range" id="jumpMax" min="5" max="30" value="12" style="width:100%;">
+    <input type="range" id="jumpMax" min="5" max="30" value="12" style="width:100%;"><br>
+
+    <hr style="border-color:#555;margin:8px 0;">
+    <label for="walkSpeed">Walk Speed: <span id="walkSpeed-value">1.5</span></label><br>
+    <input type="range" id="walkSpeed" min="0.5" max="5" step="0.1" value="1.5" style="width:100%;"><br>
+
+    <label for="sprintMultiplier">Sprint Multiplier: <span id="sprintMultiplier-value">2.0</span>x</label><br>
+    <input type="range" id="sprintMultiplier" min="1" max="5" step="0.1" value="2" style="width:100%;">
   </div>
 
   <!-- Bullet Tab -->
@@ -3471,6 +3478,18 @@ function Init(){
         document.getElementById('jumpMax-value').innerText = player.jumpMaxStrength;
     });
 
+    // Walk speed slider
+    document.getElementById('walkSpeed').addEventListener('input', function(e){
+        player.moveSpeed = parseFloat(e.target.value);
+        document.getElementById('walkSpeed-value').innerText = player.moveSpeed.toFixed(1);
+    });
+
+    // Sprint multiplier slider
+    document.getElementById('sprintMultiplier').addEventListener('input', function(e){
+        player.sprintMultiplier = parseFloat(e.target.value);
+        document.getElementById('sprintMultiplier-value').innerText = player.sprintMultiplier.toFixed(1);
+    });
+
     // Shared edit mode for Gun and Barrel tabs: 'ads' or 'hip'
     var editMode = 'ads';
 
@@ -3785,6 +3804,8 @@ function Init(){
             crouchHeight: parseInt(document.getElementById('crouchHeight').value),
             jumpMin: parseInt(document.getElementById('jumpMin').value),
             jumpMax: parseInt(document.getElementById('jumpMax').value),
+            walkSpeed: parseFloat(document.getElementById('walkSpeed').value),
+            sprintMultiplier: parseFloat(document.getElementById('sprintMultiplier').value),
             // Bullet
             bulletSize: parseFloat(document.getElementById('bulletSize').value),
             barrelDistance: parseInt(document.getElementById('barrelDistance').value),
@@ -3890,6 +3911,18 @@ function Init(){
         document.getElementById('jumpMax').value = s.jumpMax;
         document.getElementById('jumpMax-value').innerText = s.jumpMax;
         player.jumpMaxStrength = s.jumpMax;
+
+        // Walk speed and sprint multiplier
+        if (s.walkSpeed !== undefined) {
+            document.getElementById('walkSpeed').value = s.walkSpeed;
+            document.getElementById('walkSpeed-value').innerText = s.walkSpeed.toFixed(1);
+            player.moveSpeed = s.walkSpeed;
+        }
+        if (s.sprintMultiplier !== undefined) {
+            document.getElementById('sprintMultiplier').value = s.sprintMultiplier;
+            document.getElementById('sprintMultiplier-value').innerText = s.sprintMultiplier.toFixed(1);
+            player.sprintMultiplier = s.sprintMultiplier;
+        }
 
         // Bullet
         document.getElementById('bulletSize').value = s.bulletSize;
