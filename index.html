@@ -3427,12 +3427,12 @@ function Init(){
         document.getElementById('jumpMax-value').innerText = player.jumpMaxStrength;
     });
 
-    // Gun edit mode: 'ads' or 'hip'
-    var gunEditMode = 'ads';
+    // Shared edit mode for Gun and Barrel tabs: 'ads' or 'hip'
+    var editMode = 'ads';
 
-    // Function to update sliders to show current mode's values
+    // Function to update gun sliders to show current mode's values
     function updateGunSliders() {
-        var prefix = gunEditMode === 'ads' ? 'ads' : 'hip';
+        var prefix = editMode === 'ads' ? 'ads' : 'hip';
         document.getElementById('gunX').value = gunModel[prefix + 'OffsetX'];
         document.getElementById('gunX-value').innerText = gunModel[prefix + 'OffsetX'];
         document.getElementById('gunY').value = gunModel[prefix + 'OffsetY'];
@@ -3449,77 +3449,9 @@ function Init(){
         document.getElementById('gunRotZ-value').innerText = gunModel[prefix + 'RotationZ'];
     }
 
-    // Edit mode buttons
-    document.getElementById('editADS').addEventListener('click', function() {
-        gunEditMode = 'ads';
-        this.style.background = '#4CAF50';
-        document.getElementById('editHip').style.background = '#555';
-        document.getElementById('editModeLabel').innerText = '[Editing ADS]';
-        document.getElementById('editModeLabel').style.color = '#4CAF50';
-        updateGunSliders();
-    });
-    document.getElementById('editHip').addEventListener('click', function() {
-        gunEditMode = 'hip';
-        this.style.background = '#4CAF50';
-        document.getElementById('editADS').style.background = '#555';
-        document.getElementById('editModeLabel').innerText = '[Editing Hip]';
-        document.getElementById('editModeLabel').style.color = '#ff9800';
-        updateGunSliders();
-    });
-
-    // Gun viewmodel sliders - update based on current edit mode
-    document.getElementById('gunX').addEventListener('input', function(e){
-        var val = parseInt(e.target.value);
-        if (gunEditMode === 'ads') gunModel.adsOffsetX = val;
-        else gunModel.hipOffsetX = val;
-        document.getElementById('gunX-value').innerText = val;
-    });
-    document.getElementById('gunY').addEventListener('input', function(e){
-        var val = parseInt(e.target.value);
-        if (gunEditMode === 'ads') gunModel.adsOffsetY = val;
-        else gunModel.hipOffsetY = val;
-        document.getElementById('gunY-value').innerText = val;
-    });
-    document.getElementById('gunZ').addEventListener('input', function(e){
-        var val = parseInt(e.target.value);
-        if (gunEditMode === 'ads') gunModel.adsOffsetZ = val;
-        else gunModel.hipOffsetZ = val;
-        document.getElementById('gunZ-value').innerText = val;
-    });
-    document.getElementById('gunScale').addEventListener('input', function(e){
-        var val = parseInt(e.target.value);
-        if (gunEditMode === 'ads') gunModel.adsScale = val;
-        else gunModel.hipScale = val;
-        document.getElementById('gunScale-value').innerText = val;
-    });
-    document.getElementById('gunRotX').addEventListener('input', function(e){
-        var val = parseInt(e.target.value);
-        if (gunEditMode === 'ads') gunModel.adsRotationX = val;
-        else gunModel.hipRotationX = val;
-        document.getElementById('gunRotX-value').innerText = val;
-    });
-    document.getElementById('gunRotY').addEventListener('input', function(e){
-        var val = parseInt(e.target.value);
-        if (gunEditMode === 'ads') gunModel.adsRotationY = val;
-        else gunModel.hipRotationY = val;
-        document.getElementById('gunRotY-value').innerText = val;
-    });
-    document.getElementById('gunRotZ').addEventListener('input', function(e){
-        var val = parseInt(e.target.value);
-        if (gunEditMode === 'ads') gunModel.adsRotationZ = val;
-        else gunModel.hipRotationZ = val;
-        document.getElementById('gunRotZ-value').innerText = val;
-    });
-
-    // Initialize sliders with ADS values
-    updateGunSliders();
-
-    // Barrel edit mode: 'ads' or 'hip'
-    var barrelEditMode = 'ads';
-
     // Function to update barrel sliders to show current mode's values
     function updateBarrelSliders() {
-        var prefix = barrelEditMode === 'ads' ? 'ads' : 'hip';
+        var prefix = editMode === 'ads' ? 'ads' : 'hip';
         document.getElementById('barrelYaw').value = gunModel[prefix + 'BarrelYaw'];
         document.getElementById('barrelYaw-value').innerText = gunModel[prefix + 'BarrelYaw'];
         document.getElementById('barrelX').value = gunModel[prefix + 'BarrelX'];
@@ -3530,28 +3462,100 @@ function Init(){
         document.getElementById('barrelZ-value').innerText = gunModel[prefix + 'BarrelZ'].toFixed(2);
     }
 
-    // Barrel edit mode buttons
-    document.getElementById('barrelEditADS').addEventListener('click', function() {
-        barrelEditMode = 'ads';
-        this.style.background = '#4CAF50';
-        document.getElementById('barrelEditHip').style.background = '#555';
-        document.getElementById('barrelEditModeLabel').innerText = '[Editing ADS]';
-        document.getElementById('barrelEditModeLabel').style.color = '#4CAF50';
+    // Unified function to set edit mode for both Gun and Barrel tabs
+    function setEditMode(mode) {
+        editMode = mode;
+        var isAds = mode === 'ads';
+        var activeColor = '#4CAF50';
+        var inactiveColor = '#555';
+        var labelColor = isAds ? '#4CAF50' : '#ff9800';
+        var labelText = isAds ? '[Editing ADS]' : '[Editing Hip]';
+
+        // Update Gun Tab buttons
+        document.getElementById('editADS').style.background = isAds ? activeColor : inactiveColor;
+        document.getElementById('editHip').style.background = isAds ? inactiveColor : activeColor;
+        document.getElementById('editModeLabel').innerText = labelText;
+        document.getElementById('editModeLabel').style.color = labelColor;
+
+        // Update Barrel Tab buttons
+        document.getElementById('barrelEditADS').style.background = isAds ? activeColor : inactiveColor;
+        document.getElementById('barrelEditHip').style.background = isAds ? inactiveColor : activeColor;
+        document.getElementById('barrelEditModeLabel').innerText = labelText;
+        document.getElementById('barrelEditModeLabel').style.color = labelColor;
+
+        // Update sliders for both tabs
+        updateGunSliders();
         updateBarrelSliders();
+    }
+
+    // Gun Tab edit mode buttons
+    document.getElementById('editADS').addEventListener('click', function() {
+        setEditMode('ads');
+    });
+    document.getElementById('editHip').addEventListener('click', function() {
+        setEditMode('hip');
+    });
+
+    // Gun viewmodel sliders - update based on current edit mode
+    document.getElementById('gunX').addEventListener('input', function(e){
+        var val = parseInt(e.target.value);
+        if (editMode === 'ads') gunModel.adsOffsetX = val;
+        else gunModel.hipOffsetX = val;
+        document.getElementById('gunX-value').innerText = val;
+    });
+    document.getElementById('gunY').addEventListener('input', function(e){
+        var val = parseInt(e.target.value);
+        if (editMode === 'ads') gunModel.adsOffsetY = val;
+        else gunModel.hipOffsetY = val;
+        document.getElementById('gunY-value').innerText = val;
+    });
+    document.getElementById('gunZ').addEventListener('input', function(e){
+        var val = parseInt(e.target.value);
+        if (editMode === 'ads') gunModel.adsOffsetZ = val;
+        else gunModel.hipOffsetZ = val;
+        document.getElementById('gunZ-value').innerText = val;
+    });
+    document.getElementById('gunScale').addEventListener('input', function(e){
+        var val = parseInt(e.target.value);
+        if (editMode === 'ads') gunModel.adsScale = val;
+        else gunModel.hipScale = val;
+        document.getElementById('gunScale-value').innerText = val;
+    });
+    document.getElementById('gunRotX').addEventListener('input', function(e){
+        var val = parseInt(e.target.value);
+        if (editMode === 'ads') gunModel.adsRotationX = val;
+        else gunModel.hipRotationX = val;
+        document.getElementById('gunRotX-value').innerText = val;
+    });
+    document.getElementById('gunRotY').addEventListener('input', function(e){
+        var val = parseInt(e.target.value);
+        if (editMode === 'ads') gunModel.adsRotationY = val;
+        else gunModel.hipRotationY = val;
+        document.getElementById('gunRotY-value').innerText = val;
+    });
+    document.getElementById('gunRotZ').addEventListener('input', function(e){
+        var val = parseInt(e.target.value);
+        if (editMode === 'ads') gunModel.adsRotationZ = val;
+        else gunModel.hipRotationZ = val;
+        document.getElementById('gunRotZ-value').innerText = val;
+    });
+
+    // Initialize sliders with ADS values
+    updateGunSliders();
+    updateBarrelSliders();
+
+    // Barrel Tab edit mode buttons (use shared setEditMode)
+    document.getElementById('barrelEditADS').addEventListener('click', function() {
+        setEditMode('ads');
     });
     document.getElementById('barrelEditHip').addEventListener('click', function() {
-        barrelEditMode = 'hip';
-        this.style.background = '#4CAF50';
-        document.getElementById('barrelEditADS').style.background = '#555';
-        document.getElementById('barrelEditModeLabel').innerText = '[Editing Hip]';
-        document.getElementById('barrelEditModeLabel').style.color = '#ff9800';
-        updateBarrelSliders();
+        setEditMode('hip');
     });
 
     // Barrel yaw slider - update based on current edit mode
     document.getElementById('barrelYaw').addEventListener('input', function(e){
         var val = parseInt(e.target.value);
-        if (barrelEditMode === 'ads') gunModel.adsBarrelYaw = val;
+        if (editMode === 'ads') gunModel.adsBarrelYaw = val;
         else gunModel.hipBarrelYaw = val;
         document.getElementById('barrelYaw-value').innerText = val;
     });
@@ -3559,25 +3563,22 @@ function Init(){
     // Barrel position sliders - update based on current edit mode
     document.getElementById('barrelX').addEventListener('input', function(e){
         var val = parseFloat(e.target.value);
-        if (barrelEditMode === 'ads') gunModel.adsBarrelX = val;
+        if (editMode === 'ads') gunModel.adsBarrelX = val;
         else gunModel.hipBarrelX = val;
         document.getElementById('barrelX-value').innerText = val.toFixed(2);
     });
     document.getElementById('barrelY').addEventListener('input', function(e){
         var val = parseFloat(e.target.value);
-        if (barrelEditMode === 'ads') gunModel.adsBarrelY = val;
+        if (editMode === 'ads') gunModel.adsBarrelY = val;
         else gunModel.hipBarrelY = val;
         document.getElementById('barrelY-value').innerText = val.toFixed(2);
     });
     document.getElementById('barrelZ').addEventListener('input', function(e){
         var val = parseFloat(e.target.value);
-        if (barrelEditMode === 'ads') gunModel.adsBarrelZ = val;
+        if (editMode === 'ads') gunModel.adsBarrelZ = val;
         else gunModel.hipBarrelZ = val;
         document.getElementById('barrelZ-value').innerText = val.toFixed(2);
     });
-
-    // Initialize barrel sliders with ADS values
-    updateBarrelSliders();
 
     // Gun world offset sliders
     document.getElementById('gunWorldFwd').addEventListener('input', function(e){
