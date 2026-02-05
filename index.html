@@ -731,6 +731,19 @@ var player={health:100,isCrouching:false,moveSpeed:1.5,sprintMultiplier:2,
            swapWeapon:false,gpSwapWeapon:false,pickupWeapon:false,gpPickupWeapon:false,
            // ADS toggle state
            aimToggled:false,prevGpAim:false},
+    // Mobile touch controls
+    touchControls = {
+        enabled: false,        // Auto-enabled on touch devices
+        leftStick: { active: false, touchId: null, startX: 0, startY: 0, currentX: 0, currentY: 0 },
+        rightStick: { active: false, touchId: null, startX: 0, startY: 0, currentX: 0, currentY: 0 },
+        stickRadius: 50,       // Radius of joystick circle
+        stickDeadzone: 10,     // Deadzone before input registers
+        leftStickPos: { x: 100, y: 0 },   // Will be set based on screen size
+        rightStickPos: { x: 0, y: 0 },    // Will be set based on screen size
+        weaponSlots: [],       // Hitboxes for weapon icons [{x, y, w, h, index}]
+        pickupHitbox: null,    // Hitbox for pickup prompt
+        shootButton: { x: 0, y: 0, radius: 40, active: false, touchId: null }
+    },
     debugUIVisible=true,  // Toggle with Start button
     playerHeightOffset=30, // Player eye height above terrain (min 30)
     bulletVertOffset=0,    // Vertical offset for bullet spawn (negative = below eye level)
@@ -2360,6 +2373,7 @@ function Draw(timestamp){
     if(timestamp-lastFrameTime>=frameDuration){
         lastFrameTime=timestamp;
         pollGamepad();  // Check gamepad input
+        if (typeof updateTouchInput === 'function') updateTouchInput();  // Mobile touch input
         UpdateCamera();
         updateTargetMetrics();  // Update test target metrics
         DrawBackground();
@@ -2373,6 +2387,7 @@ function Draw(timestamp){
         RenderSniperScope();  // sniper scope picture-in-picture (covers screen when active)
         DrawMinimap();  // overlay minimap PiP
         DrawWeaponUI(screendata.context);  // weapon selection UI
+        DrawTouchControls(screendata.context);  // Mobile touch joysticks
         DrawGunDebugInfo();     // Gun mechanics debug overlay
         frames++;
     }
@@ -3159,11 +3174,17 @@ function DrawWeaponUI(ctx) {
     var startX = sw / 2 - iconSize - iconMargin;
     var startY = sh - iconSize - Math.floor(15 * wuScale);
 
+    // Clear weapon slot hitboxes for touch controls
+    touchControls.weaponSlots = [];
+
     for (var i = 0; i < 2; i++) {
         var slot = playerWeapons[i];
         var wep = weapons[slot.type];
         var x = startX + i * (iconSize + iconMargin * 2);
         var y = startY;
+
+        // Store hitbox for touch detection
+        touchControls.weaponSlots.push({ x: x, y: y, w: iconSize, h: iconSize, index: i });
 
         // Draw rounded rectangle background
         ctx.beginPath();
@@ -3195,16 +3216,29 @@ function DrawWeaponUI(ctx) {
         ctx.fillText(slot.ammo + '/' + wep.maxMagazine, x + iconSize/2, y + iconSize + 10);
     }
 
-    // Draw swap hint
+    // Draw swap hint (show tap hint on touch devices)
     ctx.fillStyle = 'rgba(255,255,255,0.7)';
     ctx.font = '10px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('Q to swap', sw/2, startY - 5);
+    ctx.fillText(touchControls.enabled ? 'Tap to swap' : 'Q to swap', sw/2, startY - 5);
+
+    // Clear pickup hitbox
+    touchControls.pickupHitbox = null;
 
     // Draw pickup prompt if near a ground weapon
     if (nearbyWeapon) {
         var gwep = weapons[nearbyWeapon.type];
         var promptY = sh / 2 + 50;
+        var pickupBoxWidth = iconSize + 100;
+        var pickupBoxHeight = iconSize + 30;
+
+        // Store hitbox for touch detection (larger area for easier tapping)
+        touchControls.pickupHitbox = {
+            x: sw/2 - pickupBoxWidth/2,
+            y: promptY - 10,
+            w: pickupBoxWidth,
+            h: pickupBoxHeight
+        };
 
         // Draw weapon icon
         ctx.beginPath();
@@ -3221,13 +3255,118 @@ function DrawWeaponUI(ctx) {
         ctx.textBaseline = 'middle';
         ctx.fillText(gwep.letter, sw/2, promptY + iconSize/2);
 
-        // Draw pickup text
+        // Draw pickup text (show tap hint on touch devices)
         ctx.fillStyle = 'yellow';
         ctx.font = '14px Arial';
-        ctx.fillText('Press E to pick up ' + gwep.name, sw/2, promptY + iconSize + 15);
+        var pickupText = touchControls.enabled ? 'Tap to pick up ' + gwep.name : 'Press E to pick up ' + gwep.name;
+        ctx.fillText(pickupText, sw/2, promptY + iconSize + 15);
     }
 
     ctx.textAlign = 'left';  // Reset
+}
+
+// Draw mobile touch controls (virtual joysticks and shoot button)
+function DrawTouchControls(ctx) {
+    if (!touchControls.enabled) return;
+
+    var sw = screendata.canvas.width;
+    var sh = screendata.canvas.height;
+    var r = touchControls.stickRadius;
+
+    // Update positions on resize
+    touchControls.leftStickPos = { x: r + 30, y: sh - r - 100 };
+    touchControls.rightStickPos = { x: sw - r - 30, y: sh - r - 100 };
+    touchControls.shootButton.x = sw - 80;
+    touchControls.shootButton.y = sh - 200;
+
+    ctx.globalAlpha = 0.4;
+
+    // Draw left stick (movement)
+    var lx = touchControls.leftStick.active ? touchControls.leftStick.startX : touchControls.leftStickPos.x;
+    var ly = touchControls.leftStick.active ? touchControls.leftStick.startY : touchControls.leftStickPos.y;
+
+    // Outer circle
+    ctx.beginPath();
+    ctx.arc(lx, ly, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(100, 100, 100, 0.3)';
+    ctx.fill();
+
+    // Inner stick position
+    var lsx = lx, lsy = ly;
+    if (touchControls.leftStick.active) {
+        var dx = touchControls.leftStick.currentX - touchControls.leftStick.startX;
+        var dy = touchControls.leftStick.currentY - touchControls.leftStick.startY;
+        var dist = Math.hypot(dx, dy);
+        if (dist > r) {
+            dx = dx / dist * r;
+            dy = dy / dist * r;
+        }
+        lsx = lx + dx;
+        lsy = ly + dy;
+    }
+    ctx.beginPath();
+    ctx.arc(lsx, lsy, r * 0.4, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.fill();
+
+    // Label
+    ctx.fillStyle = 'white';
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('MOVE', lx, ly - r - 10);
+
+    // Draw right stick (look)
+    var rx = touchControls.rightStick.active ? touchControls.rightStick.startX : touchControls.rightStickPos.x;
+    var ry = touchControls.rightStick.active ? touchControls.rightStick.startY : touchControls.rightStickPos.y;
+
+    // Outer circle
+    ctx.beginPath();
+    ctx.arc(rx, ry, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(100, 100, 100, 0.3)';
+    ctx.fill();
+
+    // Inner stick position
+    var rsx = rx, rsy = ry;
+    if (touchControls.rightStick.active) {
+        var dx = touchControls.rightStick.currentX - touchControls.rightStick.startX;
+        var dy = touchControls.rightStick.currentY - touchControls.rightStick.startY;
+        var dist = Math.hypot(dx, dy);
+        if (dist > r) {
+            dx = dx / dist * r;
+            dy = dy / dist * r;
+        }
+        rsx = rx + dx;
+        rsy = ry + dy;
+    }
+    ctx.beginPath();
+    ctx.arc(rsx, rsy, r * 0.4, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.fill();
+
+    // Label
+    ctx.fillText('LOOK', rx, ry - r - 10);
+
+    // Draw shoot button
+    var sb = touchControls.shootButton;
+    ctx.beginPath();
+    ctx.arc(sb.x, sb.y, sb.radius, 0, Math.PI * 2);
+    ctx.fillStyle = sb.active ? 'rgba(255, 0, 0, 0.6)' : 'rgba(255, 100, 100, 0.4)';
+    ctx.fill();
+    ctx.strokeStyle = 'red';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 14px Arial';
+    ctx.fillText('FIRE', sb.x, sb.y + 5);
+
+    ctx.globalAlpha = 1.0;
+    ctx.textAlign = 'left';
 }
 
 // ===============================
@@ -3426,6 +3565,172 @@ function Init(){
         if(document.pointerLockElement===canvas||document.mozPointerLockElement===canvas){canvas.onmousemove=DetectMouseMove;}
         else{canvas.onmousemove=null;}
     },false);
+
+    // Mobile touch controls
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+    canvas.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+
+    // Detect touch device and enable touch controls
+    function enableTouchControls() {
+        touchControls.enabled = true;
+        updateTouchControlPositions();
+    }
+
+    function updateTouchControlPositions() {
+        var sw = screendata.canvas.width;
+        var sh = screendata.canvas.height;
+        var r = touchControls.stickRadius;
+        touchControls.leftStickPos = { x: r + 30, y: sh - r - 100 };
+        touchControls.rightStickPos = { x: sw - r - 30, y: sh - r - 100 };
+        touchControls.shootButton = { x: sw - 80, y: sh - 200, radius: 40, active: false, touchId: null };
+    }
+
+    function handleTouchStart(e) {
+        e.preventDefault();
+        if (!touchControls.enabled) enableTouchControls();
+
+        for (var i = 0; i < e.changedTouches.length; i++) {
+            var touch = e.changedTouches[i];
+            var x = touch.clientX;
+            var y = touch.clientY;
+            var sw = screendata.canvas.width;
+
+            // Check weapon slot touches
+            for (var j = 0; j < touchControls.weaponSlots.length; j++) {
+                var slot = touchControls.weaponSlots[j];
+                if (x >= slot.x && x <= slot.x + slot.w && y >= slot.y && y <= slot.y + slot.h) {
+                    if (slot.index !== currentWeaponIndex) {
+                        // Swap to this weapon
+                        currentWeaponIndex = slot.index;
+                    }
+                    return;
+                }
+            }
+
+            // Check pickup hitbox
+            if (touchControls.pickupHitbox && nearbyWeapon) {
+                var ph = touchControls.pickupHitbox;
+                if (x >= ph.x && x <= ph.x + ph.w && y >= ph.y && y <= ph.y + ph.h) {
+                    input.pickupWeapon = true;
+                    setTimeout(function() { input.pickupWeapon = false; }, 100);
+                    return;
+                }
+            }
+
+            // Check shoot button
+            var sb = touchControls.shootButton;
+            var distToShoot = Math.hypot(x - sb.x, y - sb.y);
+            if (distToShoot < sb.radius) {
+                sb.active = true;
+                sb.touchId = touch.identifier;
+                input.shoot = true;
+                continue;
+            }
+
+            // Left half = movement stick, Right half = look stick
+            if (x < sw / 2) {
+                if (!touchControls.leftStick.active) {
+                    touchControls.leftStick.active = true;
+                    touchControls.leftStick.touchId = touch.identifier;
+                    touchControls.leftStick.startX = x;
+                    touchControls.leftStick.startY = y;
+                    touchControls.leftStick.currentX = x;
+                    touchControls.leftStick.currentY = y;
+                }
+            } else {
+                if (!touchControls.rightStick.active) {
+                    touchControls.rightStick.active = true;
+                    touchControls.rightStick.touchId = touch.identifier;
+                    touchControls.rightStick.startX = x;
+                    touchControls.rightStick.startY = y;
+                    touchControls.rightStick.currentX = x;
+                    touchControls.rightStick.currentY = y;
+                }
+            }
+        }
+    }
+
+    function handleTouchMove(e) {
+        e.preventDefault();
+        for (var i = 0; i < e.changedTouches.length; i++) {
+            var touch = e.changedTouches[i];
+
+            if (touchControls.leftStick.active && touch.identifier === touchControls.leftStick.touchId) {
+                touchControls.leftStick.currentX = touch.clientX;
+                touchControls.leftStick.currentY = touch.clientY;
+            }
+            if (touchControls.rightStick.active && touch.identifier === touchControls.rightStick.touchId) {
+                touchControls.rightStick.currentX = touch.clientX;
+                touchControls.rightStick.currentY = touch.clientY;
+            }
+        }
+    }
+
+    function handleTouchEnd(e) {
+        for (var i = 0; i < e.changedTouches.length; i++) {
+            var touch = e.changedTouches[i];
+
+            if (touchControls.leftStick.touchId === touch.identifier) {
+                touchControls.leftStick.active = false;
+                touchControls.leftStick.touchId = null;
+                input.moveX = 0;
+                input.moveY = 0;
+            }
+            if (touchControls.rightStick.touchId === touch.identifier) {
+                touchControls.rightStick.active = false;
+                touchControls.rightStick.touchId = null;
+            }
+            if (touchControls.shootButton.touchId === touch.identifier) {
+                touchControls.shootButton.active = false;
+                touchControls.shootButton.touchId = null;
+                input.shoot = false;
+            }
+        }
+    }
+
+    // Update touch input each frame
+    function updateTouchInput() {
+        if (!touchControls.enabled) return;
+
+        var ls = touchControls.leftStick;
+        var rs = touchControls.rightStick;
+        var r = touchControls.stickRadius;
+        var dz = touchControls.stickDeadzone;
+
+        // Left stick - movement
+        if (ls.active) {
+            var dx = ls.currentX - ls.startX;
+            var dy = ls.currentY - ls.startY;
+            var dist = Math.hypot(dx, dy);
+            if (dist > dz) {
+                var norm = Math.min(dist, r) / r;
+                input.moveX = (dx / dist) * norm;
+                input.moveY = (dy / dist) * norm;
+            } else {
+                input.moveX = 0;
+                input.moveY = 0;
+            }
+        }
+
+        // Right stick - look
+        if (rs.active) {
+            var dx = rs.currentX - rs.startX;
+            var dy = rs.currentY - rs.startY;
+            var dist = Math.hypot(dx, dy);
+            if (dist > dz) {
+                var sensitivity = 0.003;
+                camera.angle += dx * sensitivity;
+                camera.pitch -= dy * sensitivity * 0.5;
+                camera.pitch = Math.max(-1.2, Math.min(1.2, camera.pitch));
+                // Reset start position for continuous look
+                rs.startX = rs.currentX;
+                rs.startY = rs.currentY;
+            }
+        }
+    }
+
     setInterval(function(){var current=Date.now();document.getElementById('debug-fps').innerText=(frames/(current-timelastframe)*1000).toFixed(1)+" fps";frames=0;timelastframe=current;},2000);
 
     // Camera FOV slider (focal length - higher = narrower FOV)
