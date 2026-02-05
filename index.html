@@ -107,7 +107,7 @@
 </head>
 <body>
 
-    <div id="controls" style="position: absolute; top: 50px; left: 10px; background: rgba(0, 0, 0, 0.85); color: white; padding: 0; width: 280px; border-radius: 5px; overflow: hidden; z-index: 100;">
+    <div id="controls" style="position: absolute; top: 50px; left: 10px; background: rgba(0, 0, 0, 0.85); color: white; padding: 0; width: 360px; border-radius: 5px; overflow: hidden; z-index: 100;">
   <!-- Panel Title -->
   <div style="background: #222; padding: 8px 10px; font-weight: bold; font-size: 13px; border-bottom: 1px solid #444;">Settings <span style="float:right; font-weight:normal; font-size:10px; color:#888;">[ESC] toggle</span></div>
   <!-- Tab buttons -->
@@ -288,6 +288,7 @@
     <b style="font-size:11px; color:#00ff00;">Gun Mechanics Debug</b><br><br>
     <label style="font-size:11px;"><input type="checkbox" id="showGMD" checked> Show debug overlay</label><br><br>
     <label style="font-size:11px;"><input type="checkbox" id="showTestTarget" checked> Enable test target</label><br><br>
+    <label style="font-size:11px;"><input type="checkbox" id="showMinimaps" checked> Show minimaps &amp; legend</label><br><br>
 
     <b style="font-size:10px; color:#ffff00;">Target Controls</b><br>
     <label for="targetDistance">Distance: <span id="targetDistance-value">25</span></label><br>
@@ -734,6 +735,7 @@ var player={health:100,isCrouching:false,moveSpeed:1.5,sprintMultiplier:2,
     ccdMaxDistance=500,    // Max distance for CCD bullets before despawn
     showHitRanges=true,    // Show hitscan/CCD radius circles on minimap
     showGMD=true,          // Show Gun Mechanics Debug overlay
+    showMinimaps=true,     // Show minimaps and legend overlays
     minimapZoomRange=200,  // Minimap zoom range in world units (10-300)
     sideViewZoomRange=300, // Side view zoom range in world units (10-500)
     // Sniper scope mode - modular scope system
@@ -2372,6 +2374,7 @@ function Draw(timestamp){
 
 // Minimap - top-down view with player triangle
 function DrawMinimap(){
+    if (!showMinimaps) return;  // Skip if minimaps disabled
     var ctx = screendata.context;
     var mmScale = uiScale.minimap;
     var size = Math.floor(200 * mmScale);  // minimap size in pixels (scaled)
@@ -3686,6 +3689,9 @@ function Init(){
     document.getElementById('showTestTarget').addEventListener('change', function(e){
         testTarget.enabled = e.target.checked;
     });
+    document.getElementById('showMinimaps').addEventListener('change', function(e){
+        showMinimaps = e.target.checked;
+    });
     document.getElementById('targetDistance').addEventListener('input', function(e){
         var dist = parseInt(e.target.value);
         document.getElementById('targetDistance-value').innerText = dist;
@@ -3847,6 +3853,7 @@ function Init(){
             // Debug/GMD settings
             showHitRanges: document.getElementById('showHitRanges').checked,
             showGMD: document.getElementById('showGMD').checked,
+            showMinimaps: document.getElementById('showMinimaps').checked,
             showTestTarget: document.getElementById('showTestTarget').checked,
             targetDistance: parseInt(document.getElementById('targetDistance').value),
             targetRadius: parseFloat(document.getElementById('targetRadius').value)
@@ -4102,6 +4109,10 @@ function Init(){
         if (s.showGMD !== undefined) {
             document.getElementById('showGMD').checked = s.showGMD;
             showGMD = s.showGMD;
+        }
+        if (s.showMinimaps !== undefined) {
+            document.getElementById('showMinimaps').checked = s.showMinimaps;
+            showMinimaps = s.showMinimaps;
         }
         if (s.showTestTarget !== undefined) {
             document.getElementById('showTestTarget').checked = s.showTestTarget;
