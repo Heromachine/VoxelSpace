@@ -1,0 +1,63 @@
+{
+  "resolution": {
+    "baseWidth": 800,
+    "baseHeight": 450,
+    "aspectRatio": 1.7777777777777777,
+    "maintainAspectRatio": true,
+    "renderScale": 1.0,
+    "currentPreset": "720p"
+  },
+  "display": {
+    "mode": "windowed",
+    "vsync": true,
+    "targetFPS": 60,
+    "showFPS": true,
+    "fullscreenOnStart": false
+  },
+  "graphics": {
+    "qualityPreset": "high",
+    "renderDistance": 800,
+    "terrainDetail": 1.0,
+    "shadows": "medium",
+    "antiAliasing": "none",
+    "textureQuality": "high",
+    "particleEffects": true,
+    "bulletTrails": true,
+    "muzzleFlash": true
+  },
+  "fov": {
+    "default": 90,
+    "min": 60,
+    "max": 120,
+    "current": 90
+  },
+  "ui": {
+    "hudScale": 1.0,
+    "minimapEnabled": true,
+    "minimapSize": 200,
+    "minimapOpacity": 0.8,
+    "crosshairEnabled": true,
+    "crosshairStyle": "dot",
+    "crosshairColor": "#00FF00",
+    "crosshairSize": 10,
+    "healthBarEnabled": true,
+    "healthBarPosition": "bottom-left",
+    "ammoCounterEnabled": true,
+    "ammoCounterPosition": "bottom-right",
+    "showDebugInfo": false
+  },
+  "color": {
+    "brightness": 1.0,
+    "contrast": 1.0,
+    "gamma": 1.0,
+    "saturation": 1.0
+  },
+  "performance": {
+    "dynamicResolution": false,
+    "dynamicResolutionTarget": 60,
+    "dynamicResolutionMin": 0.5,
+    "frameSmoothing": true,
+    "reducedInputLag": false,
+    "backgroundFPSLimit": 30
+  }
+}

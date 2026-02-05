@@ -1,47 +1,78 @@
 # VoxelSpace Development Notes
 
-## Critical Issue: Settings Save System (2026-02-04)
+## JSON Config System (2026-02-04)
 
-### Problem
+### Overview
 
-The "Save" button saves to browser `localStorage` instead of hard-coding values into the source.
+Settings are now stored in JSON files in the `data/` folder, following the pattern from FPS Game project. This solves the localStorage problem - JSON files are committed to the repo and work for all users.
 
-**Current Behavior:**
-- Save button stores settings in `localStorage` (key: `voxelSpaceSettings`)
-- Settings only persist in the same browser on the same machine
-- GitHub Pages visitors see default hard-coded values, not saved settings
-- This causes gun position/rotation mismatches between dev machine and production
+### File Structure
 
-**Intended Behavior:**
-- Save button should be a **development tool** that hard-codes values into the source
-- Settings panel is for development/tuning, NOT end-user preferences
-- Saved configurations should persist in the actual code for all users
+```
+VoxelSpace-master/
+├── data/                    # JSON config files (pure data)
+│   ├── settings.json        # Camera, player, bullet, UI settings
+│   ├── gunModel.json        # Gun positioning (ADS/Hip fire)
+│   ├── weapons.json         # Weapon definitions
+│   └── display.json         # Display/graphics settings
+├── modules/                 # JavaScript modules (have functions)
+│   ├── displayConfig.js     # Display config with helper functions
+│   ├── weaponConfig.js      # Weapon helpers (getWeaponLength, etc.)
+│   ├── scopeForwardPosition.js  # Forward position scope renderer
+│   └── scopeFocalLength.js  # Crop zoom scope renderer
+└── index.html               # Main game file with ConfigLoader
+```
 
-### Files and Locations
+### How It Works
 
-- **Default gun values:** `index.html` lines 677-707 (the `gunModel` object)
-- **Save button logic:** `index.html` lines 3661-3665 (localStorage save)
-- **Load logic:** `index.html` lines 3677-3690 (localStorage load on startup)
+1. **On startup:** `ConfigLoader.loadAll()` fetches JSON files from `data/`
+2. **Settings applied:** Gun model, weapons, etc. are configured from JSON
+3. **localStorage fallback:** If JSON fails, falls back to localStorage
+4. **Save button:** Saves to localStorage AND copies JSON to clipboard
 
-### Fix Instructions
+### Updating Settings
 
-1. **Extract current localStorage settings from this Mac's browser:**
-   - Open browser console on the running game
-   - Run: `console.log(JSON.stringify(JSON.parse(localStorage.getItem('voxelSpaceSettings')), null, 2))`
-   - Copy the output
+1. **In-game:** Adjust settings using the Settings panel
+2. **Click Save:** Settings saved to localStorage AND JSON copied to clipboard
+3. **Update files:** Paste clipboard content into:
+   - `data/settings.json` (camera, player, bullet settings)
+   - `data/gunModel.json` (gun positioning)
+4. **Commit:** Changes persist for all users via git
 
-2. **Update defaults in index.html lines 677-707** with the extracted values
+### Console Commands
 
-3. **Clear localStorage after updating** to verify hard-coded defaults work:
-   - Run: `localStorage.removeItem('voxelSpaceSettings')`
+```javascript
+// Clear localStorage settings
+clearVoxelSettings()
 
-4. **Fix the Save button** - change it to output copy-pasteable code instead of saving to localStorage
+// Reload JSON configs without page refresh
+reloadJsonConfigs()
+```
 
-### Settings That May Need Hard-Coding
+### JSON File Formats
 
-- Gun position (X, Y, Z offsets)
-- Gun scale
-- Gun rotation (X, Y, Z)
-- ADS vs Hip Fire mode settings
-- Barrel positioning and yaw
-- World offsets (forward, right, down)
+**settings.json:**
+```json
+{
+  "camera": { "fov": 90, "pitchOffset": 0, "targetFPS": 60 },
+  "player": { "playerHeight": 80, "normalHeight": 80, ... },
+  "bullet": { "bulletSize": 2.0, "barrelDistance": 5 },
+  "scope": { "mode": "crop" }
+}
+```
+
+**gunModel.json:**
+```json
+{
+  "ads": { "offsetX": 0, "offsetY": 100, "scale": 350, ... },
+  "hip": { "offsetX": 100, "offsetY": 50, "scale": 300, ... },
+  "barrel": { "x": 0.26, "y": 0.08, "z": 0.0, "distance": 5 },
+  "world": { "forward": 10, "right": 15, "down": 8 }
+}
+```
+
+---
+
+## Previous Issue (Resolved)
+
+The old system saved to `localStorage` only, which didn't persist across machines. This is now solved by the JSON config system above.

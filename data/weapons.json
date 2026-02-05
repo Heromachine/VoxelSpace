@@ -1,0 +1,101 @@
+{
+  "testgun": {
+    "name": "Test Gun",
+    "lengthScale": 0.11,
+    "widthScale": 0.02,
+    "heightScale": 0.08,
+    "hipSpread": 0,
+    "adsSpread": 0,
+    "barrelLengthRatio": 0.5,
+    "gripLengthRatio": 0.4,
+    "iconColor": "#00FFFF",
+    "iconOutline": "#00CCCC"
+  },
+  "pistol": {
+    "name": "Pistol",
+    "lengthScale": 0.11,
+    "widthScale": 0.02,
+    "heightScale": 0.08,
+    "hipSpread": 0.04,
+    "adsSpread": 0.01,
+    "barrelLengthRatio": 0.5,
+    "gripLengthRatio": 0.4,
+    "iconColor": "#808080",
+    "iconOutline": "#C0C0C0"
+  },
+  "rifle": {
+    "name": "Assault Rifle",
+    "lengthScale": 0.46,
+    "widthScale": 0.03,
+    "heightScale": 0.12,
+    "hipSpread": 0.06,
+    "adsSpread": 0.02,
+    "barrelLengthRatio": 0.45,
+    "stockLengthRatio": 0.3,
+    "gripLengthRatio": 0.15,
+    "iconColor": "#4B0082",
+    "iconOutline": "#8B00FF"
+  },
+  "sniper": {
+    "name": "Sniper Rifle",
+    "lengthScale": 0.60,
+    "widthScale": 0.03,
+    "heightScale": 0.10,
+    "hipSpread": 0.10,
+    "adsSpread": 0.005,
+    "barrelLengthRatio": 0.55,
+    "stockLengthRatio": 0.30,
+    "scopeScale": 0.08,
+    "iconColor": "#006400",
+    "iconOutline": "#228B22"
+  },
+  "shotgun": {
+    "name": "Shotgun",
+    "lengthScale": 0.56,
+    "widthScale": 0.04,
+    "heightScale": 0.10,
+    "hipSpread": 0.15,
+    "adsSpread": 0.10,
+    "barrelLengthRatio": 0.50,
+    "stockLengthRatio": 0.35,
+    "iconColor": "#8B4513",
+    "iconOutline": "#D2691E"
+  },
+  "smg": {
+    "name": "SMG",
+    "lengthScale": 0.28,
+    "widthScale": 0.025,
+    "heightScale": 0.10,
+    "hipSpread": 0.05,
+    "adsSpread": 0.025,
+    "barrelLengthRatio": 0.35,
+    "stockLengthRatio": 0.25,
+    "gripLengthRatio": 0.20,
+    "iconColor": "#2F4F4F",
+    "iconOutline": "#708090"
+  },
+  "lmg": {
+    "name": "LMG",
+    "lengthScale": 0.61,
+    "widthScale": 0.05,
+    "heightScale": 0.14,
+    "hipSpread": 0.08,
+    "adsSpread": 0.04,
+    "barrelLengthRatio": 0.45,
+    "stockLengthRatio": 0.25,
+    "boxMagScale": 0.12,
+    "iconColor": "#556B2F",
+    "iconOutline": "#6B8E23"
+  },
+  "launcher": {
+    "name": "Rocket Launcher",
+    "lengthScale": 0.56,
+    "widthScale": 0.08,
+    "heightScale": 0.08,
+    "hipSpread": 0.03,
+    "adsSpread": 0.01,
+    "tubeDiameterRatio": 0.15,
+    "iconColor": "#3d3d3d",
+    "iconOutline": "#5a5a5a"
+  }
+}

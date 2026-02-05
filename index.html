@@ -338,11 +338,11 @@
 <div id="bulletcount"></div>
 <div id="info">Keyboard: WASD move, Mouse look, LMB shoot, RMB toggle ADS, HOLD Space jump, Shift sprint, C crouch, R reload, Q swap weapon, E pickup | Gamepad: Left Stick move, Right Stick look, RT shoot, LT toggle ADS, HOLD LB jump, B crouch, X reload, Y swap weapon, L3/A sprint</div>
 
-<!-- Display Configuration -->
-<script src="config/displayConfig.js"></script>
-<script src="config/weaponConfig.js"></script>
-<script src="config/scopeForwardPosition.js"></script>
-<script src="config/scopeFocalLength.js"></script>
+<!-- Modules (JS with functions) -->
+<script src="modules/displayConfig.js"></script>
+<script src="modules/weaponConfig.js"></script>
+<script src="modules/scopeForwardPosition.js"></script>
+<script src="modules/scopeFocalLength.js"></script>
 
 <script>
 "use strict";
@@ -361,6 +361,176 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
         return this;
     };
 }
+
+// ===============================
+// JSON Config Loader
+// ===============================
+var ConfigLoader = {
+    loaded: false,
+    settings: null,
+    gunModel: null,
+    weapons: null,
+    display: null,
+
+    // Load all JSON configs
+    loadAll: async function() {
+        try {
+            const [settings, gunModelData, weapons, display] = await Promise.all([
+                fetch('data/settings.json').then(r => r.json()).catch(() => null),
+                fetch('data/gunModel.json').then(r => r.json()).catch(() => null),
+                fetch('data/weapons.json').then(r => r.json()).catch(() => null),
+                fetch('data/display.json').then(r => r.json()).catch(() => null)
+            ]);
+
+            this.settings = settings;
+            this.gunModel = gunModelData;
+            this.weapons = weapons;
+            this.display = display;
+            this.loaded = true;
+
+            console.log('JSON configs loaded from data/ folder');
+            return true;
+        } catch (error) {
+            console.log('Could not load JSON configs:', error);
+            return false;
+        }
+    },
+
+    // Apply loaded settings to game state
+    applyGunModel: function(gm) {
+        if (!this.gunModel || !gm) return;
+        var data = this.gunModel;
+
+        // ADS settings
+        if (data.ads) {
+            gm.adsOffsetX = data.ads.offsetX;
+            gm.adsOffsetY = data.ads.offsetY;
+            gm.adsOffsetZ = data.ads.offsetZ;
+            gm.adsScale = data.ads.scale;
+            gm.adsRotationX = data.ads.rotationX;
+            gm.adsRotationY = data.ads.rotationY;
+            gm.adsRotationZ = data.ads.rotationZ;
+        }
+
+        // Hip settings
+        if (data.hip) {
+            gm.hipOffsetX = data.hip.offsetX;
+            gm.hipOffsetY = data.hip.offsetY;
+            gm.hipOffsetZ = data.hip.offsetZ;
+            gm.hipScale = data.hip.scale;
+            gm.hipRotationX = data.hip.rotationX;
+            gm.hipRotationY = data.hip.rotationY;
+            gm.hipRotationZ = data.hip.rotationZ;
+        }
+
+        // Barrel settings
+        if (data.barrel) {
+            gm.barrelX = data.barrel.x;
+            gm.barrelY = data.barrel.y;
+            gm.barrelZ = data.barrel.z;
+            gm.barrelDistance = data.barrel.distance;
+            gm.barrelYaw = data.barrel.yaw;
+        }
+
+        // World settings
+        if (data.world) {
+            gm.worldForward = data.world.forward;
+            gm.worldRight = data.world.right;
+            gm.worldDown = data.world.down;
+        }
+
+        if (data.adsLerpSpeed) gm.adsLerpSpeed = data.adsLerpSpeed;
+
+        console.log('Applied gun model settings from JSON');
+    },
+
+    // Apply weapon data to WeaponConfig
+    applyWeapons: function() {
+        if (!this.weapons || typeof WeaponConfig === 'undefined') return;
+        WeaponConfig.weapons = this.weapons;
+        console.log('Applied weapons config from JSON');
+    },
+
+    // Generate JSON for export (for Save button)
+    exportSettings: function(gm) {
+        return {
+            settings: {
+                camera: {
+                    fov: camera.baseFocalLength,
+                    pitchOffset: typeof pitchOffset !== 'undefined' ? pitchOffset : 0,
+                    targetFPS: typeof targetFPS !== 'undefined' ? targetFPS : 60
+                },
+                player: {
+                    playerHeight: typeof playerHeightOffset !== 'undefined' ? playerHeightOffset : 80,
+                    normalHeight: typeof player !== 'undefined' ? player.normalHeight : 80,
+                    crouchHeight: typeof player !== 'undefined' ? player.crouchHeight : 40,
+                    jumpMin: typeof player !== 'undefined' ? player.jumpMinStrength : 10,
+                    jumpMax: typeof player !== 'undefined' ? player.jumpMaxStrength : 25
+                },
+                bullet: {
+                    bulletSize: typeof bulletSize !== 'undefined' ? bulletSize : 2.0,
+                    barrelDistance: gm.barrelDistance
+                },
+                scope: {
+                    mode: typeof scopeMode !== 'undefined' ? scopeMode : 'crop'
+                }
+            },
+            gunModel: {
+                ads: {
+                    offsetX: gm.adsOffsetX,
+                    offsetY: gm.adsOffsetY,
+                    offsetZ: gm.adsOffsetZ,
+                    scale: gm.adsScale,
+                    rotationX: gm.adsRotationX,
+                    rotationY: gm.adsRotationY,
+                    rotationZ: gm.adsRotationZ
+                },
+                hip: {
+                    offsetX: gm.hipOffsetX,
+                    offsetY: gm.hipOffsetY,
+                    offsetZ: gm.hipOffsetZ,
+                    scale: gm.hipScale,
+                    rotationX: gm.hipRotationX,
+                    rotationY: gm.hipRotationY,
+                    rotationZ: gm.hipRotationZ
+                },
+                barrel: {
+                    x: gm.barrelX,
+                    y: gm.barrelY,
+                    z: gm.barrelZ,
+                    distance: gm.barrelDistance,
+                    yaw: gm.barrelYaw
+                },
+                world: {
+                    forward: gm.worldForward,
+                    right: gm.worldRight,
+                    down: gm.worldDown
+                },
+                adsLerpSpeed: gm.adsLerpSpeed
+            }
+        };
+    },
+
+    // Copy JSON to clipboard for manual file update
+    copyToClipboard: function(gm) {
+        var exported = this.exportSettings(gm);
+        var jsonStr = JSON.stringify(exported, null, 2);
+
+        navigator.clipboard.writeText(jsonStr).then(function() {
+            console.log('Settings JSON copied to clipboard!');
+            console.log('Paste into data/settings.json and data/gunModel.json');
+        }).catch(function(err) {
+            console.error('Failed to copy:', err);
+            // Fallback: log to console
+            console.log('=== SETTINGS JSON ===');
+            console.log(JSON.stringify(exported.settings, null, 2));
+            console.log('=== GUN MODEL JSON ===');
+            console.log(JSON.stringify(exported.gunModel, null, 2));
+        });
+
+        return exported;
+    }
+};
 
 var camera = {
     x: 0, y: 0, height: 78, angle: 0, horizon: 100,
@@ -3657,12 +3827,18 @@ function Init(){
         }
     }
 
-    // Save button - saves to localStorage and memory
+    // Save button - saves to localStorage AND copies JSON to clipboard
     document.getElementById('saveSettings').addEventListener('click', function() {
         savedSettings = getAllSettings();
         localStorage.setItem('voxelSpaceSettings', JSON.stringify(savedSettings));
-        this.textContent = 'Saved!';
-        setTimeout(() => this.textContent = 'Save', 1000);
+
+        // Also export JSON for file update
+        var exported = ConfigLoader.copyToClipboard(gunModel);
+        console.log('Settings saved to localStorage AND copied to clipboard as JSON');
+        console.log('To persist: paste clipboard content into data/settings.json and data/gunModel.json');
+
+        this.textContent = 'Saved + Copied!';
+        setTimeout(() => this.textContent = 'Save', 2000);
     });
 
     // Reset button - restores last saved settings
@@ -3674,29 +3850,57 @@ function Init(){
         }
     });
 
-    // Load saved settings on startup
-    var stored = localStorage.getItem('voxelSpaceSettings');
-    if (stored) {
-        try {
-            savedSettings = JSON.parse(stored);
-            console.log('Loading saved settings:', savedSettings);
-            console.log('Gun rotation values - gunRotY:', savedSettings.gunRotY,
-                        'adsRotationY:', savedSettings.adsRotationY,
-                        'hipRotationY:', savedSettings.hipRotationY);
-            applySettings(savedSettings);
-            console.log('After apply - gunModel.adsRotationY:', gunModel.adsRotationY,
-                        'gunModel.hipRotationY:', gunModel.hipRotationY);
-        } catch(e) {
-            console.log('Could not load saved settings:', e);
+    // Load settings on startup - try JSON files first, then localStorage
+    ConfigLoader.loadAll().then(function(jsonLoaded) {
+        if (jsonLoaded && ConfigLoader.gunModel) {
+            // Apply JSON config (source of truth)
+            ConfigLoader.applyGunModel(gunModel);
+            ConfigLoader.applyWeapons();
+            console.log('Settings loaded from data/*.json files');
         }
-    }
+
+        // Also check localStorage for any UI-only settings not in JSON
+        var stored = localStorage.getItem('voxelSpaceSettings');
+        if (stored) {
+            try {
+                savedSettings = JSON.parse(stored);
+                console.log('Loading localStorage settings:', savedSettings);
+                // Only apply settings that aren't in JSON (localStorage as override)
+                if (!jsonLoaded) {
+                    applySettings(savedSettings);
+                    console.log('Applied all settings from localStorage (JSON not available)');
+                } else {
+                    // Apply only non-gun settings from localStorage
+                    if (savedSettings.scopeMode !== undefined) {
+                        setScopeMode(savedSettings.scopeMode);
+                    }
+                    console.log('Applied scope mode from localStorage');
+                }
+            } catch(e) {
+                console.log('Could not load saved settings:', e);
+            }
+        }
+    });
 
     // Debug: expose function to clear saved settings via console
     window.clearVoxelSettings = function() {
         localStorage.removeItem('voxelSpaceSettings');
-        console.log('Saved settings cleared. Refresh to use defaults.');
+        console.log('Saved settings cleared. Refresh to use defaults from JSON.');
     };
-    console.log('Tip: Run clearVoxelSettings() in console to reset all saved settings');
+
+    // Debug: expose function to reload JSON configs
+    window.reloadJsonConfigs = function() {
+        ConfigLoader.loadAll().then(function(loaded) {
+            if (loaded) {
+                ConfigLoader.applyGunModel(gunModel);
+                ConfigLoader.applyWeapons();
+                console.log('JSON configs reloaded and applied');
+            }
+        });
+    };
+    console.log('Tips:');
+    console.log('  - clearVoxelSettings() to reset localStorage');
+    console.log('  - reloadJsonConfigs() to reload from data/*.json');
 }
 // ===============================
 // Gamepad Support

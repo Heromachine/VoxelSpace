@@ -1,0 +1,29 @@
+{
+  "camera": {
+    "fov": 208,
+    "pitchOffset": 93,
+    "targetFPS": 82
+  },
+  "player": {
+    "playerHeight": 7,
+    "normalHeight": 56,
+    "crouchHeight": 24,
+    "jumpMin": 2,
+    "jumpMax": 7
+  },
+  "bullet": {
+    "bulletSize": 0.3,
+    "barrelDistance": 1
+  },
+  "uiScale": {
+    "all": 0.7,
+    "crosshair": 0.7,
+    "healthbar": 0.7,
+    "jumpbar": 0.7,
+    "minimap": 0.7,
+    "weaponUI": 0.7
+  },
+  "scope": {
+    "mode": "focal"
+  }
+}
