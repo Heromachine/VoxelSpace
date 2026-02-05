@@ -211,6 +211,13 @@
 
   <!-- Barrel Tab -->
   <div class="tab-content" id="tab-barrel" style="padding: 10px; display: none;">
+    <div style="margin-bottom:8px;">
+      <b style="font-size:10px;">Edit Position:</b>
+      <button id="barrelEditADS" style="padding:2px 8px;margin-left:5px;background:#4CAF50;color:white;border:none;cursor:pointer;">ADS</button>
+      <button id="barrelEditHip" style="padding:2px 8px;margin-left:5px;background:#555;color:white;border:none;cursor:pointer;">Hip</button>
+      <span id="barrelEditModeLabel" style="margin-left:10px;font-size:10px;color:#4CAF50;">[Editing ADS]</span>
+    </div>
+
     <label for="barrelYaw">Barrel Yaw: <span id="barrelYaw-value">0</span>°</label><br>
     <input type="range" id="barrelYaw" min="-45" max="45" value="0" style="width:100%;"><br>
 
@@ -429,13 +436,36 @@ var ConfigLoader = {
             gm.hipRotationZ = data.hip.rotationZ;
         }
 
-        // Barrel settings
+        // Barrel settings (support both old single format and new ads/hip format)
         if (data.barrel) {
-            gm.barrelX = data.barrel.x;
-            gm.barrelY = data.barrel.y;
-            gm.barrelZ = data.barrel.z;
+            // Check for new ADS/Hip barrel format
+            if (data.barrel.ads) {
+                gm.adsBarrelX = data.barrel.ads.x;
+                gm.adsBarrelY = data.barrel.ads.y;
+                gm.adsBarrelZ = data.barrel.ads.z;
+                gm.adsBarrelYaw = data.barrel.ads.yaw || 0;
+            } else {
+                // Old format - apply to ADS
+                gm.adsBarrelX = data.barrel.x;
+                gm.adsBarrelY = data.barrel.y;
+                gm.adsBarrelZ = data.barrel.z;
+                gm.adsBarrelYaw = data.barrel.yaw || 0;
+            }
+
+            if (data.barrel.hip) {
+                gm.hipBarrelX = data.barrel.hip.x;
+                gm.hipBarrelY = data.barrel.hip.y;
+                gm.hipBarrelZ = data.barrel.hip.z;
+                gm.hipBarrelYaw = data.barrel.hip.yaw || 0;
+            } else {
+                // Old format - use same as ADS for hip
+                gm.hipBarrelX = gm.adsBarrelX;
+                gm.hipBarrelY = gm.adsBarrelY;
+                gm.hipBarrelZ = gm.adsBarrelZ;
+                gm.hipBarrelYaw = gm.adsBarrelYaw;
+            }
+
             gm.barrelDistance = data.barrel.distance;
-            gm.barrelYaw = data.barrel.yaw;
         }
 
         // World settings
@@ -512,11 +542,19 @@ var ConfigLoader = {
                     rotationZ: gm.hipRotationZ
                 },
                 barrel: {
-                    x: gm.barrelX,
-                    y: gm.barrelY,
-                    z: gm.barrelZ,
-                    distance: gm.barrelDistance,
-                    yaw: gm.barrelYaw
+                    ads: {
+                        x: gm.adsBarrelX,
+                        y: gm.adsBarrelY,
+                        z: gm.adsBarrelZ,
+                        yaw: gm.adsBarrelYaw
+                    },
+                    hip: {
+                        x: gm.hipBarrelX,
+                        y: gm.hipBarrelY,
+                        z: gm.hipBarrelZ,
+                        yaw: gm.hipBarrelYaw
+                    },
+                    distance: gm.barrelDistance
                 },
                 world: {
                     forward: gm.worldForward,
@@ -898,11 +936,25 @@ var gunModel = {
     adsLerpSpeed: 0.15,  // how fast to transition
 
     // Barrel configuration (gun-relative: forward/up/right along gun direction)
+    // Current/interpolated values (updated each frame based on adsLerp)
     barrelX: 0.26,     // forward along gun barrel
     barrelY: 0.08,     // up from gun center
     barrelZ: 0.0,      // right from gun center
-    barrelDistance: 5, // world units in front of barrel to spawn bullet
     barrelYaw: 0,      // horizontal aim offset in degrees (left/right)
+
+    // ADS barrel settings
+    adsBarrelX: 0.26,
+    adsBarrelY: 0.08,
+    adsBarrelZ: 0.0,
+    adsBarrelYaw: 0,
+
+    // Hip barrel settings
+    hipBarrelX: 0.26,
+    hipBarrelY: 0.08,
+    hipBarrelZ: 0.0,
+    hipBarrelYaw: 0,
+
+    barrelDistance: 5, // world units in front of barrel to spawn bullet
 
     // World-space offset from camera (where gun is held)
     worldForward: 10,  // how far forward from camera
@@ -1632,6 +1684,12 @@ function UpdateCamera(){
     gunModel.rotationX = lerp(gunModel.hipRotationX, gunModel.adsRotationX, gunModel.adsLerp);
     gunModel.rotationY = lerp(gunModel.hipRotationY, gunModel.adsRotationY, gunModel.adsLerp);
     gunModel.rotationZ = lerp(gunModel.hipRotationZ, gunModel.adsRotationZ, gunModel.adsLerp);
+
+    // Update current barrel settings based on interpolation
+    gunModel.barrelX = lerp(gunModel.hipBarrelX, gunModel.adsBarrelX, gunModel.adsLerp);
+    gunModel.barrelY = lerp(gunModel.hipBarrelY, gunModel.adsBarrelY, gunModel.adsLerp);
+    gunModel.barrelZ = lerp(gunModel.hipBarrelZ, gunModel.adsBarrelZ, gunModel.adsLerp);
+    gunModel.barrelYaw = lerp(gunModel.hipBarrelYaw, gunModel.adsBarrelYaw, gunModel.adsLerp);
 
     // Update pivot mode based on ADS state
     gunModel.pivotMode = isAiming ? 'barrel' : 'grip';
@@ -3270,7 +3328,7 @@ function OnResizeWindow(){
 }
 function Init(){
     for(var i=0;i<map.width*map.height;i++){map.color[i]=0xFF007050;map.altitude[i]=0;}
-    LoadMap("C18W;D18");OnResizeWindow();  // Terrain map with water
+    LoadMap("CE;DE");OnResizeWindow();
     loadGunModel();  // Load first-person gun model
     // Note: Press T to position test target after map loads
     var canvas=document.getElementById("fullscreenCanvas");
@@ -3456,25 +3514,70 @@ function Init(){
     // Initialize sliders with ADS values
     updateGunSliders();
 
-    // Barrel yaw slider
-    document.getElementById('barrelYaw').addEventListener('input', function(e){
-        gunModel.barrelYaw = parseInt(e.target.value);
-        document.getElementById('barrelYaw-value').innerText = gunModel.barrelYaw;
+    // Barrel edit mode: 'ads' or 'hip'
+    var barrelEditMode = 'ads';
+
+    // Function to update barrel sliders to show current mode's values
+    function updateBarrelSliders() {
+        var prefix = barrelEditMode === 'ads' ? 'ads' : 'hip';
+        document.getElementById('barrelYaw').value = gunModel[prefix + 'BarrelYaw'];
+        document.getElementById('barrelYaw-value').innerText = gunModel[prefix + 'BarrelYaw'];
+        document.getElementById('barrelX').value = gunModel[prefix + 'BarrelX'];
+        document.getElementById('barrelX-value').innerText = gunModel[prefix + 'BarrelX'].toFixed(2);
+        document.getElementById('barrelY').value = gunModel[prefix + 'BarrelY'];
+        document.getElementById('barrelY-value').innerText = gunModel[prefix + 'BarrelY'].toFixed(2);
+        document.getElementById('barrelZ').value = gunModel[prefix + 'BarrelZ'];
+        document.getElementById('barrelZ-value').innerText = gunModel[prefix + 'BarrelZ'].toFixed(2);
+    }
+
+    // Barrel edit mode buttons
+    document.getElementById('barrelEditADS').addEventListener('click', function() {
+        barrelEditMode = 'ads';
+        this.style.background = '#4CAF50';
+        document.getElementById('barrelEditHip').style.background = '#555';
+        document.getElementById('barrelEditModeLabel').innerText = '[Editing ADS]';
+        document.getElementById('barrelEditModeLabel').style.color = '#4CAF50';
+        updateBarrelSliders();
+    });
+    document.getElementById('barrelEditHip').addEventListener('click', function() {
+        barrelEditMode = 'hip';
+        this.style.background = '#4CAF50';
+        document.getElementById('barrelEditADS').style.background = '#555';
+        document.getElementById('barrelEditModeLabel').innerText = '[Editing Hip]';
+        document.getElementById('barrelEditModeLabel').style.color = '#ff9800';
+        updateBarrelSliders();
     });
 
-    // Barrel position sliders
+    // Barrel yaw slider - update based on current edit mode
+    document.getElementById('barrelYaw').addEventListener('input', function(e){
+        var val = parseInt(e.target.value);
+        if (barrelEditMode === 'ads') gunModel.adsBarrelYaw = val;
+        else gunModel.hipBarrelYaw = val;
+        document.getElementById('barrelYaw-value').innerText = val;
+    });
+
+    // Barrel position sliders - update based on current edit mode
     document.getElementById('barrelX').addEventListener('input', function(e){
-        gunModel.barrelX = parseFloat(e.target.value);
-        document.getElementById('barrelX-value').innerText = gunModel.barrelX.toFixed(2);
+        var val = parseFloat(e.target.value);
+        if (barrelEditMode === 'ads') gunModel.adsBarrelX = val;
+        else gunModel.hipBarrelX = val;
+        document.getElementById('barrelX-value').innerText = val.toFixed(2);
     });
     document.getElementById('barrelY').addEventListener('input', function(e){
-        gunModel.barrelY = parseFloat(e.target.value);
-        document.getElementById('barrelY-value').innerText = gunModel.barrelY.toFixed(2);
+        var val = parseFloat(e.target.value);
+        if (barrelEditMode === 'ads') gunModel.adsBarrelY = val;
+        else gunModel.hipBarrelY = val;
+        document.getElementById('barrelY-value').innerText = val.toFixed(2);
     });
     document.getElementById('barrelZ').addEventListener('input', function(e){
-        gunModel.barrelZ = parseFloat(e.target.value);
-        document.getElementById('barrelZ-value').innerText = gunModel.barrelZ.toFixed(2);
+        var val = parseFloat(e.target.value);
+        if (barrelEditMode === 'ads') gunModel.adsBarrelZ = val;
+        else gunModel.hipBarrelZ = val;
+        document.getElementById('barrelZ-value').innerText = val.toFixed(2);
     });
+
+    // Initialize barrel sliders with ADS values
+    updateBarrelSliders();
 
     // Gun world offset sliders
     document.getElementById('gunWorldFwd').addEventListener('input', function(e){
@@ -3626,10 +3729,21 @@ function Init(){
             gunRotX: gunModel.adsRotationX,
             gunRotY: gunModel.adsRotationY,
             gunRotZ: gunModel.adsRotationZ,
-            barrelX: parseFloat(document.getElementById('barrelX').value),
-            barrelY: parseFloat(document.getElementById('barrelY').value),
-            barrelZ: parseFloat(document.getElementById('barrelZ').value),
-            barrelYaw: parseInt(document.getElementById('barrelYaw').value),
+            // Barrel (save ADS values as legacy barrelX/Y/Z for backward compatibility)
+            barrelX: gunModel.adsBarrelX,
+            barrelY: gunModel.adsBarrelY,
+            barrelZ: gunModel.adsBarrelZ,
+            barrelYaw: gunModel.adsBarrelYaw,
+            // ADS barrel settings
+            adsBarrelX: gunModel.adsBarrelX,
+            adsBarrelY: gunModel.adsBarrelY,
+            adsBarrelZ: gunModel.adsBarrelZ,
+            adsBarrelYaw: gunModel.adsBarrelYaw,
+            // Hip barrel settings
+            hipBarrelX: gunModel.hipBarrelX,
+            hipBarrelY: gunModel.hipBarrelY,
+            hipBarrelZ: gunModel.hipBarrelZ,
+            hipBarrelYaw: gunModel.hipBarrelYaw,
             gunWorldFwd: parseInt(document.getElementById('gunWorldFwd').value),
             gunWorldRight: parseInt(document.getElementById('gunWorldRight').value),
             gunWorldDown: parseInt(document.getElementById('gunWorldDown').value),
@@ -3744,22 +3858,43 @@ function Init(){
         document.getElementById('gunRotY-value').innerText = s.gunRotY;
         document.getElementById('gunRotZ').value = s.gunRotZ;
         document.getElementById('gunRotZ-value').innerText = s.gunRotZ;
-        document.getElementById('barrelX').value = s.barrelX;
-        document.getElementById('barrelX-value').innerText = s.barrelX.toFixed(2);
-        gunModel.barrelX = s.barrelX;
-        document.getElementById('barrelY').value = s.barrelY;
-        document.getElementById('barrelY-value').innerText = s.barrelY.toFixed(2);
-        gunModel.barrelY = s.barrelY;
-        document.getElementById('barrelZ').value = s.barrelZ;
-        document.getElementById('barrelZ-value').innerText = s.barrelZ.toFixed(2);
-        gunModel.barrelZ = s.barrelZ;
-
-        // Barrel Yaw
-        if (s.barrelYaw !== undefined) {
-            document.getElementById('barrelYaw').value = s.barrelYaw;
-            document.getElementById('barrelYaw-value').innerText = s.barrelYaw;
-            gunModel.barrelYaw = s.barrelYaw;
+        // ADS barrel settings (new format)
+        if (s.adsBarrelX !== undefined) {
+            gunModel.adsBarrelX = s.adsBarrelX;
+            gunModel.adsBarrelY = s.adsBarrelY;
+            gunModel.adsBarrelZ = s.adsBarrelZ;
+            gunModel.adsBarrelYaw = s.adsBarrelYaw !== undefined ? s.adsBarrelYaw : 0;
+        } else {
+            // Old save format - apply legacy barrel values to ADS settings
+            gunModel.adsBarrelX = s.barrelX;
+            gunModel.adsBarrelY = s.barrelY;
+            gunModel.adsBarrelZ = s.barrelZ;
+            gunModel.adsBarrelYaw = s.barrelYaw !== undefined ? s.barrelYaw : 0;
         }
+
+        // Hip barrel settings (new format)
+        if (s.hipBarrelX !== undefined) {
+            gunModel.hipBarrelX = s.hipBarrelX;
+            gunModel.hipBarrelY = s.hipBarrelY;
+            gunModel.hipBarrelZ = s.hipBarrelZ;
+            gunModel.hipBarrelYaw = s.hipBarrelYaw !== undefined ? s.hipBarrelYaw : 0;
+        } else {
+            // Old save format - use same values as ADS for hip (user can adjust)
+            gunModel.hipBarrelX = gunModel.adsBarrelX;
+            gunModel.hipBarrelY = gunModel.adsBarrelY;
+            gunModel.hipBarrelZ = gunModel.adsBarrelZ;
+            gunModel.hipBarrelYaw = gunModel.adsBarrelYaw;
+        }
+
+        // Update sliders to show ADS values (default edit mode)
+        document.getElementById('barrelX').value = gunModel.adsBarrelX;
+        document.getElementById('barrelX-value').innerText = gunModel.adsBarrelX.toFixed(2);
+        document.getElementById('barrelY').value = gunModel.adsBarrelY;
+        document.getElementById('barrelY-value').innerText = gunModel.adsBarrelY.toFixed(2);
+        document.getElementById('barrelZ').value = gunModel.adsBarrelZ;
+        document.getElementById('barrelZ-value').innerText = gunModel.adsBarrelZ.toFixed(2);
+        document.getElementById('barrelYaw').value = gunModel.adsBarrelYaw;
+        document.getElementById('barrelYaw-value').innerText = gunModel.adsBarrelYaw;
 
         // Gun world offset
         if (s.gunWorldFwd !== undefined) {
