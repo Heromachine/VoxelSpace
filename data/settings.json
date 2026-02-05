@@ -23,7 +23,18 @@
     "minimap": 0.7,
     "weaponUI": 0.7
   },
+  "minimap": {
+    "zoomRange": 200,
+    "sideViewZoomRange": 300
+  },
   "scope": {
     "mode": "focal"
+  },
+  "debug": {
+    "showHitRanges": true,
+    "showGMD": true,
+    "showTestTarget": true,
+    "targetDistance": 25,
+    "targetRadius": 2.0
   }
 }

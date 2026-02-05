@@ -258,6 +258,12 @@
     <label for="uiScaleMinimap">Minimap: <span id="uiScaleMinimap-value">1.0</span>x</label><br>
     <input type="range" id="uiScaleMinimap" min="0.5" max="2.0" step="0.1" value="1.0" style="width:100%;"><br>
 
+    <label for="minimapZoomRange">Minimap Zoom: <span id="minimapZoomRange-value">200</span> (Z key)</label><br>
+    <input type="range" id="minimapZoomRange" min="10" max="300" step="10" value="200" style="width:100%;"><br>
+
+    <label for="sideViewZoomRange">Side View Zoom: <span id="sideViewZoomRange-value">300</span> (Z key)</label><br>
+    <input type="range" id="sideViewZoomRange" min="10" max="500" step="10" value="300" style="width:100%;"><br>
+
     <label for="uiScaleWeaponUI">Weapon UI: <span id="uiScaleWeaponUI-value">1.0</span>x</label><br>
     <input type="range" id="uiScaleWeaponUI" min="0.5" max="2.0" step="0.1" value="1.0" style="width:100%;"><br>
 
@@ -471,8 +477,19 @@ var ConfigLoader = {
                     bulletSize: typeof bulletSize !== 'undefined' ? bulletSize : 2.0,
                     barrelDistance: gm.barrelDistance
                 },
+                minimap: {
+                    zoomRange: typeof minimapZoomRange !== 'undefined' ? minimapZoomRange : 200,
+                    sideViewZoomRange: typeof sideViewZoomRange !== 'undefined' ? sideViewZoomRange : 300
+                },
                 scope: {
                     mode: typeof scopeMode !== 'undefined' ? scopeMode : 'crop'
+                },
+                debug: {
+                    showHitRanges: typeof showHitRanges !== 'undefined' ? showHitRanges : true,
+                    showGMD: typeof showGMD !== 'undefined' ? showGMD : true,
+                    showTestTarget: typeof testTarget !== 'undefined' ? testTarget.enabled : true,
+                    targetDistance: typeof testTarget !== 'undefined' ? testTarget.distance : 25,
+                    targetRadius: typeof testTarget !== 'undefined' ? testTarget.radius : 2.0
                 }
             },
             gunModel: {
@@ -654,8 +671,8 @@ var player={health:100,isCrouching:false,moveSpeed:1.5,sprintMultiplier:2,
     ccdMaxDistance=500,    // Max distance for CCD bullets before despawn
     showHitRanges=true,    // Show hitscan/CCD radius circles on minimap
     showGMD=true,          // Show Gun Mechanics Debug overlay
-    minimapZoomed=false,   // Toggle between far (200) and close (50) range
-    sideViewZoomed=false,  // Toggle side view zoom (close/far)
+    minimapZoomRange=200,  // Minimap zoom range in world units (10-300)
+    sideViewZoomRange=300, // Side view zoom range in world units (10-500)
     // Sniper scope mode - modular scope system
     // Options: ScopeForwardPosition (camera ahead) or ScopeFocalLength (same pos, zoom FOV)
     scopeMode = 'forward',  // 'forward' or 'focal'
@@ -2259,7 +2276,7 @@ function DrawMinimap(){
     var ctx = screendata.context;
     var mmScale = uiScale.minimap;
     var size = Math.floor(200 * mmScale);  // minimap size in pixels (scaled)
-    var range = minimapZoomed ? 12 : 200;  // world units to show (close or far)
+    var range = minimapZoomRange;  // world units to show (adjustable via slider)
     var margin = Math.floor(10 * mmScale);
     var cx = screendata.canvas.width - size - margin;  // top-right corner
     var cy = margin;
@@ -2321,11 +2338,15 @@ function DrawMinimap(){
 
     ctx.restore();
 
-    // Draw FOV cone (scaled to actual camera horizontal FOV)
+    // Draw FOV cone (scaled to actual camera horizontal FOV) - clipped to minimap bounds
     var hFov = DisplayConfig.fov.current * Math.PI / 180;  // horizontal FOV in radians
     var fovConeLength = 30 * scale;  // 30 world units range
     var fovHalfWidth = Math.tan(hFov / 2) * fovConeLength;  // half-width at end of cone
     ctx.save();
+    // Clip to minimap rectangle so cone doesn't extend outside
+    ctx.beginPath();
+    ctx.rect(cx, cy, size, size);
+    ctx.clip();
     ctx.translate(pcx, pcy);
     ctx.rotate(-angle);
     ctx.beginPath();
@@ -2502,7 +2523,7 @@ function DrawMinimap(){
     ctx.fillStyle = 'white';
     ctx.font = '10px Arial';
     var modeText = gunModel.pivotMode === 'barrel' ? '[ADS]' : '[HIP]';
-    ctx.fillText('OVERHEAD ' + modeText + ' ' + (minimapZoomed ? '[CLOSE]' : '[FAR]') + ' Z=zoom', cx + 5, cy + 12);
+    ctx.fillText('OVERHEAD ' + modeText + ' [' + minimapZoomRange + '] Z=zoom', cx + 5, cy + 12);
 
     // === SIDE VIEW MINIMAP ===
     DrawSideView(ctx);
@@ -2520,9 +2541,9 @@ function DrawSideView(ctx){
     var sx = screendata.canvas.width - width - margin;  // top-right, below main minimap
     var sy = margin + Math.floor(210 * mmScale); // below the square minimap
 
-    var rangeForward = sideViewZoomed ? 10 : 300;  // world units to show forward
-    var rangeBack = sideViewZoomed ? 2 : 50;       // world units to show behind
-    var heightRange = sideViewZoomed ? 10 : 150;   // world units of height to show
+    var rangeForward = sideViewZoomRange;  // world units to show forward (adjustable via slider)
+    var rangeBack = Math.max(2, Math.floor(rangeForward / 6));  // world units to show behind
+    var heightRange = Math.max(10, Math.floor(rangeForward / 2));  // world units of height to show
 
     // Background
     ctx.fillStyle = 'rgba(0,0,0,0.8)';
@@ -2536,8 +2557,8 @@ function DrawSideView(ctx){
     var fy = -Math.cos(camera.angle);
 
     // Find min/max terrain height in view for scaling
-    var minH = camera.height - (sideViewZoomed ? 5 : 50);
-    var maxH = camera.height + (sideViewZoomed ? 5 : 100);
+    var minH = camera.height - Math.max(5, Math.floor(rangeForward / 6));
+    var maxH = camera.height + Math.max(5, Math.floor(rangeForward / 3));
 
     // Calculate scale factors (pixels per world unit)
     var scaleX = width / (rangeForward + rangeBack);
@@ -2912,7 +2933,7 @@ function DrawSideView(ctx){
     ctx.fillStyle = 'white';
     ctx.font = '10px Arial';
     var modeText = gunModel.pivotMode === 'barrel' ? '[ADS]' : '[HIP]';
-    ctx.fillText('SIDE VIEW ' + modeText + ' ' + (sideViewZoomed ? '[CLOSE]' : '[FAR]') + ' Z=zoom', sx + 5, sy + 12);
+    ctx.fillText('SIDE VIEW ' + modeText + ' [' + sideViewZoomRange + '] Z=zoom', sx + 5, sy + 12);
 }
 
 // Legend box below side view (shared by both minimaps)
@@ -3565,6 +3586,14 @@ function Init(){
         document.getElementById('uiScaleMinimap-value').innerText = uiScale.minimap.toFixed(1);
         applyUIScales();
     });
+    document.getElementById('minimapZoomRange').addEventListener('input', function(e){
+        minimapZoomRange = parseInt(e.target.value);
+        document.getElementById('minimapZoomRange-value').innerText = minimapZoomRange;
+    });
+    document.getElementById('sideViewZoomRange').addEventListener('input', function(e){
+        sideViewZoomRange = parseInt(e.target.value);
+        document.getElementById('sideViewZoomRange-value').innerText = sideViewZoomRange;
+    });
     document.getElementById('uiScaleWeaponUI').addEventListener('input', function(e){
         uiScale.weaponUI = parseFloat(e.target.value);
         document.getElementById('uiScaleWeaponUI-value').innerText = uiScale.weaponUI.toFixed(1);
@@ -3610,6 +3639,8 @@ function Init(){
             uiScaleHealthbar: parseFloat(document.getElementById('uiScaleHealthbar').value),
             uiScaleJumpbar: parseFloat(document.getElementById('uiScaleJumpbar').value),
             uiScaleMinimap: parseFloat(document.getElementById('uiScaleMinimap').value),
+            minimapZoomRange: parseInt(document.getElementById('minimapZoomRange').value),
+            sideViewZoomRange: parseInt(document.getElementById('sideViewZoomRange').value),
             uiScaleWeaponUI: parseFloat(document.getElementById('uiScaleWeaponUI').value),
             // ADS position settings
             adsOffsetX: gunModel.adsOffsetX,
@@ -3628,7 +3659,13 @@ function Init(){
             hipRotationY: gunModel.hipRotationY,
             hipRotationZ: gunModel.hipRotationZ,
             // Scope mode
-            scopeMode: scopeMode
+            scopeMode: scopeMode,
+            // Debug/GMD settings
+            showHitRanges: document.getElementById('showHitRanges').checked,
+            showGMD: document.getElementById('showGMD').checked,
+            showTestTarget: document.getElementById('showTestTarget').checked,
+            targetDistance: parseInt(document.getElementById('targetDistance').value),
+            targetRadius: parseFloat(document.getElementById('targetRadius').value)
         };
     }
 
@@ -3766,6 +3803,16 @@ function Init(){
             document.getElementById('uiScaleMinimap-value').innerText = s.uiScaleMinimap.toFixed(1);
             uiScale.minimap = s.uiScaleMinimap;
         }
+        if (s.minimapZoomRange !== undefined) {
+            document.getElementById('minimapZoomRange').value = s.minimapZoomRange;
+            document.getElementById('minimapZoomRange-value').innerText = s.minimapZoomRange;
+            minimapZoomRange = s.minimapZoomRange;
+        }
+        if (s.sideViewZoomRange !== undefined) {
+            document.getElementById('sideViewZoomRange').value = s.sideViewZoomRange;
+            document.getElementById('sideViewZoomRange-value').innerText = s.sideViewZoomRange;
+            sideViewZoomRange = s.sideViewZoomRange;
+        }
         if (s.uiScaleWeaponUI !== undefined) {
             document.getElementById('uiScaleWeaponUI').value = s.uiScaleWeaponUI;
             document.getElementById('uiScaleWeaponUI-value').innerText = s.uiScaleWeaponUI.toFixed(1);
@@ -3825,6 +3872,30 @@ function Init(){
         if (s.scopeMode !== undefined) {
             setScopeMode(s.scopeMode);
         }
+
+        // Debug/GMD settings
+        if (s.showHitRanges !== undefined) {
+            document.getElementById('showHitRanges').checked = s.showHitRanges;
+            showHitRanges = s.showHitRanges;
+        }
+        if (s.showGMD !== undefined) {
+            document.getElementById('showGMD').checked = s.showGMD;
+            showGMD = s.showGMD;
+        }
+        if (s.showTestTarget !== undefined) {
+            document.getElementById('showTestTarget').checked = s.showTestTarget;
+            testTarget.enabled = s.showTestTarget;
+        }
+        if (s.targetDistance !== undefined) {
+            document.getElementById('targetDistance').value = s.targetDistance;
+            document.getElementById('targetDistance-value').innerText = s.targetDistance;
+            testTarget.distance = s.targetDistance;
+        }
+        if (s.targetRadius !== undefined) {
+            document.getElementById('targetRadius').value = s.targetRadius;
+            document.getElementById('targetRadius-value').innerText = s.targetRadius.toFixed(1);
+            testTarget.radius = s.targetRadius;
+        }
     }
 
     // Save button - saves to localStorage AND copies JSON to clipboard
@@ -3850,35 +3921,71 @@ function Init(){
         }
     });
 
-    // Load settings on startup - try JSON files first, then localStorage
+    // Load settings on startup - localStorage first (user saves), then JSON as fallback
     ConfigLoader.loadAll().then(function(jsonLoaded) {
-        if (jsonLoaded && ConfigLoader.gunModel) {
-            // Apply JSON config (source of truth)
-            ConfigLoader.applyGunModel(gunModel);
-            ConfigLoader.applyWeapons();
-            console.log('Settings loaded from data/*.json files');
-        }
-
-        // Also check localStorage for any UI-only settings not in JSON
+        // Check localStorage first - user's saved settings take priority
         var stored = localStorage.getItem('voxelSpaceSettings');
         if (stored) {
             try {
                 savedSettings = JSON.parse(stored);
-                console.log('Loading localStorage settings:', savedSettings);
-                // Only apply settings that aren't in JSON (localStorage as override)
-                if (!jsonLoaded) {
-                    applySettings(savedSettings);
-                    console.log('Applied all settings from localStorage (JSON not available)');
-                } else {
-                    // Apply only non-gun settings from localStorage
-                    if (savedSettings.scopeMode !== undefined) {
-                        setScopeMode(savedSettings.scopeMode);
-                    }
-                    console.log('Applied scope mode from localStorage');
+                console.log('Loading saved settings from localStorage:', savedSettings);
+                applySettings(savedSettings);
+                console.log('Applied all settings from localStorage');
+                // Also apply weapons from JSON if available
+                if (jsonLoaded) {
+                    ConfigLoader.applyWeapons();
                 }
+                return; // Don't apply JSON defaults, user has saved settings
             } catch(e) {
                 console.log('Could not load saved settings:', e);
             }
+        }
+
+        // No localStorage - use JSON files as defaults
+        if (jsonLoaded && ConfigLoader.gunModel) {
+            // Apply JSON config (defaults)
+            ConfigLoader.applyGunModel(gunModel);
+            ConfigLoader.applyWeapons();
+            // Apply minimap zoom from JSON
+            if (ConfigLoader.settings && ConfigLoader.settings.minimap) {
+                if (ConfigLoader.settings.minimap.zoomRange !== undefined) {
+                    minimapZoomRange = ConfigLoader.settings.minimap.zoomRange;
+                    document.getElementById('minimapZoomRange').value = minimapZoomRange;
+                    document.getElementById('minimapZoomRange-value').innerText = minimapZoomRange;
+                }
+                if (ConfigLoader.settings.minimap.sideViewZoomRange !== undefined) {
+                    sideViewZoomRange = ConfigLoader.settings.minimap.sideViewZoomRange;
+                    document.getElementById('sideViewZoomRange').value = sideViewZoomRange;
+                    document.getElementById('sideViewZoomRange-value').innerText = sideViewZoomRange;
+                }
+            }
+            // Apply debug settings from JSON
+            if (ConfigLoader.settings && ConfigLoader.settings.debug) {
+                var dbg = ConfigLoader.settings.debug;
+                if (dbg.showHitRanges !== undefined) {
+                    showHitRanges = dbg.showHitRanges;
+                    document.getElementById('showHitRanges').checked = showHitRanges;
+                }
+                if (dbg.showGMD !== undefined) {
+                    showGMD = dbg.showGMD;
+                    document.getElementById('showGMD').checked = showGMD;
+                }
+                if (dbg.showTestTarget !== undefined) {
+                    testTarget.enabled = dbg.showTestTarget;
+                    document.getElementById('showTestTarget').checked = testTarget.enabled;
+                }
+                if (dbg.targetDistance !== undefined) {
+                    testTarget.distance = dbg.targetDistance;
+                    document.getElementById('targetDistance').value = testTarget.distance;
+                    document.getElementById('targetDistance-value').innerText = testTarget.distance;
+                }
+                if (dbg.targetRadius !== undefined) {
+                    testTarget.radius = dbg.targetRadius;
+                    document.getElementById('targetRadius').value = testTarget.radius;
+                    document.getElementById('targetRadius-value').innerText = testTarget.radius.toFixed(1);
+                }
+            }
+            console.log('Settings loaded from data/*.json files (no localStorage found)');
         }
     });
 
@@ -4009,7 +4116,7 @@ function toggleDebugUI(){
 
 // ===============================
 // Controls
-function DetectKeysDown(e){switch(e.keyCode){case 87:input.forward=true;break;case 83:input.backward=true;break;case 65:input.left=true;break;case 68:input.right=true;break;case 32:input.jump=true;break;case 16:input.sprint=true;break;case 67:input.crouch=true;break;case 82:input.reload=true;break;case 81:input.swapWeapon=true;break;case 69:input.pickupWeapon=true;break;case 90:minimapZoomed=!minimapZoomed;sideViewZoomed=!sideViewZoomed;break;case 84:positionTestTarget();break;case 71:testTarget.enabled=!testTarget.enabled;break;case 27:var ctrl=document.getElementById('controls');ctrl.style.display=ctrl.style.display==='none'?'block':'none';break;}if(!updaterunning){time=Date.now();Draw();}}
+function DetectKeysDown(e){switch(e.keyCode){case 87:input.forward=true;break;case 83:input.backward=true;break;case 65:input.left=true;break;case 68:input.right=true;break;case 32:input.jump=true;break;case 16:input.sprint=true;break;case 67:input.crouch=true;break;case 82:input.reload=true;break;case 81:input.swapWeapon=true;break;case 69:input.pickupWeapon=true;break;case 90:var zoomPresets=[20,50,100,200,300];var idx=zoomPresets.indexOf(minimapZoomRange);minimapZoomRange=zoomPresets[(idx+1)%zoomPresets.length];document.getElementById('minimapZoomRange').value=minimapZoomRange;document.getElementById('minimapZoomRange-value').innerText=minimapZoomRange;var sidePresets=[20,50,100,200,300,500];var sidx=sidePresets.indexOf(sideViewZoomRange);sideViewZoomRange=sidePresets[(sidx+1)%sidePresets.length];document.getElementById('sideViewZoomRange').value=sideViewZoomRange;document.getElementById('sideViewZoomRange-value').innerText=sideViewZoomRange;break;case 84:positionTestTarget();break;case 71:testTarget.enabled=!testTarget.enabled;break;case 27:var ctrl=document.getElementById('controls');ctrl.style.display=ctrl.style.display==='none'?'block':'none';break;}if(!updaterunning){time=Date.now();Draw();}}
 function DetectKeysUp(e){switch(e.keyCode){case 87:input.forward=false;break;case 83:input.backward=false;break;case 65:input.left=false;break;case 68:input.right=false;break;case 32:input.jump=false;break;case 16:input.sprint=false;break;case 67:input.crouch=false;break;case 82:input.reload=false;break;case 81:input.swapWeapon=false;break;case 69:input.pickupWeapon=false;break;}}
 function DetectMouseDown(e){
     if(e.button===0) input.shoot=true;
