@@ -3064,7 +3064,7 @@ function OnResizeWindow(){
 }
 function Init(){
     for(var i=0;i<map.width*map.height;i++){map.color[i]=0xFF007050;map.altitude[i]=0;}
-    LoadMap("CE;DE");OnResizeWindow();  // Custom flat test map
+    LoadMap("C18W;D18");OnResizeWindow();  // Terrain map with water
     loadGunModel();  // Load first-person gun model
     // Note: Press T to position test target after map loads
     var canvas=document.getElementById("fullscreenCanvas");
