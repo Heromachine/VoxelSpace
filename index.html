@@ -468,11 +468,29 @@ var ConfigLoader = {
             gm.barrelDistance = data.barrel.distance;
         }
 
-        // World settings
+        // World settings (support both old single format and new ads/hip format)
         if (data.world) {
-            gm.worldForward = data.world.forward;
-            gm.worldRight = data.world.right;
-            gm.worldDown = data.world.down;
+            if (data.world.ads) {
+                gm.adsWorldForward = data.world.ads.forward;
+                gm.adsWorldRight = data.world.ads.right;
+                gm.adsWorldDown = data.world.ads.down;
+            } else {
+                // Old format - apply to ADS
+                gm.adsWorldForward = data.world.forward;
+                gm.adsWorldRight = data.world.right;
+                gm.adsWorldDown = data.world.down;
+            }
+
+            if (data.world.hip) {
+                gm.hipWorldForward = data.world.hip.forward;
+                gm.hipWorldRight = data.world.hip.right;
+                gm.hipWorldDown = data.world.hip.down;
+            } else {
+                // Old format - use same as ADS for hip
+                gm.hipWorldForward = gm.adsWorldForward;
+                gm.hipWorldRight = gm.adsWorldRight;
+                gm.hipWorldDown = gm.adsWorldDown;
+            }
         }
 
         if (data.adsLerpSpeed) gm.adsLerpSpeed = data.adsLerpSpeed;
@@ -557,9 +575,16 @@ var ConfigLoader = {
                     distance: gm.barrelDistance
                 },
                 world: {
-                    forward: gm.worldForward,
-                    right: gm.worldRight,
-                    down: gm.worldDown
+                    ads: {
+                        forward: gm.adsWorldForward,
+                        right: gm.adsWorldRight,
+                        down: gm.adsWorldDown
+                    },
+                    hip: {
+                        forward: gm.hipWorldForward,
+                        right: gm.hipWorldRight,
+                        down: gm.hipWorldDown
+                    }
                 },
                 adsLerpSpeed: gm.adsLerpSpeed
             }
@@ -957,9 +982,20 @@ var gunModel = {
     barrelDistance: 5, // world units in front of barrel to spawn bullet
 
     // World-space offset from camera (where gun is held)
+    // Current/interpolated values (updated each frame based on adsLerp)
     worldForward: 10,  // how far forward from camera
     worldRight: 15,    // how far right from camera
     worldDown: 8,      // how far down from camera eye level
+
+    // ADS world offset settings
+    adsWorldForward: 10,
+    adsWorldRight: 15,
+    adsWorldDown: 8,
+
+    // Hip world offset settings
+    hipWorldForward: 10,
+    hipWorldRight: 15,
+    hipWorldDown: 8,
 
     // Pivot mode: 'barrel' for ADS (pivot at bullet spawn), 'grip' for hip fire
     pivotMode: 'grip'  // current pivot mode
@@ -1690,6 +1726,11 @@ function UpdateCamera(){
     gunModel.barrelY = lerp(gunModel.hipBarrelY, gunModel.adsBarrelY, gunModel.adsLerp);
     gunModel.barrelZ = lerp(gunModel.hipBarrelZ, gunModel.adsBarrelZ, gunModel.adsLerp);
     gunModel.barrelYaw = lerp(gunModel.hipBarrelYaw, gunModel.adsBarrelYaw, gunModel.adsLerp);
+
+    // Update current world offset based on interpolation
+    gunModel.worldForward = lerp(gunModel.hipWorldForward, gunModel.adsWorldForward, gunModel.adsLerp);
+    gunModel.worldRight = lerp(gunModel.hipWorldRight, gunModel.adsWorldRight, gunModel.adsLerp);
+    gunModel.worldDown = lerp(gunModel.hipWorldDown, gunModel.adsWorldDown, gunModel.adsLerp);
 
     // Update pivot mode based on ADS state
     gunModel.pivotMode = isAiming ? 'barrel' : 'grip';
@@ -3462,6 +3503,17 @@ function Init(){
         document.getElementById('barrelZ-value').innerText = gunModel[prefix + 'BarrelZ'].toFixed(2);
     }
 
+    // Function to update world offset sliders to show current mode's values
+    function updateWorldOffsetSliders() {
+        var prefix = editMode === 'ads' ? 'ads' : 'hip';
+        document.getElementById('gunWorldFwd').value = gunModel[prefix + 'WorldForward'];
+        document.getElementById('gunWorldFwd-value').innerText = gunModel[prefix + 'WorldForward'];
+        document.getElementById('gunWorldRight').value = gunModel[prefix + 'WorldRight'];
+        document.getElementById('gunWorldRight-value').innerText = gunModel[prefix + 'WorldRight'];
+        document.getElementById('gunWorldDown').value = gunModel[prefix + 'WorldDown'];
+        document.getElementById('gunWorldDown-value').innerText = gunModel[prefix + 'WorldDown'];
+    }
+
     // Unified function to set edit mode for both Gun and Barrel tabs
     function setEditMode(mode) {
         editMode = mode;
@@ -3483,9 +3535,10 @@ function Init(){
         document.getElementById('barrelEditModeLabel').innerText = labelText;
         document.getElementById('barrelEditModeLabel').style.color = labelColor;
 
-        // Update sliders for both tabs
+        // Update sliders for all tabs
         updateGunSliders();
         updateBarrelSliders();
+        updateWorldOffsetSliders();
     }
 
     // Gun Tab edit mode buttons
@@ -3543,6 +3596,7 @@ function Init(){
     // Initialize sliders with ADS values
     updateGunSliders();
     updateBarrelSliders();
+    updateWorldOffsetSliders();
 
     // Barrel Tab edit mode buttons (use shared setEditMode)
     document.getElementById('barrelEditADS').addEventListener('click', function() {
@@ -3580,18 +3634,24 @@ function Init(){
         document.getElementById('barrelZ-value').innerText = val.toFixed(2);
     });
 
-    // Gun world offset sliders
+    // Gun world offset sliders - update based on current edit mode
     document.getElementById('gunWorldFwd').addEventListener('input', function(e){
-        gunModel.worldForward = parseInt(e.target.value);
-        document.getElementById('gunWorldFwd-value').innerText = gunModel.worldForward;
+        var val = parseInt(e.target.value);
+        if (editMode === 'ads') gunModel.adsWorldForward = val;
+        else gunModel.hipWorldForward = val;
+        document.getElementById('gunWorldFwd-value').innerText = val;
     });
     document.getElementById('gunWorldRight').addEventListener('input', function(e){
-        gunModel.worldRight = parseInt(e.target.value);
-        document.getElementById('gunWorldRight-value').innerText = gunModel.worldRight;
+        var val = parseInt(e.target.value);
+        if (editMode === 'ads') gunModel.adsWorldRight = val;
+        else gunModel.hipWorldRight = val;
+        document.getElementById('gunWorldRight-value').innerText = val;
     });
     document.getElementById('gunWorldDown').addEventListener('input', function(e){
-        gunModel.worldDown = parseInt(e.target.value);
-        document.getElementById('gunWorldDown-value').innerText = gunModel.worldDown;
+        var val = parseInt(e.target.value);
+        if (editMode === 'ads') gunModel.adsWorldDown = val;
+        else gunModel.hipWorldDown = val;
+        document.getElementById('gunWorldDown-value').innerText = val;
     });
 
     // Bullet size slider
@@ -3745,9 +3805,18 @@ function Init(){
             hipBarrelY: gunModel.hipBarrelY,
             hipBarrelZ: gunModel.hipBarrelZ,
             hipBarrelYaw: gunModel.hipBarrelYaw,
-            gunWorldFwd: parseInt(document.getElementById('gunWorldFwd').value),
-            gunWorldRight: parseInt(document.getElementById('gunWorldRight').value),
-            gunWorldDown: parseInt(document.getElementById('gunWorldDown').value),
+            // World offset (save ADS values as legacy for backward compatibility)
+            gunWorldFwd: gunModel.adsWorldForward,
+            gunWorldRight: gunModel.adsWorldRight,
+            gunWorldDown: gunModel.adsWorldDown,
+            // ADS world offset settings
+            adsWorldForward: gunModel.adsWorldForward,
+            adsWorldRight: gunModel.adsWorldRight,
+            adsWorldDown: gunModel.adsWorldDown,
+            // Hip world offset settings
+            hipWorldForward: gunModel.hipWorldForward,
+            hipWorldRight: gunModel.hipWorldRight,
+            hipWorldDown: gunModel.hipWorldDown,
             // UI Scale
             uiScaleAll: parseFloat(document.getElementById('uiScaleAll').value),
             uiScaleCrosshair: parseFloat(document.getElementById('uiScaleCrosshair').value),
@@ -3897,22 +3966,38 @@ function Init(){
         document.getElementById('barrelYaw').value = gunModel.adsBarrelYaw;
         document.getElementById('barrelYaw-value').innerText = gunModel.adsBarrelYaw;
 
-        // Gun world offset
-        if (s.gunWorldFwd !== undefined) {
-            document.getElementById('gunWorldFwd').value = s.gunWorldFwd;
-            document.getElementById('gunWorldFwd-value').innerText = s.gunWorldFwd;
-            gunModel.worldForward = s.gunWorldFwd;
+        // Gun world offset - ADS settings (new format)
+        if (s.adsWorldForward !== undefined) {
+            gunModel.adsWorldForward = s.adsWorldForward;
+            gunModel.adsWorldRight = s.adsWorldRight;
+            gunModel.adsWorldDown = s.adsWorldDown;
+        } else if (s.gunWorldFwd !== undefined) {
+            // Old save format - apply legacy values to ADS
+            gunModel.adsWorldForward = s.gunWorldFwd;
+            gunModel.adsWorldRight = s.gunWorldRight;
+            gunModel.adsWorldDown = s.gunWorldDown;
         }
-        if (s.gunWorldRight !== undefined) {
-            document.getElementById('gunWorldRight').value = s.gunWorldRight;
-            document.getElementById('gunWorldRight-value').innerText = s.gunWorldRight;
-            gunModel.worldRight = s.gunWorldRight;
+
+        // Gun world offset - Hip settings (new format)
+        if (s.hipWorldForward !== undefined) {
+            gunModel.hipWorldForward = s.hipWorldForward;
+            gunModel.hipWorldRight = s.hipWorldRight;
+            gunModel.hipWorldDown = s.hipWorldDown;
+        } else if (s.gunWorldFwd !== undefined) {
+            // Old save format - use same values as ADS for hip
+            gunModel.hipWorldForward = gunModel.adsWorldForward;
+            gunModel.hipWorldRight = gunModel.adsWorldRight;
+            gunModel.hipWorldDown = gunModel.adsWorldDown;
         }
-        if (s.gunWorldDown !== undefined) {
-            document.getElementById('gunWorldDown').value = s.gunWorldDown;
-            document.getElementById('gunWorldDown-value').innerText = s.gunWorldDown;
-            gunModel.worldDown = s.gunWorldDown;
-        }
+
+        // Update sliders to show ADS values (default edit mode)
+        document.getElementById('gunWorldFwd').value = gunModel.adsWorldForward;
+        document.getElementById('gunWorldFwd-value').innerText = gunModel.adsWorldForward;
+        document.getElementById('gunWorldRight').value = gunModel.adsWorldRight;
+        document.getElementById('gunWorldRight-value').innerText = gunModel.adsWorldRight;
+        document.getElementById('gunWorldDown').value = gunModel.adsWorldDown;
+        document.getElementById('gunWorldDown-value').innerText = gunModel.adsWorldDown;
+
         // UI Scale
         if (s.uiScaleAll !== undefined) {
             document.getElementById('uiScaleAll').value = s.uiScaleAll;
