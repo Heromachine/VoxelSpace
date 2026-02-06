@@ -46,49 +46,80 @@ function DrawMinimap(){
     // Draw player as triangle pointing in look direction
     var pcx = cx + size/2;  // player center on minimap
     var pcy = cy + size/2;
-    // Human proportions: shoulder width ≈ 1/5 of total height, eye height ≈ 93% of total
-    var totalPlayerHeight = playerHeightOffset / 0.93;
-    var playerWorldSize = totalPlayerHeight / 5;  // shoulder width in world units
-    var triSize = Math.max(4, playerWorldSize * scale);  // scale to world units, min 4px
+
+    // Draw cube as a 2D square (clipped to minimap bounds)
+    var cubeOffsetX = (cube.x - camera.x) * scale;
+    var cubeOffsetY = (cube.y - camera.y) * scale;
+    var cubeHalfSizePx = (cube.size / 2) * scale;
+    // Only draw if any part of cube is visible on minimap
+    if (Math.abs(cubeOffsetX) < size/2 + cubeHalfSizePx &&
+        Math.abs(cubeOffsetY) < size/2 + cubeHalfSizePx) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(cx, cy, size, size);  // Clip to minimap bounds
+        ctx.clip();
+        ctx.fillStyle = 'rgba(200, 50, 50, 0.7)';  // Semi-transparent red
+        ctx.fillRect(
+            pcx + cubeOffsetX - cubeHalfSizePx,
+            pcy + cubeOffsetY - cubeHalfSizePx,
+            cubeHalfSizePx * 2,
+            cubeHalfSizePx * 2
+        );
+        ctx.strokeStyle = '#ff0000';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(
+            pcx + cubeOffsetX - cubeHalfSizePx,
+            pcy + cubeOffsetY - cubeHalfSizePx,
+            cubeHalfSizePx * 2,
+            cubeHalfSizePx * 2
+        );
+        ctx.restore();
+    }
+    // Draw camera frustum as the entire visible FOV triangle
     var angle = camera.angle;
-
-    ctx.save();
-    ctx.translate(pcx, pcy);
-    ctx.rotate(-angle);  // rotate to face direction
-
-    ctx.beginPath();
-    ctx.moveTo(0, -triSize);           // front point
-    ctx.lineTo(-triSize * 0.6, triSize * 0.6);  // back left
-    ctx.lineTo(triSize * 0.6, triSize * 0.6);   // back right
-    ctx.closePath();
-
-    ctx.fillStyle = 'yellow';
-    ctx.fill();
-    ctx.strokeStyle = 'black';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    ctx.restore();
-
-    // Draw FOV cone (scaled to actual camera horizontal FOV) - clipped to minimap bounds
     var hFov = DisplayConfig.fov.current * Math.PI / 180;  // horizontal FOV in radians
-    var fovConeLength = 30 * scale;  // 30 world units range
-    var fovHalfWidth = Math.tan(hFov / 2) * fovConeLength;  // half-width at end of cone
+
+    // Extend frustum to the edge of the minimap (full visible range)
+    var frustumLength = size / 2;  // extends to edge of minimap
+    var frustumHalfWidth = Math.tan(hFov / 2) * frustumLength;
+
     ctx.save();
-    // Clip to minimap rectangle so cone doesn't extend outside
+    // Clip to minimap rectangle so frustum doesn't extend outside
     ctx.beginPath();
     ctx.rect(cx, cy, size, size);
     ctx.clip();
     ctx.translate(pcx, pcy);
     ctx.rotate(-angle);
+
+    // Draw filled frustum triangle
+    ctx.beginPath();
+    ctx.moveTo(0, 0);  // player position (apex)
+    ctx.lineTo(-frustumHalfWidth, -frustumLength);  // left edge at far end
+    ctx.lineTo(frustumHalfWidth, -frustumLength);   // right edge at far end
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(255,255,0,0.25)';
+    ctx.fill();
+
+    // Draw frustum edge lines for visibility
     ctx.beginPath();
     ctx.moveTo(0, 0);
-    ctx.lineTo(-fovHalfWidth, -fovConeLength);
-    ctx.lineTo(fovHalfWidth, -fovConeLength);
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(255,255,0,0.2)';
-    ctx.fill();
+    ctx.lineTo(-frustumHalfWidth, -frustumLength);
+    ctx.moveTo(0, 0);
+    ctx.lineTo(frustumHalfWidth, -frustumLength);
+    ctx.strokeStyle = 'rgba(255,255,0,0.6)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
     ctx.restore();
+
+    // Draw small player dot at center
+    ctx.beginPath();
+    ctx.arc(pcx, pcy, 4, 0, Math.PI * 2);
+    ctx.fillStyle = 'yellow';
+    ctx.fill();
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 1;
+    ctx.stroke();
 
     // Draw hitscan and CCD range circles (if enabled)
     if (showHitRanges) {
@@ -663,14 +694,14 @@ function DrawSideView(ctx){
     ctx.fillText('SIDE VIEW ' + modeText + ' [' + sideViewZoomRange + '] Z=zoom', sx + 5, sy + 12);
 }
 
-// Legend box below side view (shared by both minimaps)
+// Legend box at top-left corner
 function DrawMinimapLegend(ctx){
     var mmScale = uiScale.minimap;
     var width = Math.floor(200 * mmScale);
     var height = Math.floor(86 * mmScale);  // increased for 5 rows
     var margin = Math.floor(10 * mmScale);
-    var lx = screendata.canvas.width - width - margin;
-    var ly = margin + Math.floor((210 + 80 + 5) * mmScale);  // below side view (scaled)
+    var lx = margin;  // top-left corner
+    var ly = margin;
 
     // Background
     ctx.fillStyle = 'rgba(0,0,0,0.8)';

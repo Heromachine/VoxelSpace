@@ -5,7 +5,25 @@
 
 // Terrain height functions
 var getRawTerrainHeight=(x,y)=>map.altitude[((Math.floor(y)&(map.width-1))<<map.shift)+(Math.floor(x)&(map.height-1))];
-var getGroundHeight=(x,y)=>getRawTerrainHeight(x,y)+playerHeightOffset;
+
+// Get ground height including cube top surface
+function getGroundHeight(x, y) {
+    var terrainHeight = getRawTerrainHeight(x, y) + playerHeightOffset;
+
+    // Check if position is within cube's X/Y bounds
+    var halfSize = cube.size / 2;
+    if (x >= cube.x - halfSize && x <= cube.x + halfSize &&
+        y >= cube.y - halfSize && y <= cube.y + halfSize) {
+        // Player is above cube footprint - check cube top
+        var cubeBaseZ = getRawTerrainHeight(cube.x, cube.y);
+        var cubeTopZ = cubeBaseZ + cube.size + playerHeightOffset;
+
+        // Return the higher of terrain or cube top
+        return Math.max(terrainHeight, cubeTopZ);
+    }
+
+    return terrainHeight;
+}
 
 // Render terrain using voxel space algorithm
 function Render(){

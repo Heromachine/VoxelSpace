@@ -5,8 +5,161 @@
 
 // Physics helpers
 var MAX_SLOPE=2;
+var PLAYER_RADIUS = 10; // Player collision radius for cube collision
+var PUSH_OUT_BUFFER = 5; // Extra buffer to prevent camera clipping on rotation
 var isOnGround=()=>camera.height<=getGroundHeight(camera.x,camera.y)+0.1;
-var canMoveTo=(nx,ny)=>{if(!isOnGround())return true;var curH=getGroundHeight(camera.x,camera.y),newH=getGroundHeight(nx,ny);if(newH<=curH)return true;var horizDist=Math.hypot(nx-camera.x,ny-camera.y);if(!horizDist)return true;return (newH-curH)/horizDist<=MAX_SLOPE};
+
+// Ray-AABB intersection for bullet collision with cube
+// Returns {t: distance, hit: {x,y,z}} or null if no hit
+function rayIntersectsCube(rayOrigin, rayDir, segmentLength) {
+    var halfSize = cube.size / 2;
+    var cubeBaseZ = getRawTerrainHeight(cube.x, cube.y);
+
+    var minX = cube.x - halfSize, maxX = cube.x + halfSize;
+    var minY = cube.y - halfSize, maxY = cube.y + halfSize;
+    var minZ = cubeBaseZ, maxZ = cubeBaseZ + cube.size;
+
+    var tMin = 0, tMax = segmentLength;
+
+    // X slab
+    if (Math.abs(rayDir.x) < 0.0001) {
+        if (rayOrigin.x < minX || rayOrigin.x > maxX) return null;
+    } else {
+        var t1 = (minX - rayOrigin.x) / rayDir.x;
+        var t2 = (maxX - rayOrigin.x) / rayDir.x;
+        if (t1 > t2) { var tmp = t1; t1 = t2; t2 = tmp; }
+        tMin = Math.max(tMin, t1);
+        tMax = Math.min(tMax, t2);
+        if (tMin > tMax) return null;
+    }
+
+    // Y slab
+    if (Math.abs(rayDir.y) < 0.0001) {
+        if (rayOrigin.y < minY || rayOrigin.y > maxY) return null;
+    } else {
+        var t1 = (minY - rayOrigin.y) / rayDir.y;
+        var t2 = (maxY - rayOrigin.y) / rayDir.y;
+        if (t1 > t2) { var tmp = t1; t1 = t2; t2 = tmp; }
+        tMin = Math.max(tMin, t1);
+        tMax = Math.min(tMax, t2);
+        if (tMin > tMax) return null;
+    }
+
+    // Z slab
+    if (Math.abs(rayDir.z) < 0.0001) {
+        if (rayOrigin.z < minZ || rayOrigin.z > maxZ) return null;
+    } else {
+        var t1 = (minZ - rayOrigin.z) / rayDir.z;
+        var t2 = (maxZ - rayOrigin.z) / rayDir.z;
+        if (t1 > t2) { var tmp = t1; t1 = t2; t2 = tmp; }
+        tMin = Math.max(tMin, t1);
+        tMax = Math.min(tMax, t2);
+        if (tMin > tMax) return null;
+    }
+
+    // Hit found
+    return {
+        t: tMin,
+        hit: {
+            x: rayOrigin.x + rayDir.x * tMin,
+            y: rayOrigin.y + rayDir.y * tMin,
+            z: rayOrigin.z + rayDir.z * tMin
+        }
+    };
+}
+
+// Check if position collides with the cube (AABB collision)
+function collidesWithCube(x, y, z) {
+    var halfSize = cube.size / 2;
+    var cubeBaseZ = getRawTerrainHeight(cube.x, cube.y);
+    var cubeTopZ = cubeBaseZ + cube.size;
+
+    // Check X bounds (with player radius)
+    if (x + PLAYER_RADIUS < cube.x - halfSize) return false;
+    if (x - PLAYER_RADIUS > cube.x + halfSize) return false;
+
+    // Check Y bounds (with player radius)
+    if (y + PLAYER_RADIUS < cube.y - halfSize) return false;
+    if (y - PLAYER_RADIUS > cube.y + halfSize) return false;
+
+    // Check Z bounds - allow walking on top
+    // z is camera.height (player feet position, includes playerHeightOffset)
+    // If player's feet are at or above cube top, they're standing ON the cube, not colliding
+    var feetZ = z - playerHeightOffset;  // Convert back to raw height
+    if (feetZ >= cubeTopZ - 1) return false;  // Standing on top (1 unit tolerance)
+    if (feetZ < cubeBaseZ) return false;  // Below cube (shouldn't happen normally)
+
+    return true;  // Collision with cube sides!
+}
+
+// Push player away from cube if too close (prevents camera clipping on rotation)
+function pushAwayFromCube() {
+    var halfSize = cube.size / 2;
+    var cubeBaseZ = getRawTerrainHeight(cube.x, cube.y);
+    var cubeTopZ = cubeBaseZ + cube.size;
+    var feetZ = camera.height - playerHeightOffset;
+
+    // Only push if player is at cube's height level (not on top or below)
+    if (feetZ >= cubeTopZ - 1 || feetZ < cubeBaseZ) return;
+
+    // Minimum safe distance from cube center to camera
+    var safeDistance = PLAYER_RADIUS + PUSH_OUT_BUFFER;
+
+    // Vector from cube center to camera
+    var dx = camera.x - cube.x;
+    var dy = camera.y - cube.y;
+
+    // Clamp to cube surface to find closest point on cube
+    var clampedX = Math.max(-halfSize, Math.min(halfSize, dx));
+    var clampedY = Math.max(-halfSize, Math.min(halfSize, dy));
+
+    // Vector from closest point on cube to camera
+    var pushX = dx - clampedX;
+    var pushY = dy - clampedY;
+    var dist = Math.sqrt(pushX * pushX + pushY * pushY);
+
+    // If camera is inside the cube (dist is 0 or very small), push toward nearest edge
+    if (dist < 0.001) {
+        // Camera is inside cube bounds - find nearest edge
+        var distToLeft = dx + halfSize;
+        var distToRight = halfSize - dx;
+        var distToBack = dy + halfSize;
+        var distToFront = halfSize - dy;
+
+        var minDist = Math.min(distToLeft, distToRight, distToBack, distToFront);
+
+        if (minDist === distToLeft) {
+            camera.x = cube.x - halfSize - safeDistance;
+        } else if (minDist === distToRight) {
+            camera.x = cube.x + halfSize + safeDistance;
+        } else if (minDist === distToBack) {
+            camera.y = cube.y - halfSize - safeDistance;
+        } else {
+            camera.y = cube.y + halfSize + safeDistance;
+        }
+    } else if (dist < safeDistance) {
+        // Camera is too close to cube surface - push outward
+        var pushAmount = safeDistance - dist;
+        var normX = pushX / dist;
+        var normY = pushY / dist;
+        camera.x += normX * pushAmount;
+        camera.y += normY * pushAmount;
+    }
+}
+
+var canMoveTo=(nx,ny)=>{
+    // Check cube collision first
+    var playerZ = camera.height;
+    if (collidesWithCube(nx, ny, playerZ)) return false;
+
+    // Original slope checking (only when on ground)
+    if(!isOnGround())return true;
+    var curH=getGroundHeight(camera.x,camera.y),newH=getGroundHeight(nx,ny);
+    if(newH<=curH)return true;
+    var horizDist=Math.hypot(nx-camera.x,ny-camera.y);
+    if(!horizDist)return true;
+    return (newH-curH)/horizDist<=MAX_SLOPE;
+};
 
 // Main camera update function - handles movement, jumping, shooting
 function UpdateCamera(){
@@ -20,6 +173,9 @@ function UpdateCamera(){
         if(camera.angle < 0) camera.angle += 2 * Math.PI;
         camera.horizon = Math.max(-400, Math.min(600, camera.horizon - input.lookY * gamepad.lookSensitivity * 100));
     }
+
+    // Push player away from cube if too close (prevents camera clipping on rotation)
+    pushAwayFromCube();
 
     // Keyboard Movement
     if(input.forward){nx=camera.x-Math.sin(camera.angle)*baseSpeed;ny=camera.y-Math.cos(camera.angle)*baseSpeed;slopeMult=canMoveTo(nx,ny);camera.x+=(nx-camera.x)*slopeMult;camera.y+=(ny-camera.y)*slopeMult;}
@@ -284,6 +440,20 @@ function UpdateCamera(){
 
         // Try hitscan first (for targets within hitscan range)
         var hitscanHitPos = null;
+
+        // Hitscan cube collision
+        if (hitscanDistance > 0 && !currentWeapon.ccdOnly) {
+            var cubeHitscan = rayIntersectsCube(
+                {x: spawnX, y: spawnY, z: spawnZ},
+                {x: rayDirX, y: rayDirY, z: rayDirZ},
+                hitscanDistance
+            );
+            if (cubeHitscan) {
+                hitscanHitPos = {x: cubeHitscan.hit.x, y: cubeHitscan.hit.y, z: cubeHitscan.hit.z, dist: cubeHitscan.t};
+            }
+        }
+
+        // Hitscan test target collision (only if we didn't hit cube first, or cube is further)
         if (testTarget.enabled && hitscanDistance > 0 && !currentWeapon.ccdOnly) {
             // Ray-sphere intersection test
             var ocX = spawnX - testTarget.x;
@@ -300,17 +470,20 @@ function UpdateCamera(){
                 if (t < 0) t = (-b + Math.sqrt(discriminant)) / (2*a);
 
                 if (t >= 0 && t <= hitscanDistance) {
-                    testTarget.hits++;
-                    var hitX = spawnX + rayDirX * t;
-                    var hitY = spawnY + rayDirY * t;
-                    var hitZ = spawnZ + rayDirZ * t;
-                    hitscanHitPos = {x: hitX, y: hitY, z: hitZ, dist: t};
-                    testTarget.bulletHitPos = {
-                        x: hitX - testTarget.x,
-                        y: hitY - testTarget.y,
-                        z: hitZ - testTarget.z,
-                        dist: Math.sqrt((hitX-testTarget.x)**2 + (hitY-testTarget.y)**2 + (hitZ-testTarget.z)**2)
-                    };
+                    // Only count as target hit if closer than cube hit
+                    if (!hitscanHitPos || t < hitscanHitPos.dist) {
+                        testTarget.hits++;
+                        var hitX = spawnX + rayDirX * t;
+                        var hitY = spawnY + rayDirY * t;
+                        var hitZ = spawnZ + rayDirZ * t;
+                        hitscanHitPos = {x: hitX, y: hitY, z: hitZ, dist: t};
+                        testTarget.bulletHitPos = {
+                            x: hitX - testTarget.x,
+                            y: hitY - testTarget.y,
+                            z: hitZ - testTarget.z,
+                            dist: Math.sqrt((hitX-testTarget.x)**2 + (hitY-testTarget.y)**2 + (hitZ-testTarget.z)**2)
+                        };
+                    }
                 }
             }
         }
@@ -408,6 +581,27 @@ function UpdateCamera(){
                         testTarget.misses++;
                     }
                     it.prevDistToTarget = currDist;
+                }
+            }
+
+            // Cube collision (CCD ray-AABB intersection)
+            var segDx = it.x - it.prevX;
+            var segDy = it.y - it.prevY;
+            var segDz = it.z - it.prevZ;
+            var segLen = Math.sqrt(segDx*segDx + segDy*segDy + segDz*segDz);
+            if (segLen > 0) {
+                var cubeHit = rayIntersectsCube(
+                    {x: it.prevX, y: it.prevY, z: it.prevZ},
+                    {x: segDx/segLen, y: segDy/segLen, z: segDz/segLen},
+                    segLen
+                );
+                if (cubeHit) {
+                    if(it===lastBullet){
+                        lastBullet=null;
+                        lastBulletDestroyedPos = cubeHit.hit;
+                        lastBulletDestroyedReason = "Cube Hit!";
+                    }
+                    return false;
                 }
             }
 

@@ -97,6 +97,7 @@ function Init(){
     LoadMap("C1W;D1");
     OnResizeWindow();
     loadGunModel();
+    loadCubeTexture();
 
     var canvas=document.getElementById("fullscreenCanvas");
 
