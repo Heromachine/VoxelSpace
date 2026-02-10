@@ -200,9 +200,15 @@ function drawTexturedQuad(v0, v1, v2, v3) {
     var p2 = projectPoint(v2);
     var p3 = projectPoint(v3);
 
-    // Skip if MORE than 2 vertices are behind camera (prevents giant distorted polygons)
-    var behindCount = (p0.wasBehind ? 1 : 0) + (p1.wasBehind ? 1 : 0) + (p2.wasBehind ? 1 : 0) + (p3.wasBehind ? 1 : 0);
-    if (behindCount >= 2) return;
+    // Skip only if 3+ vertices are behind the camera.
+    // (2 behind can happen when you're very close / on top of the cube and looking down)
+    var behindCount =
+        (p0.wasBehind ? 1 : 0) +
+        (p1.wasBehind ? 1 : 0) +
+        (p2.wasBehind ? 1 : 0) +
+        (p3.wasBehind ? 1 : 0);
+
+    if (behindCount >= 3) return;
 
     // Add UV coordinates (standard quad mapping)
     // v0=bottom-left, v1=bottom-right, v2=top-right, v3=top-left
@@ -273,18 +279,16 @@ function RenderCube() {
         }
     }
 
-    // Find closest point on cube to camera
-    var closestX = Math.max(-halfSize, Math.min(halfSize, -cubeDx)) + cube.x;
-    var closestY = Math.max(-halfSize, Math.min(halfSize, -cubeDy)) + cube.y;
+    // Forward distance to cube center (ground-plane forward, same basis as projectPoint)
+    var forwardCenter = -cubeDx * cubeSinYaw - cubeDy * cubeCosYaw;
 
-    // Check if closest point is in front of camera
-    var closestDx = closestX - camera.x;
-    var closestDy = closestY - camera.y;
-    var closestDist = -closestDx * cubeSinYaw - closestDy * cubeCosYaw;
+    // Conservative forward extent of an axis-aligned square of halfSize, projected onto the forward axis.
+    // This equals halfSize*(|sinYaw|+|cosYaw|) and is always >= the true extent.
+    var forwardExtent = halfSize * (Math.abs(cubeSinYaw) + Math.abs(cubeCosYaw));
 
-    // Skip if even the closest point on cube is behind camera
-    if (closestDist < CUBE_NEAR_PLANE) {
-        return;  // Cube is entirely behind camera
+    // Skip only if the entire cube is behind the near plane
+    if (forwardCenter + forwardExtent < CUBE_NEAR_PLANE) {
+        return;
     }
 
     var v = getCubeVertices();
