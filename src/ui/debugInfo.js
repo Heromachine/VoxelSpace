@@ -4,7 +4,7 @@
 "use strict";
 
 function DrawGunDebugInfo() {
-    if (!showGMD || !testTarget.enabled) return;
+    if (!showGMD) return;
 
     var ctx = screendata.context;
     var x = 10;
