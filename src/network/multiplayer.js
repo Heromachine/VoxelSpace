@@ -25,7 +25,7 @@ var Multiplayer = (function () {
     var _isAnonymous = false;
 
     // Position broadcast throttle
-    var POSITION_INTERVAL_MS = 50;  // 20 Hz
+    var POSITION_INTERVAL_MS = 100;  // 10 Hz
     var _lastPositionSend    = 0;
 
     var PING_INTERVAL_MS = 4000;

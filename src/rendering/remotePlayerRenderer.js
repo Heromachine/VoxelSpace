@@ -34,8 +34,8 @@ function RenderRemotePlayers() {
 
         var rp = players[uid];
 
-        // Skip stale players (not heard from in 3 seconds)
-        if (now - rp.lastSeen > 3000) continue;
+        // Skip stale players (not heard from in 10 seconds)
+        if (now - rp.lastSeen > 10000) continue;
 
         // World -> camera-relative vector
         var dx = rp.x - camX;

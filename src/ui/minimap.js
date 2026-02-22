@@ -149,7 +149,7 @@ function DrawMinimap(){
             var rpid = rpIds[rpi];
             if (rpid === myId) continue;
             var rp = nakamaState.remotePlayers[rpid];
-            if (!rp || now - rp.lastSeen > 3000) continue;
+            if (!rp || now - rp.lastSeen > 10000) continue;
             var rpx = (rp.x - camera.x) * scale;
             var rpy = (rp.y - camera.y) * scale;
             if (Math.abs(rpx) < size / 2 && Math.abs(rpy) < size / 2) {
