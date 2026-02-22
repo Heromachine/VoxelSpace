@@ -113,7 +113,7 @@ function M.match_leave(context, logger, nk, dispatcher, tick, state, presences)
 end
 
 function M.match_loop(context, logger, nk, dispatcher, tick, state, messages)
-    for _, msg in ipairs(messages) do
+    for _, msg in ipairs(messages or {}) do
         local sender_uid = msg.sender.user_id
         local record     = state.players[sender_uid]
         if not record then goto continue end
