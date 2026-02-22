@@ -73,7 +73,7 @@ function M.match_join(context, dispatcher, tick, state, presences)
                 x = sx, y = sy, height = 78, angle = 0, health = MAX_HEALTH,
                 kills = 0,
                 username = presence.username, clan = clan,
-                lastX = sx, lastY = sy, lastTime = os.time()
+                lastX = sx, lastY = sy, lastTick = tick
             }
 
             -- Send current player list to new joiner
@@ -117,7 +117,7 @@ function M.match_leave(context, dispatcher, tick, state, presences)
     return state
 end
 
-local function handle_message(dispatcher, state, msg)
+local function handle_message(dispatcher, state, tick, msg)
     local sender_uid = msg.sender.user_id
     local record     = state.players[sender_uid]
     if not record then return end
@@ -126,8 +126,9 @@ local function handle_message(dispatcher, state, msg)
     local data = _nk.json_decode(msg.data)
 
     if op == OP_POSITION then
-        local now   = os.time()
-        local dt    = math.max(0.001, now - (record.lastTime or now))
+        -- Use tick-based dt (TICK_RATE Hz) to avoid os.time() 1-second resolution
+        local ticks_elapsed = math.max(1, tick - (record.lastTick or tick))
+        local dt = ticks_elapsed / TICK_RATE
         local nx    = data.x or record.x
         local ny    = data.y or record.y
         local moved = dist2d(nx, ny, record.lastX, record.lastY)
@@ -141,7 +142,7 @@ local function handle_message(dispatcher, state, msg)
         end
         record.lastX    = record.x
         record.lastY    = record.y
-        record.lastTime = now
+        record.lastTick = tick
 
         local others = {}
         for uid, p in pairs(state.presences) do
@@ -234,7 +235,7 @@ end
 
 function M.match_loop(context, dispatcher, tick, state, messages)
     for _, msg in ipairs(messages or {}) do
-        local ok, err = pcall(handle_message, dispatcher, state, msg)
+        local ok, err = pcall(handle_message, dispatcher, state, tick, msg)
         if not ok then
             print("match_loop msg error: " .. tostring(err))
         end
