@@ -76,14 +76,6 @@ function RenderRemotePlayers() {
         var rectW = Math.ceil(screenW);
         var rectH = Math.ceil(screenH);
 
-        // Depth-test: only draw if player is closer than terrain at that column
-        // Use the depth buffer sampled at screen center column
-        var depthCol = Math.floor(screenX);
-        if (depthCol >= 0 && depthCol < W) {
-            var terrainDepth = screendata.depthBuffer[depthCol];
-            if (terrainDepth > 0 && fwd > terrainDepth) continue;  // occluded
-        }
-
         // Draw the rectangle (grey — clan is secret)
         ctx.save();
         ctx.globalAlpha = 0.85;

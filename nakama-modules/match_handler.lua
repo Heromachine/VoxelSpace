@@ -3,7 +3,9 @@
 -- Nakama Lua server-side module
 -- ============================================================
 
-local nk = require("nakama")
+-- Save module-level reference; Nakama 3.x passes nk as a parameter
+-- that shadows this, but we keep _nk for reliable access inside functions
+local _nk = require("nakama")
 
 local OP_POSITION      = 1
 local OP_CHAT          = 2
@@ -29,30 +31,29 @@ local function dist2d(x1, y1, x2, y2)
     return math.sqrt(dx * dx + dy * dy)
 end
 
-local function load_player_data(nk_inst, user_id)
+local function load_player_data(user_id)
     local ok, result = pcall(function()
-        return nk_inst.storage_read({{
+        return _nk.storage_read({{
             collection = "player", key = "data", user_id = user_id
         }})
     end)
     if ok and result and #result > 0 then
-        return nk_inst.json_decode(result[1].value)
+        return _nk.json_decode(result[1].value)
     end
     return nil
 end
 
-local function save_player_data(nk_inst, user_id, data)
+local function save_player_data(user_id, data)
     pcall(function()
-        nk_inst.storage_write({{
+        _nk.storage_write({{
             collection = "player", key = "data", user_id = user_id,
-            value = nk_inst.json_encode(data),
+            value = _nk.json_encode(data),
             permission_read = 1, permission_write = 1
         }})
     end)
 end
 
 function M.match_init(context, logger, nk, params)
-    logger.info("VoxelSpace open world match initialised")
     return { players = {}, presences = {} }, TICK_RATE, "open_world"
 end
 
@@ -63,7 +64,7 @@ end
 function M.match_join(context, logger, nk, dispatcher, tick, state, presences)
     for _, presence in ipairs(presences) do
         local uid   = presence.user_id
-        local saved = load_player_data(nk, uid)
+        local saved = load_player_data(uid)
         local clan  = saved and saved.clan or nil
         local sx    = math.random(-300, 300)
         local sy    = math.random(-300, 300)
@@ -72,7 +73,7 @@ function M.match_join(context, logger, nk, dispatcher, tick, state, presences)
         state.players[uid]   = {
             x = sx, y = sy, height = 78, angle = 0, health = MAX_HEALTH,
             username = presence.username, clan = clan,
-            lastX = sx, lastY = sy, lastTime = nk.time() / 1000.0
+            lastX = sx, lastY = sy, lastTime = _nk.time() / 1000.0
         }
 
         -- Send current player list to new joiner
@@ -84,15 +85,13 @@ function M.match_join(context, logger, nk, dispatcher, tick, state, presences)
             end
         end
         dispatcher.broadcast_message(OP_PLAYER_LIST,
-            nk.json_encode({ players = list }), { presence }, nil, true)
+            _nk.json_encode({ players = list }), { presence }, nil, true)
 
         -- Broadcast join to everyone
         dispatcher.broadcast_message(OP_PLAYER_JOIN,
-            nk.json_encode({ userId = uid, username = presence.username,
+            _nk.json_encode({ userId = uid, username = presence.username,
                 x = sx, y = sy, height = 78, angle = 0, health = MAX_HEALTH }),
             nil, nil, true)
-
-        logger.info(string.format("Player joined: %s (%s)", presence.username, uid))
     end
     return state
 end
@@ -103,8 +102,7 @@ function M.match_leave(context, logger, nk, dispatcher, tick, state, presences)
         state.players[uid]   = nil
         state.presences[uid] = nil
         dispatcher.broadcast_message(OP_PLAYER_LEAVE,
-            nk.json_encode({ userId = uid }), nil, nil, true)
-        logger.info(string.format("Player left: %s", uid))
+            _nk.json_encode({ userId = uid }), nil, nil, true)
     end
     return state
 end
@@ -116,10 +114,10 @@ function M.match_loop(context, logger, nk, dispatcher, tick, state, messages)
         if not record then goto continue end
 
         local op   = msg.op_code
-        local data = nk.json_decode(msg.data)
+        local data = _nk.json_decode(msg.data)
 
         if op == OP_POSITION then
-            local now  = nk.time() / 1000.0
+            local now  = _nk.time() / 1000.0
             local dt   = math.max(0.001, now - (record.lastTime or now))
             local nx   = data.x or record.x
             local ny   = data.y or record.y
@@ -142,7 +140,7 @@ function M.match_loop(context, logger, nk, dispatcher, tick, state, messages)
             end
             if #others > 0 then
                 dispatcher.broadcast_message(OP_POSITION,
-                    nk.json_encode({ userId = sender_uid,
+                    _nk.json_encode({ userId = sender_uid,
                         x = record.x, y = record.y, height = record.height,
                         angle = record.angle, health = record.health }),
                     others, nil, false)
@@ -160,7 +158,7 @@ function M.match_loop(context, logger, nk, dispatcher, tick, state, messages)
             end
             if #recipients > 0 then
                 dispatcher.broadcast_message(OP_CHAT,
-                    nk.json_encode({ senderId = sender_uid, x = record.x, y = record.y,
+                    _nk.json_encode({ senderId = sender_uid, x = record.x, y = record.y,
                         emoji = emoji, shout = shout }),
                     recipients, nil, true)
             end
@@ -173,7 +171,7 @@ function M.match_loop(context, logger, nk, dispatcher, tick, state, messages)
                 end
                 if #radar_r > 0 then
                     dispatcher.broadcast_message(OP_RADAR_REVEAL,
-                        nk.json_encode({ userId = sender_uid, x = record.x, y = record.y }),
+                        _nk.json_encode({ userId = sender_uid, x = record.x, y = record.y }),
                         radar_r, nil, true)
                 end
             end
@@ -190,14 +188,12 @@ function M.match_loop(context, logger, nk, dispatcher, tick, state, messages)
                 local sp = state.presences[sender_uid]
                 if sp then
                     dispatcher.broadcast_message(OP_PLAYER_KICKED,
-                        nk.json_encode({ reason = "friendly_fire" }), { sp }, nil, true)
+                        _nk.json_encode({ reason = "friendly_fire" }), { sp }, nil, true)
                 end
                 state.players[sender_uid]   = nil
                 state.presences[sender_uid] = nil
                 dispatcher.broadcast_message(OP_PLAYER_LEAVE,
-                    nk.json_encode({ userId = sender_uid }), nil, nil, true)
-                logger.info(string.format("Friendly fire kick: %s -> %s (clan: %s)",
-                    sender_uid, target_id, record.clan))
+                    _nk.json_encode({ userId = sender_uid }), nil, nil, true)
                 goto continue
             end
 
@@ -205,7 +201,7 @@ function M.match_loop(context, logger, nk, dispatcher, tick, state, messages)
             local tp = state.presences[target_id]
             if tp then
                 dispatcher.broadcast_message(OP_DAMAGE,
-                    nk.json_encode({ shooterId = sender_uid, damage = damage, health = target.health }),
+                    _nk.json_encode({ shooterId = sender_uid, damage = damage, health = target.health }),
                     { tp }, nil, true)
             end
         end
@@ -216,7 +212,6 @@ function M.match_loop(context, logger, nk, dispatcher, tick, state, messages)
 end
 
 function M.match_terminate(context, logger, nk, dispatcher, tick, state, grace_seconds)
-    logger.info("VoxelSpace match terminating")
     return state
 end
 
