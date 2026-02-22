@@ -81,7 +81,11 @@ function RenderItems(){
         var destW = Math.max(1, Math.ceil(scaleX));
         var destH = Math.max(1, Math.ceil(scaleY));
         var destX = Math.floor(screenX - destW/2);
-        var destY = Math.floor(screenY - destH);
+        // Bullets: center-align vertically so they're visible above terrain.
+        // Trees/hearts: bottom-align so the base sits on the ground.
+        var destY = it.type === "bullet"
+            ? Math.floor(screenY - destH / 2)
+            : Math.floor(screenY - destH);
 
         // Draw each destination pixel, sampling from source
         for (var py = 0; py < destH; py++) {
