@@ -3,8 +3,6 @@
 -- Nakama Lua server-side module
 -- ============================================================
 
--- Save module-level reference; Nakama 3.x passes nk as a parameter
--- that shadows this, but we keep _nk for reliable access inside functions
 local _nk = require("nakama")
 
 local OP_POSITION      = 1
@@ -47,25 +45,21 @@ local function load_player_data(user_id)
     return nil
 end
 
-local function save_player_data(user_id, data)
-    pcall(function()
-        _nk.storage_write({{
-            collection = "player", key = "data", user_id = user_id,
-            value = _nk.json_encode(data),
-            permission_read = 1, permission_write = 1
-        }})
-    end)
-end
+-- NOTE: Nakama Lua match handler functions do NOT receive logger or nk parameters.
+-- Correct signatures: match_init(context, params)
+--                     match_join(context, dispatcher, tick, state, presences)
+--                     match_loop(context, dispatcher, tick, state, messages)
+--                     etc.
 
-function M.match_init(context, logger, nk, params)
+function M.match_init(context, params)
     return { players = {}, presences = {} }, TICK_RATE, "open_world"
 end
 
-function M.match_join_attempt(context, logger, nk, dispatcher, tick, state, presence, metadata)
+function M.match_join_attempt(context, dispatcher, tick, state, presence, metadata)
     return state, true, ""
 end
 
-function M.match_join(context, logger, nk, dispatcher, tick, state, presences)
+function M.match_join(context, dispatcher, tick, state, presences)
     for _, presence in ipairs(presences or {}) do
         local ok, err = pcall(function()
             local uid   = presence.user_id
@@ -101,13 +95,13 @@ function M.match_join(context, logger, nk, dispatcher, tick, state, presences)
                 nil, nil, true)
         end)
         if not ok then
-            _nk.logger_error("match_join error: " .. tostring(err))
+            print("match_join error: " .. tostring(err))
         end
     end
     return state
 end
 
-function M.match_leave(context, logger, nk, dispatcher, tick, state, presences)
+function M.match_leave(context, dispatcher, tick, state, presences)
     for _, presence in ipairs(presences or {}) do
         local ok, err = pcall(function()
             local uid = presence.user_id
@@ -117,7 +111,7 @@ function M.match_leave(context, logger, nk, dispatcher, tick, state, presences)
                 _nk.json_encode({ userId = uid }), nil, nil, true)
         end)
         if not ok then
-            _nk.logger_error("match_leave error: " .. tostring(err))
+            print("match_leave error: " .. tostring(err))
         end
     end
     return state
@@ -238,21 +232,21 @@ local function handle_message(dispatcher, state, msg)
     end
 end
 
-function M.match_loop(context, logger, nk, dispatcher, tick, state, messages)
+function M.match_loop(context, dispatcher, tick, state, messages)
     for _, msg in ipairs(messages or {}) do
         local ok, err = pcall(handle_message, dispatcher, state, msg)
         if not ok then
-            _nk.logger_error("match_loop msg error: " .. tostring(err))
+            print("match_loop msg error: " .. tostring(err))
         end
     end
     return state
 end
 
-function M.match_terminate(context, logger, nk, dispatcher, tick, state, grace_seconds)
+function M.match_terminate(context, dispatcher, tick, state, grace_seconds)
     return state
 end
 
-function M.match_signal(context, logger, nk, dispatcher, tick, state, data)
+function M.match_signal(context, dispatcher, tick, state, data)
     return state, ""
 end
 
