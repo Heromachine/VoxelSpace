@@ -292,7 +292,7 @@ var gunModel = {
 // ===============================
 // Test Target - floating circle for gun mechanics testing
 var testTarget = {
-    enabled: true,
+    enabled: false,
     x: 0,           // world X position (will be set relative to player)
     y: 0,           // world Y position
     z: 0,           // world Z position (height)
