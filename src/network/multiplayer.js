@@ -1,0 +1,248 @@
+// ===============================
+// Multiplayer Manager
+// Handles: position sync, chat, hit reporting, damage receiving
+// ===============================
+"use strict";
+
+var Multiplayer = (function () {
+
+    // Opcodes (must match match_handler.lua)
+    var OP_POSITION      = 1;
+    var OP_CHAT          = 2;
+    var OP_HIT           = 3;
+    var OP_PLAYER_LIST   = 4;
+    var OP_PLAYER_JOIN   = 5;
+    var OP_PLAYER_LEAVE  = 6;
+    var OP_PLAYER_KICKED = 7;
+    var OP_DAMAGE        = 8;
+    var OP_RADAR_REVEAL  = 9;
+
+    var _matchId     = null;
+    var _connected   = false;
+    var _isAnonymous = false;
+
+    // Position broadcast throttle
+    var POSITION_INTERVAL_MS = 50;  // 20 Hz
+    var _lastPositionSend    = 0;
+
+    // ── Init ─────────────────────────────────────────────────
+
+    async function init(isAnonymous) {
+        _isAnonymous = isAnonymous;
+
+        try {
+            await NakamaClient.connect(onMessage, onDisconnect);
+            var match = await NakamaClient.joinOrCreateMatch();
+            _matchId   = match.match_id;
+            _connected = true;
+            console.log("Multiplayer connected, match:", _matchId);
+
+            // Load clan from storage (or set after clan selection)
+            if (!isAnonymous) {
+                var saved = await NakamaClient.readPlayerData();
+                if (saved && saved.clan) {
+                    nakamaState.myClan = saved.clan;
+                }
+            }
+        } catch (e) {
+            console.error("Multiplayer init failed:", e);
+            _connected = false;
+        }
+    }
+
+    // ── Disconnect ────────────────────────────────────────────
+
+    function disconnect() {
+        _connected = false;
+        _matchId   = null;
+        NakamaClient.disconnect();
+        // Clear remote players
+        nakamaState.remotePlayers = {};
+    }
+
+    // ── Per-frame update (call from game loop) ────────────────
+
+    function update() {
+        if (!_connected || !_matchId) return;
+
+        var now = Date.now();
+        if (now - _lastPositionSend >= POSITION_INTERVAL_MS) {
+            _lastPositionSend = now;
+            sendPosition();
+        }
+
+        // Tick down radar reveals
+        var revealIds = Object.keys(nakamaState.radarReveals);
+        for (var i = 0; i < revealIds.length; i++) {
+            var uid = revealIds[i];
+            if (now >= nakamaState.radarReveals[uid].expiry) {
+                delete nakamaState.radarReveals[uid];
+            }
+        }
+    }
+
+    // ── Send position ─────────────────────────────────────────
+
+    function sendPosition() {
+        NakamaClient.sendMatchData(_matchId, OP_POSITION, {
+            x:      camera.x,
+            y:      camera.y,
+            height: camera.height,
+            angle:  camera.angle,
+            health: player.health
+        });
+    }
+
+    // ── Send chat emoji ───────────────────────────────────────
+
+    function sendChat(emoji, shout) {
+        if (!_connected || !_matchId) return;
+        NakamaClient.sendMatchData(_matchId, OP_CHAT, {
+            emoji: emoji,
+            shout: shout === true
+        });
+    }
+
+    // ── Report a hit on a remote player ──────────────────────
+
+    function reportHit(targetUserId, damage) {
+        if (!_connected || !_matchId) return;
+        NakamaClient.sendMatchData(_matchId, OP_HIT, {
+            targetId: targetUserId,
+            damage:   damage
+        });
+    }
+
+    // ── Message handler ───────────────────────────────────────
+
+    function onMessage(opCode, data) {
+        var myId = NakamaClient.getUserId();
+
+        if (opCode === OP_PLAYER_LIST) {
+            // Initial list of players already in match
+            if (data.players) {
+                for (var i = 0; i < data.players.length; i++) {
+                    var p = data.players[i];
+                    nakamaState.remotePlayers[p.userId] = {
+                        userId:   p.userId,
+                        username: p.username,
+                        x:        p.x,
+                        y:        p.y,
+                        height:   p.height,
+                        angle:    p.angle,
+                        health:   p.health,
+                        lastSeen: Date.now()
+                    };
+                }
+            }
+
+        } else if (opCode === OP_PLAYER_JOIN) {
+            if (data.userId === myId) return;  // ignore self
+            nakamaState.remotePlayers[data.userId] = {
+                userId:   data.userId,
+                username: data.username,
+                x:        data.x,
+                y:        data.y,
+                height:   data.height,
+                angle:    data.angle,
+                health:   data.health,
+                lastSeen: Date.now()
+            };
+            showChatNotification(data.username + " joined");
+
+        } else if (opCode === OP_PLAYER_LEAVE) {
+            delete nakamaState.remotePlayers[data.userId];
+
+        } else if (opCode === OP_POSITION) {
+            if (data.userId === myId) return;
+            var rp = nakamaState.remotePlayers[data.userId];
+            if (rp) {
+                rp.x        = data.x;
+                rp.y        = data.y;
+                rp.height   = data.height;
+                rp.angle    = data.angle;
+                rp.health   = data.health;
+                rp.lastSeen = Date.now();
+            }
+
+        } else if (opCode === OP_CHAT) {
+            showEmojiChat(data.senderId, data.x, data.y, data.emoji, data.shout);
+
+        } else if (opCode === OP_PLAYER_KICKED) {
+            if (data.reason === "friendly_fire") {
+                showKickScreen("Friendly Fire — You shot a clanmate.");
+            } else {
+                showKickScreen("You were kicked: " + (data.reason || "unknown"));
+            }
+            disconnect();
+
+        } else if (opCode === OP_DAMAGE) {
+            // Server confirmed we took damage
+            player.health = Math.max(0, data.health);
+
+        } else if (opCode === OP_RADAR_REVEAL) {
+            // A player shouted — reveal on radar for 5 seconds
+            nakamaState.radarReveals[data.userId] = {
+                x:      data.x,
+                y:      data.y,
+                expiry: Date.now() + 5000
+            };
+        }
+    }
+
+    function onDisconnect() {
+        _connected = false;
+        if (_isAnonymous) {
+            // Wipe anon player data
+            nakamaState.remotePlayers = {};
+        }
+        showKickScreen("Disconnected from server.");
+    }
+
+    // ── UI helpers ────────────────────────────────────────────
+
+    function showChatNotification(text) {
+        var el = document.getElementById("mp-notification");
+        if (!el) return;
+        el.textContent = text;
+        el.style.opacity = "1";
+        clearTimeout(el._timeout);
+        el._timeout = setTimeout(function () { el.style.opacity = "0"; }, 3000);
+    }
+
+    function showEmojiChat(senderId, sx, sy, emoji, shout) {
+        // Add to chat log array for renderer to display in world space
+        nakamaState.chatBubbles.push({
+            senderId: senderId,
+            x:        sx,
+            y:        sy,
+            emoji:    emoji,
+            shout:    shout,
+            expiry:   Date.now() + 4000
+        });
+        // Prune old bubbles
+        nakamaState.chatBubbles = nakamaState.chatBubbles.filter(function (b) {
+            return Date.now() < b.expiry;
+        });
+    }
+
+    function showKickScreen(reason) {
+        var el = document.getElementById("kick-screen");
+        if (!el) return;
+        var msg = el.querySelector(".kick-reason");
+        if (msg) msg.textContent = reason;
+        el.style.display = "flex";
+    }
+
+    // ── Public API ─────────────────────────────────────────────
+
+    return {
+        init:       init,
+        update:     update,
+        disconnect: disconnect,
+        sendChat:   sendChat,
+        reportHit:  reportHit,
+        isConnected: function () { return _connected; }
+    };
+
+})();

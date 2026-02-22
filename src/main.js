@@ -86,6 +86,8 @@ function Draw(timestamp){
         DrawWeaponUI(screendata.context);
         DrawTouchControls(screendata.context);
         DrawGunDebugInfo();
+        RenderRemotePlayers();
+        if (typeof Multiplayer !== "undefined") Multiplayer.update();
         frames++;
     }
     requestAnimationFrame(Draw);
@@ -173,5 +175,41 @@ function Init(){
     console.log('  - reloadJsonConfigs() to reload from data/*.json');
 }
 
-// Start the game
-Init();
+// ── Multiplayer startup flow ──────────────────────────────
+async function StartMultiplayer() {
+    // 1. Show login screen, wait for auth
+    LoginScreen.show(async function (isAnonymous) {
+        // 2. Load player data to check if clan already chosen
+        var savedData = null;
+        if (!isAnonymous) {
+            savedData = await NakamaClient.readPlayerData();
+        }
+
+        var hasClan = savedData && savedData.clan;
+
+        if (hasClan) {
+            nakamaState.myClan = savedData.clan;
+            beginGame(isAnonymous);
+        } else {
+            // 3. Show clan selection
+            ClanScreen.show(isAnonymous, function (clanId) {
+                beginGame(isAnonymous);
+            });
+        }
+    });
+}
+
+async function beginGame(isAnonymous) {
+    // Connect to Nakama match
+    try {
+        await Multiplayer.init(isAnonymous);
+    } catch (e) {
+        console.warn("Multiplayer failed to connect, running offline:", e);
+    }
+    // Start the game loop
+    Init();
+    requestAnimationFrame(Draw);
+}
+
+// Start multiplayer auth flow
+StartMultiplayer();

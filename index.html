@@ -21,6 +21,113 @@
     <style>
         html, body {margin: 0; height: 100%; overflow: hidden; background: #000;}
 
+        /* ── Multiplayer overlay base ── */
+        .mp-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: #080f16;
+            color: #8ab0c8;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 32px;
+            z-index: 1000;
+            padding: 40px 20px;
+        }
+        .mp-overlay header { text-align: center; }
+        .mp-overlay h1 { font-size: 1.1rem; letter-spacing: 5px; text-transform: uppercase; color: #5a90b0; font-weight: 400; }
+        .mp-overlay .tagline { font-size: 0.72rem; opacity: 0.35; letter-spacing: 2px; margin-top: 6px; }
+
+        /* ── Login screen ── */
+        #login-screen .login-box {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(80,160,220,0.12);
+            border-radius: 4px;
+            padding: 28px 32px;
+            width: 100%;
+            max-width: 360px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        #login-screen input {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(80,160,220,0.15);
+            border-radius: 3px;
+            color: #c0d8e8;
+            padding: 9px 12px;
+            font-size: 0.85rem;
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        #login-screen input:focus { border-color: rgba(80,160,220,0.4); }
+        .mp-btn {
+            padding: 10px 16px;
+            border: 1px solid rgba(80,160,220,0.2);
+            border-radius: 3px;
+            background: rgba(80,140,200,0.1);
+            color: #8ab0c8;
+            cursor: pointer;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .mp-btn:hover { background: rgba(80,140,200,0.2); border-color: rgba(80,160,220,0.4); }
+        .mp-btn.anon  { background: rgba(60,60,60,0.3); border-color: rgba(120,120,120,0.2); color: #607080; }
+        .mp-btn.steam { background: rgba(30,60,100,0.3); border-color: rgba(60,120,180,0.25); }
+        .mp-divider   { border: none; border-top: 1px solid rgba(80,160,220,0.08); margin: 4px 0; }
+        #login-status { font-size: 0.72rem; min-height: 16px; text-align: center; }
+
+        /* ── Clan selection ── */
+        #clan-screen .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; width: 100%; max-width: 700px; }
+        .clan-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(80,160,220,0.08);
+            border-radius: 4px;
+            padding: 22px 20px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .clan-num  { font-size: 1.8rem; font-weight: 700; line-height: 1; }
+        .clan-name { font-size: 0.9rem; letter-spacing: 1px; font-weight: 400; }
+        .clan-desc { font-size: 0.7rem; line-height: 1.6; opacity: 0.45; }
+        .clan-badge { display: inline-block; font-size: 0.6rem; letter-spacing: 1.5px; text-transform: uppercase; padding: 2px 7px; border-radius: 2px; margin-top: 4px; align-self: flex-start; background: rgba(80,120,160,0.1); color: rgba(120,160,190,0.7); border: 1px solid rgba(80,120,160,0.2); }
+        #clan-note { font-size: 0.68rem; opacity: 0.3; letter-spacing: 1px; text-align: center; }
+
+        /* ── Kick screen ── */
+        #kick-screen .kick-box { text-align: center; display: flex; flex-direction: column; gap: 16px; }
+        .kick-icon   { font-size: 3rem; }
+        .kick-title  { font-size: 1rem; letter-spacing: 4px; text-transform: uppercase; color: #e05050; }
+        .kick-reason { font-size: 0.8rem; opacity: 0.5; letter-spacing: 1px; }
+        .kick-sub    { font-size: 0.7rem; opacity: 0.3; }
+
+        /* ── In-game notifications ── */
+        #mp-notification {
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: #8ab0c8;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            padding: 6px 16px;
+            border-radius: 3px;
+            border: 1px solid rgba(80,160,220,0.15);
+            z-index: 500;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+
         /* Game container - holds canvas and HUD, gets centered */
         #game-container {
             position: absolute;
@@ -107,7 +214,60 @@
 </head>
 <body>
 
-    <div id="controls" style="display: none; position: absolute; top: 50px; left: 10px; background: rgba(0, 0, 0, 0.85); color: white; padding: 0; width: 360px; border-radius: 5px; overflow: hidden; z-index: 100;">
+    <!-- ── In-game notification toast ── -->
+<div id="mp-notification"></div>
+
+<!-- ══════════════════════════════════════ -->
+<!-- LOGIN SCREEN                          -->
+<!-- ══════════════════════════════════════ -->
+<div id="login-screen" class="mp-overlay" style="display:flex;">
+  <header>
+    <h1>VoxelSpace</h1>
+    <p class="tagline">Open World Survival — Player vs Player</p>
+  </header>
+
+  <div class="login-box">
+    <!-- Username / Password -->
+    <input id="login-username" type="text"     placeholder="Username" autocomplete="username">
+    <input id="login-password" type="password" placeholder="Password (min 8 chars)" autocomplete="current-password">
+    <button id="login-pw-btn" class="mp-btn">Sign In / Register</button>
+
+    <hr class="mp-divider">
+
+    <button id="login-steam-btn" class="mp-btn steam">Sign in with Steam</button>
+    <button id="login-anon-btn"  class="mp-btn anon">Play as Guest (no persistence)</button>
+
+    <div id="login-status"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<!-- CLAN SELECTION SCREEN                 -->
+<!-- ══════════════════════════════════════ -->
+<div id="clan-screen" class="mp-overlay">
+  <header>
+    <h1>Choose Your Clan</h1>
+    <p class="tagline">Your choice is permanent and secret. Nobody will know.</p>
+  </header>
+
+  <div id="clan-cards" class="cards"></div>
+
+  <p id="clan-note">Friendly fire results in an immediate kick.</p>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<!-- KICK SCREEN                           -->
+<!-- ══════════════════════════════════════ -->
+<div id="kick-screen" class="mp-overlay">
+  <div class="kick-box">
+    <div class="kick-icon">⚠</div>
+    <div class="kick-title">Kicked</div>
+    <div class="kick-reason"></div>
+    <div class="kick-sub">Refresh the page to reconnect.</div>
+  </div>
+</div>
+
+<div id="controls" style="display: none; position: absolute; top: 50px; left: 10px; background: rgba(0, 0, 0, 0.85); color: white; padding: 0; width: 360px; border-radius: 5px; overflow: hidden; z-index: 100;">
   <!-- Panel Title -->
   <div style="background: #222; padding: 8px 10px; font-weight: bold; font-size: 13px; border-bottom: 1px solid #444;">Settings <span style="float:right; font-weight:normal; font-size:10px; color:#888;">[ESC] toggle</span></div>
   <!-- Tab buttons -->
@@ -364,6 +524,23 @@
 <div id="info">Keyboard: WASD move, Mouse look, LMB shoot, RMB toggle ADS, HOLD Space jump, Shift sprint, C crouch, R reload, Q swap weapon, E pickup | Gamepad: Left Stick move, Right Stick look, RT shoot, LT toggle ADS, HOLD LB jump, B crouch, X reload, Y swap weapon, L3/A sprint</div>
 
 <!-- ===================================== -->
+<!-- Nakama JS SDK                        -->
+<!-- ===================================== -->
+<script src="https://unpkg.com/@heroiclabs/nakama-js/dist/nakama-js.umd.js"></script>
+
+<!-- ===================================== -->
+<!-- Multiplayer Network Layer            -->
+<!-- ===================================== -->
+<script src="src/network/nakamaClient.js"></script>
+<script src="src/network/multiplayer.js"></script>
+
+<!-- ===================================== -->
+<!-- Multiplayer UI                       -->
+<!-- ===================================== -->
+<script src="src/ui/loginScreen.js"></script>
+<script src="src/ui/clanScreen.js"></script>
+
+<!-- ===================================== -->
 <!-- External Modules (config definitions) -->
 <!-- ===================================== -->
 <script src="modules/displayConfig.js"></script>
@@ -381,6 +558,7 @@
 <!-- ===================================== -->
 <!-- src/ files - Rendering Pipeline      -->
 <!-- ===================================== -->
+<script src="src/rendering/remotePlayerRenderer.js"></script>
 <script src="src/rendering/screenBuffer.js"></script>
 <script src="src/rendering/voxelEngine.js"></script>
 <script src="src/rendering/cubeRenderer.js"></script>

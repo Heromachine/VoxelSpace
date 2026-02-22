@@ -309,3 +309,12 @@ var testTarget = {
     hits: 0,
     misses: 0
 };
+
+// ===============================
+// Multiplayer / Nakama State
+var nakamaState = {
+    remotePlayers: {},   // userId -> { userId, username, x, y, height, angle, health, lastSeen }
+    myClan:        null, // "iron_ravens" | "ember_tide" | "silent_root"
+    chatBubbles:   [],   // [ { senderId, x, y, emoji, shout, expiry } ]
+    radarReveals:  {}    // userId -> { x, y, expiry } — players revealed by shout
+};

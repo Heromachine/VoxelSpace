@@ -121,6 +121,49 @@ function DrawMinimap(){
     ctx.lineWidth = 1;
     ctx.stroke();
 
+    // Draw remote players on minimap
+    var myId = (typeof NakamaClient !== "undefined") ? NakamaClient.getUserId() : null;
+    var now  = Date.now();
+    if (typeof nakamaState !== "undefined") {
+        // Draw radar-revealed shout positions (orange pulses)
+        var revealIds = Object.keys(nakamaState.radarReveals);
+        for (var ri = 0; ri < revealIds.length; ri++) {
+            var ruid   = revealIds[ri];
+            var reveal = nakamaState.radarReveals[ruid];
+            var rrx    = (reveal.x - camera.x) * scale;
+            var rry    = (reveal.y - camera.y) * scale;
+            if (Math.abs(rrx) < size / 2 && Math.abs(rry) < size / 2) {
+                ctx.beginPath();
+                ctx.arc(pcx + rrx, pcy + rry, 6, 0, Math.PI * 2);
+                ctx.fillStyle = "rgba(255,160,0,0.6)";
+                ctx.fill();
+                ctx.strokeStyle = "#ff9900";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        }
+
+        // Draw remote players as grey dots
+        var rpIds = Object.keys(nakamaState.remotePlayers);
+        for (var rpi = 0; rpi < rpIds.length; rpi++) {
+            var rpid = rpIds[rpi];
+            if (rpid === myId) continue;
+            var rp = nakamaState.remotePlayers[rpid];
+            if (!rp || now - rp.lastSeen > 3000) continue;
+            var rpx = (rp.x - camera.x) * scale;
+            var rpy = (rp.y - camera.y) * scale;
+            if (Math.abs(rpx) < size / 2 && Math.abs(rpy) < size / 2) {
+                ctx.beginPath();
+                ctx.arc(pcx + rpx, pcy + rpy, 4, 0, Math.PI * 2);
+                ctx.fillStyle = "#aaaaaa";
+                ctx.fill();
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+        }
+    }
+
     // Draw hitscan and CCD range circles (if enabled)
     if (showHitRanges) {
         // Hitscan range (red circle - instant hit zone)
