@@ -310,6 +310,12 @@ var testTarget = {
     misses: 0
 };
 
+// ── Admin / developer flag ───────────────────────────────────────────────────
+// Set to true after login when the authenticated username is "heromachine".
+// Dev features (settings menu, debug overlay, side-view minimap, etc.) are
+// hidden for all other users.
+var isAdmin = false;
+
 // ===============================
 // Multiplayer / Nakama State
 var nakamaState = {

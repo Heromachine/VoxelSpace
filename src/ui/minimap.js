@@ -164,8 +164,8 @@ function DrawMinimap(){
         }
     }
 
-    // Draw hitscan and CCD range circles (if enabled)
-    if (showHitRanges) {
+    // Draw hitscan and CCD range circles (admin dev view only)
+    if (isAdmin && showHitRanges) {
         // Hitscan range (red circle - instant hit zone)
         if (hitscanDist > 0) {
             var hitscanRadius = hitscanDist * scale;
@@ -193,25 +193,26 @@ function DrawMinimap(){
         }
     }
 
-    // Draw bullets as red dots on minimap
+    // Draw bullets as red dots on minimap (admin dev view only)
+    if (isAdmin) {
     var bulletWorldRadius = bulletSize * 2;  // bullet radius in world units
     items.forEach(function(it){
         if(it.type === 'bullet'){
             var bx = (it.x - camera.x) * scale;
             var by = (it.y - camera.y) * scale;
-            // Only draw if within minimap bounds
             if(Math.abs(bx) < size/2 && Math.abs(by) < size/2){
                 ctx.beginPath();
-                var bulletRadius = Math.max(2, bulletWorldRadius * scale);  // scale to world, min 2px
+                var bulletRadius = Math.max(2, bulletWorldRadius * scale);
                 ctx.arc(pcx + bx, pcy + by, bulletRadius, 0, Math.PI * 2);
                 ctx.fillStyle = 'red';
                 ctx.fill();
             }
         }
     });
+    } // end isAdmin bullet dots
 
-    // Draw test target on minimap (red circle with crosshair)
-    if (testTarget.enabled) {
+    // Draw test target on minimap (admin dev view only)
+    if (isAdmin && testTarget.enabled) {
         var tx = (testTarget.x - camera.x) * scale;
         var ty = (testTarget.y - camera.y) * scale;
         if (Math.abs(tx) < size/2 && Math.abs(ty) < size/2) {
@@ -239,103 +240,95 @@ function DrawMinimap(){
         }
     }
 
-    // Draw view direction line (blue line - where camera is looking)
-    var viewLineLen = 25 * scale;  // 25 world units
-    ctx.save();
-    ctx.translate(pcx, pcy);
-    ctx.rotate(-angle);
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(0, -viewLineLen);  // line pointing in look direction
-    ctx.strokeStyle = 'rgba(0,100,255,0.7)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.restore();
-
-    // Draw barrel direction line (orange line - where gun is aiming)
-    // Use actual gun direction from getGunWorldDirection()
-    var gunDir = getGunWorldDirection();
-    var barrelLineLen = 20 * scale;  // 20 world units
-    ctx.beginPath();
-    ctx.moveTo(pcx, pcy);
-    ctx.lineTo(pcx + gunDir.x * barrelLineLen, pcy + gunDir.y * barrelLineLen);
-    ctx.strokeStyle = 'orange';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // Draw gun shape at barrel position
-    var barrelPos = getBarrelWorldPos();
-    var bpx = (barrelPos.x - camera.x) * scale;
-    var bpy = (barrelPos.y - camera.y) * scale;
-    if(Math.abs(bpx) < size/2 && Math.abs(bpy) < size/2){
+    // Dev-only overlays on the overhead map (admin only)
+    if (isAdmin) {
+        // View direction line (blue)
+        var viewLineLen = 25 * scale;
         ctx.save();
-        ctx.translate(pcx + bpx, pcy + bpy);
-        // Rotate gun to match barrel direction
-        var gunAngle = Math.atan2(-gunDir.y, -gunDir.x);
-        ctx.rotate(gunAngle);
-
-        // Draw gun shape (top-down silhouette) - realistic size from WeaponConfig
-        var currentSlot = playerWeapons[currentWeaponIndex];
-        var totalPlayerHeight = playerHeightOffset / 0.93;  // Convert eye height to total height
-        var gunWorldLength = WeaponConfig.getWeaponLength(currentSlot.type, totalPlayerHeight);
-        var pxPerUnit = scale;  // pixels per world unit on minimap
-        var gunBodyLen = 0.5 * gunWorldLength * pxPerUnit;
-        var gunBodyWidth = 0.25 * gunWorldLength * pxPerUnit;
-        var barrelLen = 0.5 * gunWorldLength * pxPerUnit;
-        var barrelWidth = 0.15 * gunWorldLength * pxPerUnit;
-        // Ensure minimum visibility
-        gunBodyLen = Math.max(gunBodyLen, 8);
-        gunBodyWidth = Math.max(gunBodyWidth, 4);
-        barrelLen = Math.max(barrelLen, 6);
-        barrelWidth = Math.max(barrelWidth, 2);
+        ctx.translate(pcx, pcy);
+        ctx.rotate(-angle);
         ctx.beginPath();
-        // Gun body (rectangle)
-        ctx.rect(-gunBodyLen * 0.6, -gunBodyWidth/2, gunBodyLen, gunBodyWidth);
-        // Barrel (longer rectangle)
-        ctx.rect(gunBodyLen * 0.3, -barrelWidth/2, barrelLen, barrelWidth);
-        ctx.fillStyle = 'rgba(80,80,80,0.9)';
-        ctx.fill();
-        ctx.strokeStyle = 'cyan';
-        ctx.lineWidth = 1;
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, -viewLineLen);
+        ctx.strokeStyle = 'rgba(0,100,255,0.7)';
+        ctx.lineWidth = 2;
         ctx.stroke();
-
-        // Barrel tip marker (cyan dot)
-        var tipRadius = Math.max(2, 0.1 * gunWorldLength * pxPerUnit);
-        ctx.beginPath();
-        ctx.arc(gunBodyLen * 0.3 + barrelLen, 0, tipRadius, 0, Math.PI * 2);
-        ctx.fillStyle = 'cyan';
-        ctx.fill();
-
         ctx.restore();
-    }
 
-    // Draw bullet spawn position (gray circle - where bullets actually spawn)
-    var spawnX = barrelPos.x + gunDir.x * gunModel.barrelDistance;
-    var spawnY = barrelPos.y + gunDir.y * gunModel.barrelDistance;
-    var spx = (spawnX - camera.x) * scale;
-    var spy = (spawnY - camera.y) * scale;
-    var spawnRadius = Math.max(3, bulletSize * 2 * scale);  // scaled to world units
-    if(Math.abs(spx) < size/2 && Math.abs(spy) < size/2){
+        // Barrel direction line (orange) and gun shape
+        var gunDir = getGunWorldDirection();
+        var barrelLineLen = 20 * scale;
         ctx.beginPath();
-        ctx.arc(pcx + spx, pcy + spy, spawnRadius, 0, Math.PI * 2);
-        ctx.fillStyle = '#888';
-        ctx.fill();
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 1;
+        ctx.moveTo(pcx, pcy);
+        ctx.lineTo(pcx + gunDir.x * barrelLineLen, pcy + gunDir.y * barrelLineLen);
+        ctx.strokeStyle = 'orange';
+        ctx.lineWidth = 2;
         ctx.stroke();
-    }
 
-    // Title with mode indicator
+        var barrelPos = getBarrelWorldPos();
+        var bpx = (barrelPos.x - camera.x) * scale;
+        var bpy = (barrelPos.y - camera.y) * scale;
+        if(Math.abs(bpx) < size/2 && Math.abs(bpy) < size/2){
+            ctx.save();
+            ctx.translate(pcx + bpx, pcy + bpy);
+            var gunAngle = Math.atan2(-gunDir.y, -gunDir.x);
+            ctx.rotate(gunAngle);
+            var currentSlot = playerWeapons[currentWeaponIndex];
+            var totalPlayerHeight = playerHeightOffset / 0.93;
+            var gunWorldLength = WeaponConfig.getWeaponLength(currentSlot.type, totalPlayerHeight);
+            var pxPerUnit = scale;
+            var gunBodyLen = Math.max(8, 0.5 * gunWorldLength * pxPerUnit);
+            var gunBodyWidth = Math.max(4, 0.25 * gunWorldLength * pxPerUnit);
+            var barrelLen = Math.max(6, 0.5 * gunWorldLength * pxPerUnit);
+            var barrelWidth = Math.max(2, 0.15 * gunWorldLength * pxPerUnit);
+            ctx.beginPath();
+            ctx.rect(-gunBodyLen * 0.6, -gunBodyWidth/2, gunBodyLen, gunBodyWidth);
+            ctx.rect(gunBodyLen * 0.3, -barrelWidth/2, barrelLen, barrelWidth);
+            ctx.fillStyle = 'rgba(80,80,80,0.9)';
+            ctx.fill();
+            ctx.strokeStyle = 'cyan';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            var tipRadius = Math.max(2, 0.1 * gunWorldLength * pxPerUnit);
+            ctx.beginPath();
+            ctx.arc(gunBodyLen * 0.3 + barrelLen, 0, tipRadius, 0, Math.PI * 2);
+            ctx.fillStyle = 'cyan';
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // Bullet spawn position (gray circle)
+        var spawnX = barrelPos.x + gunDir.x * gunModel.barrelDistance;
+        var spawnY = barrelPos.y + gunDir.y * gunModel.barrelDistance;
+        var spx = (spawnX - camera.x) * scale;
+        var spy = (spawnY - camera.y) * scale;
+        var spawnRadius = Math.max(3, bulletSize * 2 * scale);
+        if(Math.abs(spx) < size/2 && Math.abs(spy) < size/2){
+            ctx.beginPath();
+            ctx.arc(pcx + spx, pcy + spy, spawnRadius, 0, Math.PI * 2);
+            ctx.fillStyle = '#888';
+            ctx.fill();
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+    } // end isAdmin overhead dev overlays
+
+    // Title
     ctx.fillStyle = 'white';
     ctx.font = '10px Arial';
-    var modeText = gunModel.pivotMode === 'barrel' ? '[ADS]' : '[HIP]';
-    ctx.fillText('OVERHEAD ' + modeText + ' [' + minimapZoomRange + '] Z=zoom', cx + 5, cy + 12);
+    if (isAdmin) {
+        var modeText = gunModel.pivotMode === 'barrel' ? '[ADS]' : '[HIP]';
+        ctx.fillText('OVERHEAD ' + modeText + ' [' + minimapZoomRange + '] Z=zoom', cx + 5, cy + 12);
+    } else {
+        ctx.fillText('MAP', cx + 5, cy + 12);
+    }
 
-    // === SIDE VIEW MINIMAP ===
-    DrawSideView(ctx);
-
-    // === LEGEND BOX ===
-    DrawMinimapLegend(ctx);
+    // === SIDE VIEW and LEGEND (admin dev only) ===
+    if (isAdmin) {
+        DrawSideView(ctx);
+        DrawMinimapLegend(ctx);
+    }
 }
 
 // Side view showing terrain profile, player height, and bullets

@@ -206,6 +206,15 @@ async function beginGame(isAnonymous) {
     } catch (e) {
         console.warn("Multiplayer failed to connect, running offline:", e);
     }
+
+    // Admin check — developer UI only visible to heromachine
+    isAdmin = (NakamaClient.getUsername() === "heromachine");
+    if (!isAdmin) {
+        showGMD        = false;   // gun mechanics debug overlay
+        showHitRanges  = false;   // hit-range circles on minimap
+        testTarget.enabled = false; // floating test target
+    }
+
     // Start the game loop
     Init();
     requestAnimationFrame(Draw);

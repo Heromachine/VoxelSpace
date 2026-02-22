@@ -15,7 +15,8 @@ function DetectKeysDown(e){
         case 82:input.reload=true;break;
         case 81:input.swapWeapon=true;break;
         case 69:input.pickupWeapon=true;break;
-        case 90: // Z - cycle zoom presets
+        case 90: // Z - cycle zoom presets (admin only)
+            if(!isAdmin) break;
             var zoomPresets=[20,50,100,200,300];
             var idx=zoomPresets.indexOf(minimapZoomRange);
             minimapZoomRange=zoomPresets[(idx+1)%zoomPresets.length];
@@ -27,9 +28,10 @@ function DetectKeysDown(e){
             document.getElementById('sideViewZoomRange').value=sideViewZoomRange;
             document.getElementById('sideViewZoomRange-value').innerText=sideViewZoomRange;
             break;
-        case 84:positionTestTarget();break; // T - reposition target
-        case 71:testTarget.enabled=!testTarget.enabled;break; // G - toggle target
-        case 27: // ESC - toggle settings panel
+        case 84:if(isAdmin)positionTestTarget();break; // T - reposition target (admin only)
+        case 71:if(isAdmin)testTarget.enabled=!testTarget.enabled;break; // G - toggle target (admin only)
+        case 27: // ESC - toggle settings panel (admin only)
+            if(!isAdmin) break;
             var ctrl=document.getElementById('controls');
             ctrl.style.display=ctrl.style.display==='none'?'block':'none';
             break;
