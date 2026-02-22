@@ -35,6 +35,10 @@ function DetectKeysDown(e){
             var ctrl=document.getElementById('controls');
             ctrl.style.display=ctrl.style.display==='none'?'block':'none';
             break;
+        case 9: // Tab — show scoreboard
+            e.preventDefault();
+            showScoreboard = true;
+            break;
     }
     if(!updaterunning){time=Date.now();Draw();}
 }
@@ -51,5 +55,8 @@ function DetectKeysUp(e){
         case 82:input.reload=false;break;
         case 81:input.swapWeapon=false;break;
         case 69:input.pickupWeapon=false;break;
+        case 9:
+            showScoreboard = false;
+            break;
     }
 }

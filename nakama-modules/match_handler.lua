@@ -16,6 +16,9 @@ local OP_PLAYER_LEAVE  = 6
 local OP_PLAYER_KICKED = 7
 local OP_DAMAGE        = 8
 local OP_RADAR_REVEAL  = 9
+local OP_KILL   = 10
+local OP_PING   = 11
+local OP_PONG   = 12
 
 local TICK_RATE      = 20
 local VICINITY_RANGE = 150
@@ -72,6 +75,7 @@ function M.match_join(context, logger, nk, dispatcher, tick, state, presences)
         state.presences[uid] = presence
         state.players[uid]   = {
             x = sx, y = sy, height = 78, angle = 0, health = MAX_HEALTH,
+            kills = 0,
             username = presence.username, clan = clan,
             lastX = sx, lastY = sy, lastTime = _nk.time() / 1000.0
         }
@@ -81,7 +85,8 @@ function M.match_join(context, logger, nk, dispatcher, tick, state, presences)
         for euid, p in pairs(state.players) do
             if euid ~= uid then
                 table.insert(list, { userId = euid, username = p.username,
-                    x = p.x, y = p.y, height = p.height, angle = p.angle, health = p.health })
+                    x = p.x, y = p.y, height = p.height, angle = p.angle, health = p.health,
+                    kills = p.kills or 0 })
             end
         end
         dispatcher.broadcast_message(OP_PLAYER_LIST,
@@ -197,12 +202,28 @@ function M.match_loop(context, logger, nk, dispatcher, tick, state, messages)
                 goto continue
             end
 
+            local prev_health = target.health
             target.health = math.max(0, target.health - damage)
             local tp = state.presences[target_id]
             if tp then
                 dispatcher.broadcast_message(OP_DAMAGE,
                     _nk.json_encode({ shooterId = sender_uid, damage = damage, health = target.health }),
                     { tp }, nil, true)
+            end
+            if prev_health > 0 and target.health <= 0 then
+                record.kills = (record.kills or 0) + 1
+                dispatcher.broadcast_message(OP_KILL,
+                    _nk.json_encode({ killerId = sender_uid, victimId = target_id,
+                        kills = record.kills }),
+                    nil, nil, true)
+            end
+
+        elseif op == OP_PING then
+            local sp = state.presences[sender_uid]
+            if sp then
+                dispatcher.broadcast_message(OP_PONG,
+                    _nk.json_encode({ ts = data.ts }),
+                    { sp }, nil, false)
             end
         end
 

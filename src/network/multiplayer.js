@@ -16,6 +16,9 @@ var Multiplayer = (function () {
     var OP_PLAYER_KICKED = 7;
     var OP_DAMAGE        = 8;
     var OP_RADAR_REVEAL  = 9;
+    var OP_KILL   = 10;
+    var OP_PING   = 11;
+    var OP_PONG   = 12;
 
     var _matchId     = null;
     var _connected   = false;
@@ -24,6 +27,10 @@ var Multiplayer = (function () {
     // Position broadcast throttle
     var POSITION_INTERVAL_MS = 50;  // 20 Hz
     var _lastPositionSend    = 0;
+
+    var PING_INTERVAL_MS = 4000;
+    var _lastPingSend    = 0;
+    var _pingTs          = 0;
 
     // ── Init ─────────────────────────────────────────────────
 
@@ -71,6 +78,12 @@ var Multiplayer = (function () {
             sendPosition();
         }
 
+        if (now - _lastPingSend >= PING_INTERVAL_MS) {
+            _lastPingSend = now;
+            _pingTs = now;
+            NakamaClient.sendMatchData(_matchId, OP_PING, { ts: now });
+        }
+
         // Tick down radar reveals
         var revealIds = Object.keys(nakamaState.radarReveals);
         for (var i = 0; i < revealIds.length; i++) {
@@ -89,7 +102,8 @@ var Multiplayer = (function () {
             y:      camera.y,
             height: camera.height,
             angle:  camera.angle,
-            health: player.health
+            health: player.health,
+            ping:   nakamaState.myPing
         });
     }
 
@@ -131,6 +145,8 @@ var Multiplayer = (function () {
                         height:   p.height,
                         angle:    p.angle,
                         health:   p.health,
+                        kills:    p.kills || 0,
+                        ping:     null,
                         lastSeen: Date.now()
                     };
                 }
@@ -146,6 +162,8 @@ var Multiplayer = (function () {
                 height:   data.height,
                 angle:    data.angle,
                 health:   data.health,
+                kills:    0,
+                ping:     null,
                 lastSeen: Date.now()
             };
             showChatNotification(data.username + " joined");
@@ -163,6 +181,7 @@ var Multiplayer = (function () {
                 rp.angle    = data.angle;
                 rp.health   = data.health;
                 rp.lastSeen = Date.now();
+                if (data.ping != null) rp.ping = data.ping;
             }
 
         } else if (opCode === OP_CHAT) {
@@ -187,6 +206,17 @@ var Multiplayer = (function () {
                 y:      data.y,
                 expiry: Date.now() + 5000
             };
+
+        } else if (opCode === OP_KILL) {
+            if (data.killerId === myId) {
+                nakamaState.myKills++;
+            } else {
+                var killer = nakamaState.remotePlayers[data.killerId];
+                if (killer) killer.kills = data.kills;
+            }
+
+        } else if (opCode === OP_PONG) {
+            nakamaState.myPing = Date.now() - _pingTs;
         }
     }
 

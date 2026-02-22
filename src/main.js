@@ -88,6 +88,7 @@ function Draw(timestamp){
         DrawGunDebugInfo();
         RenderRemotePlayers();
         if (typeof Multiplayer !== "undefined") Multiplayer.update();
+        DrawScoreboard();
         frames++;
     }
     requestAnimationFrame(Draw);
