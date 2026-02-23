@@ -21,7 +21,6 @@ local OP_PONG          = 12
 local TICK_RATE      = 20
 local VICINITY_RANGE = 150
 local SHOUT_RANGE    = 500
-local MAX_SPEED      = 300
 local MAX_HEALTH     = 100
 
 local M = {}
@@ -73,7 +72,7 @@ function M.match_join(context, dispatcher, tick, state, presences)
                 x = sx, y = sy, height = 78, angle = 0, health = MAX_HEALTH,
                 kills = 0,
                 username = presence.username, clan = clan,
-                lastX = sx, lastY = sy, lastTick = tick
+                lastX = sx, lastY = sy
             }
 
             -- Send current player list to new joiner
@@ -126,23 +125,11 @@ local function handle_message(dispatcher, state, tick, msg)
     local data = _nk.json_decode(msg.data)
 
     if op == OP_POSITION then
-        -- Use tick-based dt (TICK_RATE Hz) to avoid os.time() 1-second resolution
-        local ticks_elapsed = math.max(1, tick - (record.lastTick or tick))
-        local dt = ticks_elapsed / TICK_RATE
-        local nx    = data.x or record.x
-        local ny    = data.y or record.y
-        local moved = dist2d(nx, ny, record.lastX, record.lastY)
-
-        if moved <= MAX_SPEED * dt + 5 then
-            record.x      = nx
-            record.y      = ny
-            record.height = data.height or record.height
-            record.angle  = data.angle  or record.angle
-            record.health = math.max(0, math.min(MAX_HEALTH, data.health or record.health))
-        end
-        record.lastX    = record.x
-        record.lastY    = record.y
-        record.lastTick = tick
+        record.x      = data.x      or record.x
+        record.y      = data.y      or record.y
+        record.height = data.height or record.height
+        record.angle  = data.angle  or record.angle
+        record.health = math.max(0, math.min(MAX_HEALTH, data.health or record.health))
 
         local others = {}
         for uid, p in pairs(state.presences) do
