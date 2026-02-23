@@ -41,19 +41,36 @@ function OnResizeWindow(){
     var W = window.innerWidth;
     var H = window.innerHeight;
 
-    // Always fill the full window — no letterboxing
+    // Always fill the full window
     gameContainer.style.left   = '0px';
     gameContainer.style.top    = '0px';
     gameContainer.style.width  = W + 'px';
     gameContainer.style.height = H + 'px';
-
-    // Keep internal render resolution capped for performance;
-    // canvas CSS stretches it to fill the window
-    var dims = DisplayConfig.getCanvasDimensions(W, H);
-    screendata.canvas.width  = dims.renderWidth;
-    screendata.canvas.height = dims.renderHeight;
     screendata.canvas.style.width  = '100%';
     screendata.canvas.style.height = '100%';
+
+    var prevH = (screendata.canvas.height > 0) ? screendata.canvas.height : H;
+
+    // On touch devices canvas pixel size = window size so touch coords match canvas coords.
+    // On desktop use capped render resolution.
+    var isTouch = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    var renderW, renderH;
+    if (isTouch) {
+        renderW = W;
+        renderH = H;
+    } else {
+        var dims = DisplayConfig.getCanvasDimensions(W, H);
+        renderW = dims.renderWidth;
+        renderH = dims.renderHeight;
+    }
+
+    // Scale horizon proportionally when canvas height changes
+    if (prevH > 0 && prevH !== renderH) {
+        camera.horizon = Math.round(camera.horizon * renderH / prevH);
+    }
+
+    screendata.canvas.width  = renderW;
+    screendata.canvas.height = renderH;
 
     // Recalculate touch button positions for new window size
     if (touchControls.enabled) updateTouchControlPositions();

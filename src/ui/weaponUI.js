@@ -16,10 +16,14 @@ function DrawWeaponUI(ctx) {
     var slotGap = Math.floor(10 * scale);
     var slotY = sh - Math.floor(80 * scale);
 
+    // Center weapon squares at bottom of screen
+    var totalWidth = playerWeapons.length * slotSize + (playerWeapons.length - 1) * slotGap;
+    var slotStartX = Math.floor((sw - totalWidth) / 2);
+
     for (var i = 0; i < playerWeapons.length; i++) {
         var slot = playerWeapons[i];
         var weapon = weapons[slot.type];
-        var slotX = sw - ((playerWeapons.length - i) * (slotSize + slotGap));
+        var slotX = slotStartX + i * (slotSize + slotGap);
 
         var isActive = (i === currentWeaponIndex);
 

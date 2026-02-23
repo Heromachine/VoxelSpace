@@ -128,8 +128,9 @@ var touchControls = {
     pickupHitbox: null,    // Hitbox for pickup prompt
     shootButton: { x: 0, y: 0, radius: 45, active: false, touchId: null },
     jumpButton:  { x: 0, y: 0, radius: 32, active: false, touchId: null },
+    zoomButton:  { x: 0, y: 0, radius: 32, active: false, touchId: null },
     swapButton:  { x: 0, y: 0, radius: 28, active: false, touchId: null },
-    lastCenterTapTime: 0   // for double-tap ADS
+    controlsTop: 0   // Y where controls area starts in portrait mode
 };
 
 var debugUIVisible=true;  // Toggle with Start button
