@@ -126,7 +126,10 @@ var touchControls = {
     rightStickPos: { x: 0, y: 0 },    // Will be set based on screen size
     weaponSlots: [],       // Hitboxes for weapon icons [{x, y, w, h, index}]
     pickupHitbox: null,    // Hitbox for pickup prompt
-    shootButton: { x: 0, y: 0, radius: 40, active: false, touchId: null }
+    shootButton: { x: 0, y: 0, radius: 45, active: false, touchId: null },
+    jumpButton:  { x: 0, y: 0, radius: 32, active: false, touchId: null },
+    swapButton:  { x: 0, y: 0, radius: 28, active: false, touchId: null },
+    lastCenterTapTime: 0   // for double-tap ADS
 };
 
 var debugUIVisible=true;  // Toggle with Start button
