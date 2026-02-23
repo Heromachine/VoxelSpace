@@ -161,24 +161,25 @@
 
         #healthbar {
             position: absolute;
-            bottom: 10px;
+            bottom: 18px;
             left: 10px;
-            width: 200px;
-            height: 20px;
-            background: #333;
-            border: 2px solid white;
-            overflow: visible;
+            width: 180px;
+            height: 8px;
+            background: rgba(8,15,22,0.82);
+            border: 1px solid rgba(80,160,220,0.3);
+            border-radius: 4px;
+            overflow: hidden;
             z-index: 10;
         }
 
         #jumpbar {
             position: absolute;
-            bottom: 40px;
+            bottom: 10px;
             left: 10px;
-            width: 200px;
-            height: 10px;
-            background: #333;
-            border: 2px solid white;
+            width: 180px;
+            height: 3px;
+            background: rgba(255,255,255,0.07);
+            border-radius: 2px;
             display: none;
             z-index: 10;
         }
@@ -186,25 +187,18 @@
         #jumpcharge {
             width: 0%;
             height: 100%;
-            background: linear-gradient(to right, #00ff00, #ffff00, #ff0000);
+            background: rgba(80,160,220,0.85);
+            border-radius: inherit;
             transition: width 0.05s;
         }
 
-        .hud-item {
-            position: absolute;
-            left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 28px;
-            height: 28px;
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
-            image-rendering: pixelated;
-            pointer-events: none;
+        #health {
+            width: 100%;
+            height: 100%;
+            background: rgba(175,50,60,0.9);
+            border-radius: inherit;
+            transition: width 0.1s;
         }
-
-        #health {width: 100%;height: 100%;background: #ff0000;}
         /* Debug info and controls hidden - moved to Debug tab */
         #info, #fps, #bulletcount, #lastbulletpos, #lastbulletscreen, #playerrotation,
         #playerposition, #lastbulletdestroyedpos, #lastbulletdestroyedreason {
@@ -212,13 +206,8 @@
         }
 
         /* ── HUD elements ── */
-        #healthbar {
-            background: rgba(8,15,22,0.82) !important;
-            border: 1px solid rgba(80,160,220,0.3) !important;
-        }
         #jumpbar {
-            background: rgba(8,15,22,0.82) !important;
-            border: 1px solid rgba(80,160,220,0.3) !important;
+            border: none !important;
         }
         #crosshair {
             border-color: rgba(138,176,200,0.75) !important;
@@ -535,7 +524,6 @@
     <div id="crosshair"></div>
     <div id="healthbar">
         <div id="health"></div>
-        <div class="hud-item" style="background-image: url('images/heart.png');"></div>
     </div>
     <div id="jumpbar">
         <div id="jumpcharge"></div>

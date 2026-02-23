@@ -18,20 +18,20 @@ function applyUIScales() {
 
     if (healthbar) {
         var hs = uiScale.healthbar;
-        healthbar.style.width = (200 * hs) + 'px';
-        healthbar.style.height = (20 * hs) + 'px';
-        healthbar.style.bottom = (10 * hs) + 'px';
+        healthbar.style.width = (180 * hs) + 'px';
+        healthbar.style.height = (8 * hs) + 'px';
+        healthbar.style.bottom = (18 * hs) + 'px';
         healthbar.style.left = (10 * hs) + 'px';
-        healthbar.style.borderWidth = (2 * hs) + 'px';
+        healthbar.style.borderWidth = (1 * hs) + 'px';
     }
 
     if (jumpbar) {
         var js = uiScale.jumpbar;
-        jumpbar.style.width = (200 * js) + 'px';
-        jumpbar.style.height = (10 * js) + 'px';
-        jumpbar.style.bottom = (40 * js) + 'px';
+        jumpbar.style.width = (180 * js) + 'px';
+        jumpbar.style.height = (3 * js) + 'px';
+        jumpbar.style.bottom = (10 * js) + 'px';
         jumpbar.style.left = (10 * js) + 'px';
-        jumpbar.style.borderWidth = (2 * js) + 'px';
+        jumpbar.style.borderWidth = '0';
     }
 }
 
