@@ -36,35 +36,83 @@ function applyUIScales() {
 }
 
 function OnResizeWindow(){
-    screendata.canvas=document.getElementById('fullscreenCanvas');
-    var gameContainer = document.getElementById('game-container');
+    screendata.canvas = document.getElementById('fullscreenCanvas');
+    var controlsCanvas = document.getElementById('controls-canvas');
+    var gameContainer  = document.getElementById('game-container');
     var W = window.innerWidth;
     var H = window.innerHeight;
-
-    // Always fill the full window
-    gameContainer.style.left   = '0px';
-    gameContainer.style.top    = '0px';
-    gameContainer.style.width  = W + 'px';
-    gameContainer.style.height = H + 'px';
-    screendata.canvas.style.width  = '100%';
-    screendata.canvas.style.height = '100%';
+    var isTouch    = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    var isPortrait = W < H;
 
     var prevH = (screendata.canvas.height > 0) ? screendata.canvas.height : H;
-
-    // On touch devices canvas pixel size = window size so touch coords match canvas coords.
-    // On desktop use capped render resolution.
-    var isTouch = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
     var renderW, renderH;
-    if (isTouch) {
-        renderW = W;
-        renderH = H;
-    } else {
-        var dims = DisplayConfig.getCanvasDimensions(W, H);
+
+    if (!isTouch) {
+        // ── PC Browser: 16:9 letterboxed, centered ──────────────────
+        controlsCanvas.style.display = 'none';
+        touchControls.controlsCanvas = null;
+        touchControls.controlsCtx    = null;
+        touchControls.canvasOffsetY  = 0;
+
+        var dims     = DisplayConfig.getCanvasDimensions(W, H);
+        var canvasW  = dims.canvasWidth;
+        var canvasH  = dims.canvasHeight;
         renderW = dims.renderWidth;
         renderH = dims.renderHeight;
+
+        gameContainer.style.left   = Math.floor((W - canvasW) / 2) + 'px';
+        gameContainer.style.top    = Math.floor((H - canvasH) / 2) + 'px';
+        gameContainer.style.width  = canvasW + 'px';
+        gameContainer.style.height = canvasH + 'px';
+        screendata.canvas.style.width  = '100%';
+        screendata.canvas.style.height = '100%';
+
+    } else if (!isPortrait) {
+        // ── Mobile Landscape: full screen + controls overlay ─────────
+        controlsCanvas.style.display = 'none';
+        touchControls.controlsCanvas = null;
+        touchControls.controlsCtx    = null;
+        touchControls.canvasOffsetY  = 0;
+
+        renderW = W;
+        renderH = H;
+        gameContainer.style.left   = '0px';
+        gameContainer.style.top    = '0px';
+        gameContainer.style.width  = W + 'px';
+        gameContainer.style.height = H + 'px';
+        screendata.canvas.style.width  = '100%';
+        screendata.canvas.style.height = '100%';
+
+    } else {
+        // ── Mobile Portrait: game on top, controls below ─────────────
+        var gameH = Math.floor(H * 0.55);
+        var ctrlH = H - gameH;
+        renderW = W;
+        renderH = gameH;
+        touchControls.canvasOffsetY = gameH;
+
+        // Game canvas occupies only the top game area
+        gameContainer.style.left   = '0px';
+        gameContainer.style.top    = '0px';
+        gameContainer.style.width  = W + 'px';
+        gameContainer.style.height = gameH + 'px';
+        screendata.canvas.style.width  = '100%';
+        screendata.canvas.style.height = '100%';
+
+        // Controls canvas positioned directly below game canvas
+        controlsCanvas.style.display = 'block';
+        controlsCanvas.style.left    = '0px';
+        controlsCanvas.style.top     = gameH + 'px';
+        controlsCanvas.style.width   = W + 'px';
+        controlsCanvas.style.height  = ctrlH + 'px';
+        controlsCanvas.width  = W;
+        controlsCanvas.height = ctrlH;
+
+        touchControls.controlsCanvas = controlsCanvas;
+        touchControls.controlsCtx    = controlsCanvas.getContext('2d');
     }
 
-    // Scale horizon proportionally when canvas height changes
+    // Scale horizon proportionally when render height changes
     if (prevH > 0 && prevH !== renderH) {
         camera.horizon = Math.round(camera.horizon * renderH / prevH);
     }
@@ -115,7 +163,13 @@ function Draw(timestamp){
         RenderSniperScope();
         DrawMinimap();
         DrawWeaponUI(screendata.context);
-        DrawTouchControls(screendata.context);
+        // In portrait mode draw controls on the separate controls canvas; otherwise on game canvas
+        if (touchControls.controlsCtx) {
+            touchControls.controlsCtx.clearRect(0, 0, touchControls.controlsCanvas.width, touchControls.controlsCanvas.height);
+            DrawTouchControls(touchControls.controlsCtx);
+        } else {
+            DrawTouchControls(screendata.context);
+        }
         DrawGunDebugInfo();
         RenderRemotePlayerOverlays();
         if (typeof Multiplayer !== "undefined") Multiplayer.update();
@@ -182,11 +236,18 @@ function Init(){
         }
     },false);
 
-    // Mobile touch controls setup
+    // Mobile touch controls setup — listen on game canvas
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
     canvas.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+
+    // Also listen on the portrait controls canvas so buttons work there too
+    var controlsCanvasEl = document.getElementById('controls-canvas');
+    controlsCanvasEl.addEventListener('touchstart', handleTouchStart, { passive: false });
+    controlsCanvasEl.addEventListener('touchmove', handleTouchMove, { passive: false });
+    controlsCanvasEl.addEventListener('touchend', handleTouchEnd, { passive: false });
+    controlsCanvasEl.addEventListener('touchcancel', handleTouchEnd, { passive: false });
 
     // FPS counter
     setInterval(function(){

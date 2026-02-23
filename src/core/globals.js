@@ -130,7 +130,11 @@ var touchControls = {
     jumpButton:  { x: 0, y: 0, radius: 32, active: false, touchId: null },
     zoomButton:  { x: 0, y: 0, radius: 32, active: false, touchId: null },
     swapButton:  { x: 0, y: 0, radius: 28, active: false, touchId: null },
-    controlsTop: 0   // Y where controls area starts in portrait mode
+    controlsTop: 0,        // Y (viewport) where controls area starts in portrait mode
+    // Portrait mode: separate controls canvas below the game canvas
+    controlsCanvas: null,  // <canvas id="controls-canvas"> element (portrait only)
+    controlsCtx: null,     // 2D context of controls canvas (null = draw on game canvas)
+    canvasOffsetY: 0       // Viewport Y of controls canvas top (0 = game canvas, gameH = portrait)
 };
 
 var debugUIVisible=true;  // Toggle with Start button
