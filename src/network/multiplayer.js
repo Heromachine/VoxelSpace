@@ -153,7 +153,12 @@ var Multiplayer = (function () {
             }
 
         } else if (opCode === OP_PLAYER_JOIN) {
-            if (data.userId === myId) return;  // ignore self
+            if (data.userId === myId) {
+                // Teleport our camera to the server-assigned spawn position
+                camera.x = data.x;
+                camera.y = data.y;
+                return;
+            }
             nakamaState.remotePlayers[data.userId] = {
                 userId:   data.userId,
                 username: data.username,
