@@ -296,5 +296,4 @@ DisplayConfig.resetToDefaults = function() {
     location.reload();
 };
 
-// Auto-load saved settings on script load
-DisplayConfig.load();
+// DisplayConfig.load() is called explicitly in beginGame() for admin users only.

@@ -680,22 +680,26 @@ function applySettings(s) {
 // Load settings from localStorage or JSON
 function loadSettings() {
     ConfigLoader.loadAll().then(function(jsonLoaded) {
-        var stored = localStorage.getItem('voxelSpaceSettings');
-        if (stored) {
-            try {
-                savedSettings = JSON.parse(stored);
-                console.log('Loading saved settings from localStorage');
-                applySettings(savedSettings);
-                if (jsonLoaded) {
-                    ConfigLoader.applyWeapons();
-                    ConfigLoader.applyGamepad();
+        // Only admin can benefit from cached localStorage settings
+        if (isAdmin) {
+            var stored = localStorage.getItem('voxelSpaceSettings');
+            if (stored) {
+                try {
+                    savedSettings = JSON.parse(stored);
+                    console.log('Loading saved settings from localStorage');
+                    applySettings(savedSettings);
+                    if (jsonLoaded) {
+                        ConfigLoader.applyWeapons();
+                        ConfigLoader.applyGamepad();
+                    }
+                    return;
+                } catch(e) {
+                    console.log('Could not load saved settings:', e);
                 }
-                return;
-            } catch(e) {
-                console.log('Could not load saved settings:', e);
             }
         }
 
+        // Everyone else (and admin fallback): use hardcoded JSON files only
         if (jsonLoaded && ConfigLoader.gunModel) {
             ConfigLoader.applyGunModel(gunModel);
             ConfigLoader.applyWeapons();

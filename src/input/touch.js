@@ -9,8 +9,8 @@ function enableTouchControls() {
 }
 
 function updateTouchControlPositions() {
-    var sw = screendata.canvas.width;
-    var sh = screendata.canvas.height;
+    var sw = window.innerWidth;
+    var sh = window.innerHeight;
     var r  = touchControls.stickRadius;
 
     // Left stick (move) – bottom-left
@@ -42,8 +42,8 @@ function handleTouchStart(e) {
         var touch = e.changedTouches[i];
         var x = touch.clientX;
         var y = touch.clientY;
-        var sw = screendata.canvas.width;
-        var sh = screendata.canvas.height;
+        var sw = window.innerWidth;
+        var sh = window.innerHeight;
 
         // Check weapon slot touches
         for (var j = 0; j < touchControls.weaponSlots.length; j++) {
@@ -205,7 +205,7 @@ function updateTouchInput() {
         var dy = rs.currentY - rs.startY;
         var dist = Math.hypot(dx, dy);
         if (dist > dz) {
-            camera.angle += dx * 0.003;
+            camera.angle -= dx * 0.003;
             camera.horizon = Math.max(-400, Math.min(600, camera.horizon - dy * 0.5));
             rs.startX = rs.currentX;
             rs.startY = rs.currentY;

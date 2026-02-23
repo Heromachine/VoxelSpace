@@ -38,20 +38,25 @@ function applyUIScales() {
 function OnResizeWindow(){
     screendata.canvas=document.getElementById('fullscreenCanvas');
     var gameContainer = document.getElementById('game-container');
+    var W = window.innerWidth;
+    var H = window.innerHeight;
 
-    var dims = DisplayConfig.getCanvasDimensions(window.innerWidth, window.innerHeight);
+    // Always fill the full window — no letterboxing
+    gameContainer.style.left   = '0px';
+    gameContainer.style.top    = '0px';
+    gameContainer.style.width  = W + 'px';
+    gameContainer.style.height = H + 'px';
 
-    gameContainer.style.width = dims.canvasWidth + 'px';
-    gameContainer.style.height = dims.canvasHeight + 'px';
-    gameContainer.style.left = ((window.innerWidth - dims.canvasWidth) / 2) + 'px';
-    gameContainer.style.top = ((window.innerHeight - dims.canvasHeight) / 2) + 'px';
-
-    screendata.canvas.width = dims.renderWidth;
+    // Keep internal render resolution capped for performance;
+    // canvas CSS stretches it to fill the window
+    var dims = DisplayConfig.getCanvasDimensions(W, H);
+    screendata.canvas.width  = dims.renderWidth;
     screendata.canvas.height = dims.renderHeight;
+    screendata.canvas.style.width  = '100%';
+    screendata.canvas.style.height = '100%';
 
-    // Ensure canvas CSS matches container to prevent stretching/squishing
-    screendata.canvas.style.width = dims.canvasWidth + 'px';
-    screendata.canvas.style.height = dims.canvasHeight + 'px';
+    // Recalculate touch button positions for new window size
+    if (touchControls.enabled) updateTouchControlPositions();
 
     if(screendata.canvas.getContext){
         screendata.context=screendata.canvas.getContext('2d');
@@ -219,7 +224,9 @@ async function beginGame(isAnonymous) {
 
     // Admin check — developer UI only visible to heromachine
     isAdmin = (NakamaClient.getUsername() === "heromachine");
-    if (!isAdmin) {
+    if (isAdmin) {
+        DisplayConfig.load(); // restore admin's saved display settings
+    } else {
         showGMD        = false;   // gun mechanics debug overlay
         showHitRanges  = false;   // hit-range circles on minimap
         testTarget.enabled = false; // floating test target
