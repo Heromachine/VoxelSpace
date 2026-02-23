@@ -3,147 +3,82 @@
 // ===============================
 "use strict";
 
-function DrawMinimap(){
-    if (!showMinimaps) return;  // Skip if minimaps disabled
-    var ctx = screendata.context;
+function DrawMinimap() {
+    if (!showMinimaps) return;
+
+    var ctx     = screendata.context;
     var mmScale = uiScale.minimap;
-    var size = Math.floor(200 * mmScale);  // minimap size in pixels (scaled)
-    var range = minimapZoomRange;  // world units to show (adjustable via slider)
-    var margin = Math.floor(10 * mmScale);
-    var cx = screendata.canvas.width - size - margin;  // top-right corner
-    var cy = margin;
+    var S       = Math.floor(200 * mmScale);   // diameter in canvas pixels
+    var margin  = Math.floor(10  * mmScale);
+    var sw      = screendata.canvas.width;
 
-    // Draw background
-    ctx.fillStyle = 'rgba(8,15,22,0.82)';
-    ctx.fillRect(cx, cy, size, size);
-    ctx.strokeStyle = 'rgba(80,160,220,0.3)';
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(cx, cy, size, size);
+    // Center of the round minimap (top-right corner)
+    var cx = sw - S / 2 - margin;
+    var cy = S / 2 + margin;
+    var R  = S / 2 - Math.floor(4 * mmScale);  // clip / border radius
 
-    // Draw terrain colors from color map
-    var scale = size / (range * 2);
-    for(var py = 0; py < size; py += 2){
-        for(var px = 0; px < size; px += 2){
-            // Map screen pos to world pos
-            var wx = camera.x + (px - size/2) / scale;
-            var wy = camera.y + (py - size/2) / scale;
+    // ---- Dark background circle + terrain (clipped, rotated) ----
+    ctx.save();
 
-            // Sample color map
-            var mapX = Math.floor(wx) & (map.width - 1);
-            var mapY = Math.floor(wy) & (map.height - 1);
-            var col = map.color[(mapY << map.shift) + mapX];
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,5,15,0.85)';
+    ctx.fill();
+    ctx.clip();
 
-            // Extract RGB (stored as ABGR)
-            var r = col & 0xFF;
-            var g = (col >> 8) & 0xFF;
+    // Rotate map so the player's forward direction is always UP.
+    // camera.angle decreases when turning right, so +camera.angle rotates terrain
+    // counter-clockwise when turning right — keeping forward at the top.
+    ctx.translate(cx, cy);
+    ctx.rotate(camera.angle);
+
+    var range      = minimapZoomRange;           // world units to show from center
+    var scale      = S / (range * 2);            // pixels per world unit
+    var sampleStep = Math.max(1, Math.ceil(range * 4 / S));  // world units per sample
+    var pixSize    = Math.ceil(scale * sampleStep) + 1;      // pixel block size (with overlap)
+
+    for (var wy = -range; wy <= range; wy += sampleStep) {
+        for (var wx = -range; wx <= range; wx += sampleStep) {
+            var worldX = camera.x + wx;
+            var worldY = camera.y + wy;
+            var mapX = ((Math.floor(worldX) % map.width)  + map.width)  % map.width;
+            var mapY = ((Math.floor(worldY) % map.height) + map.height) % map.height;
+            var col  = map.color[(mapY << map.shift) + mapX];
+            if (!col) continue;
+
+            var r = col         & 0xFF;
+            var g = (col >> 8)  & 0xFF;
             var b = (col >> 16) & 0xFF;
 
-            ctx.fillStyle = 'rgb('+r+','+g+','+b+')';
-            ctx.fillRect(cx + px, cy + py, 2, 2);
+            ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+            ctx.fillRect(
+                Math.floor(wx * scale - pixSize / 2),
+                Math.floor(wy * scale - pixSize / 2),
+                pixSize, pixSize
+            );
         }
     }
 
-    // Draw player as triangle pointing in look direction
-    var pcx = cx + size/2;  // player center on minimap
-    var pcy = cy + size/2;
-
-    // Draw cube as a 2D square (clipped to minimap bounds)
-    var cubeOffsetX = (cube.x - camera.x) * scale;
-    var cubeOffsetY = (cube.y - camera.y) * scale;
-    var cubeHalfSizePx = (cube.size / 2) * scale;
-    // Only draw if any part of cube is visible on minimap
-    if (Math.abs(cubeOffsetX) < size/2 + cubeHalfSizePx &&
-        Math.abs(cubeOffsetY) < size/2 + cubeHalfSizePx) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(cx, cy, size, size);  // Clip to minimap bounds
-        ctx.clip();
-        ctx.fillStyle = 'rgba(200, 50, 50, 0.7)';  // Semi-transparent red
-        ctx.fillRect(
-            pcx + cubeOffsetX - cubeHalfSizePx,
-            pcy + cubeOffsetY - cubeHalfSizePx,
-            cubeHalfSizePx * 2,
-            cubeHalfSizePx * 2
-        );
-        ctx.strokeStyle = '#ff0000';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(
-            pcx + cubeOffsetX - cubeHalfSizePx,
-            pcy + cubeOffsetY - cubeHalfSizePx,
-            cubeHalfSizePx * 2,
-            cubeHalfSizePx * 2
-        );
-        ctx.restore();
-    }
-    // Draw camera frustum as the entire visible FOV triangle
-    var angle = camera.angle;
-    var hFov = DisplayConfig.fov.current * Math.PI / 180;  // horizontal FOV in radians
-
-    // Extend frustum to the edge of the minimap (full visible range)
-    var frustumLength = size / 2;  // extends to edge of minimap
-    var frustumHalfWidth = Math.tan(hFov / 2) * frustumLength;
-
-    ctx.save();
-    // Clip to minimap rectangle so frustum doesn't extend outside
-    ctx.beginPath();
-    ctx.rect(cx, cy, size, size);
-    ctx.clip();
-    ctx.translate(pcx, pcy);
-    ctx.rotate(-angle);
-
-    // Draw filled frustum triangle
-    ctx.beginPath();
-    ctx.moveTo(0, 0);  // player position (apex)
-    ctx.lineTo(-frustumHalfWidth, -frustumLength);  // left edge at far end
-    ctx.lineTo(frustumHalfWidth, -frustumLength);   // right edge at far end
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(255,255,0,0.25)';
-    ctx.fill();
-
-    // Draw frustum edge lines for visibility
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(-frustumHalfWidth, -frustumLength);
-    ctx.moveTo(0, 0);
-    ctx.lineTo(frustumHalfWidth, -frustumLength);
-    ctx.strokeStyle = 'rgba(255,255,0,0.6)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    ctx.restore();
-
-    // Draw small player dot at center
-    ctx.beginPath();
-    ctx.arc(pcx, pcy, 4, 0, Math.PI * 2);
-    ctx.fillStyle = 'yellow';
-    ctx.fill();
-    ctx.strokeStyle = 'black';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // Draw remote players on minimap
-    var myId = (typeof NakamaClient !== "undefined") ? NakamaClient.getUserId() : null;
+    // ---- Remote players + radar reveals (inside rotated clip) ----
+    var myId = (typeof NakamaClient !== 'undefined') ? NakamaClient.getUserId() : null;
     var now  = Date.now();
-    if (typeof nakamaState !== "undefined") {
-        // Draw radar-revealed shout positions (orange pulses)
+    if (typeof nakamaState !== 'undefined') {
+        // Radar-revealed positions (orange pulses)
         var revealIds = Object.keys(nakamaState.radarReveals);
         for (var ri = 0; ri < revealIds.length; ri++) {
-            var ruid   = revealIds[ri];
-            var reveal = nakamaState.radarReveals[ruid];
-            var rrx    = (reveal.x - camera.x) * scale;
-            var rry    = (reveal.y - camera.y) * scale;
-            if (Math.abs(rrx) < size / 2 && Math.abs(rry) < size / 2) {
-                ctx.beginPath();
-                ctx.arc(pcx + rrx, pcy + rry, 6, 0, Math.PI * 2);
-                ctx.fillStyle = "rgba(255,160,0,0.6)";
-                ctx.fill();
-                ctx.strokeStyle = "#ff9900";
-                ctx.lineWidth = 2;
-                ctx.stroke();
-            }
+            var reveal = nakamaState.radarReveals[revealIds[ri]];
+            var rrx = (reveal.x - camera.x) * scale;
+            var rry = (reveal.y - camera.y) * scale;
+            ctx.beginPath();
+            ctx.arc(rrx, rry, 6, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255,160,0,0.6)';
+            ctx.fill();
+            ctx.strokeStyle = '#ff9900';
+            ctx.lineWidth = 2;
+            ctx.stroke();
         }
 
-        // Draw remote players as grey dots
+        // Remote player dots (grey)
         var rpIds = Object.keys(nakamaState.remotePlayers);
         for (var rpi = 0; rpi < rpIds.length; rpi++) {
             var rpid = rpIds[rpi];
@@ -152,179 +87,55 @@ function DrawMinimap(){
             if (!rp || now - rp.lastSeen > 10000) continue;
             var rpx = (rp.x - camera.x) * scale;
             var rpy = (rp.y - camera.y) * scale;
-            if (Math.abs(rpx) < size / 2 && Math.abs(rpy) < size / 2) {
-                ctx.beginPath();
-                ctx.arc(pcx + rpx, pcy + rpy, 4, 0, Math.PI * 2);
-                ctx.fillStyle = "#aaaaaa";
-                ctx.fill();
-                ctx.strokeStyle = "white";
-                ctx.lineWidth = 1;
-                ctx.stroke();
-            }
-        }
-    }
-
-    // Draw hitscan and CCD range circles (admin dev view only)
-    if (isAdmin && showHitRanges) {
-        // Hitscan range (red circle - instant hit zone)
-        if (hitscanDist > 0) {
-            var hitscanRadius = hitscanDist * scale;
-            if (hitscanRadius < size / 2) {  // Only draw if fits on minimap
-                ctx.beginPath();
-                ctx.arc(pcx, pcy, hitscanRadius, 0, Math.PI * 2);
-                ctx.strokeStyle = 'rgba(255, 100, 100, 0.8)';
-                ctx.lineWidth = 2;
-                ctx.setLineDash([5, 5]);
-                ctx.stroke();
-                ctx.setLineDash([]);
-            }
-        }
-
-        // CCD max range (blue circle - projectile zone)
-        var ccdRadius = ccdMaxDist * scale;
-        if (ccdRadius < size / 2) {  // Only draw if fits on minimap
             ctx.beginPath();
-            ctx.arc(pcx, pcy, ccdRadius, 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(100, 170, 255, 0.6)';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([10, 5]);
-            ctx.stroke();
-            ctx.setLineDash([]);
-        }
-    }
-
-    // Draw bullets as red dots on minimap (admin dev view only)
-    if (isAdmin) {
-    var bulletWorldRadius = bulletSize * 2;  // bullet radius in world units
-    items.forEach(function(it){
-        if(it.type === 'bullet'){
-            var bx = (it.x - camera.x) * scale;
-            var by = (it.y - camera.y) * scale;
-            if(Math.abs(bx) < size/2 && Math.abs(by) < size/2){
-                ctx.beginPath();
-                var bulletRadius = Math.max(2, bulletWorldRadius * scale);
-                ctx.arc(pcx + bx, pcy + by, bulletRadius, 0, Math.PI * 2);
-                ctx.fillStyle = 'red';
-                ctx.fill();
-            }
-        }
-    });
-    } // end isAdmin bullet dots
-
-    // Draw test target on minimap (admin dev view only)
-    if (isAdmin && testTarget.enabled) {
-        var tx = (testTarget.x - camera.x) * scale;
-        var ty = (testTarget.y - camera.y) * scale;
-        if (Math.abs(tx) < size/2 && Math.abs(ty) < size/2) {
-            var targetRadius = testTarget.radius * scale;
-            // Outer ring
-            ctx.beginPath();
-            ctx.arc(pcx + tx, pcy + ty, targetRadius, 0, Math.PI * 2);
-            ctx.strokeStyle = '#ff0000';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            // Inner dot
-            ctx.beginPath();
-            ctx.arc(pcx + tx, pcy + ty, 3, 0, Math.PI * 2);
-            ctx.fillStyle = '#ffff00';
-            ctx.fill();
-            // Crosshair
-            ctx.beginPath();
-            ctx.moveTo(pcx + tx - targetRadius, pcy + ty);
-            ctx.lineTo(pcx + tx + targetRadius, pcy + ty);
-            ctx.moveTo(pcx + tx, pcy + ty - targetRadius);
-            ctx.lineTo(pcx + tx, pcy + ty + targetRadius);
-            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-        }
-    }
-
-    // Dev-only overlays on the overhead map (admin only)
-    if (isAdmin) {
-        // View direction line (blue)
-        var viewLineLen = 25 * scale;
-        ctx.save();
-        ctx.translate(pcx, pcy);
-        ctx.rotate(-angle);
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(0, -viewLineLen);
-        ctx.strokeStyle = 'rgba(0,100,255,0.7)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.restore();
-
-        // Barrel direction line (orange) and gun shape
-        var gunDir = getGunWorldDirection();
-        var barrelLineLen = 20 * scale;
-        ctx.beginPath();
-        ctx.moveTo(pcx, pcy);
-        ctx.lineTo(pcx + gunDir.x * barrelLineLen, pcy + gunDir.y * barrelLineLen);
-        ctx.strokeStyle = 'orange';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        var barrelPos = getBarrelWorldPos();
-        var bpx = (barrelPos.x - camera.x) * scale;
-        var bpy = (barrelPos.y - camera.y) * scale;
-        if(Math.abs(bpx) < size/2 && Math.abs(bpy) < size/2){
-            ctx.save();
-            ctx.translate(pcx + bpx, pcy + bpy);
-            var gunAngle = Math.atan2(-gunDir.y, -gunDir.x);
-            ctx.rotate(gunAngle);
-            var currentSlot = playerWeapons[currentWeaponIndex];
-            var totalPlayerHeight = playerHeightOffset / 0.93;
-            var gunWorldLength = WeaponConfig.getWeaponLength(currentSlot.type, totalPlayerHeight);
-            var pxPerUnit = scale;
-            var gunBodyLen = Math.max(8, 0.5 * gunWorldLength * pxPerUnit);
-            var gunBodyWidth = Math.max(4, 0.25 * gunWorldLength * pxPerUnit);
-            var barrelLen = Math.max(6, 0.5 * gunWorldLength * pxPerUnit);
-            var barrelWidth = Math.max(2, 0.15 * gunWorldLength * pxPerUnit);
-            ctx.beginPath();
-            ctx.rect(-gunBodyLen * 0.6, -gunBodyWidth/2, gunBodyLen, gunBodyWidth);
-            ctx.rect(gunBodyLen * 0.3, -barrelWidth/2, barrelLen, barrelWidth);
-            ctx.fillStyle = 'rgba(80,80,80,0.9)';
-            ctx.fill();
-            ctx.strokeStyle = 'cyan';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-            var tipRadius = Math.max(2, 0.1 * gunWorldLength * pxPerUnit);
-            ctx.beginPath();
-            ctx.arc(gunBodyLen * 0.3 + barrelLen, 0, tipRadius, 0, Math.PI * 2);
-            ctx.fillStyle = 'cyan';
-            ctx.fill();
-            ctx.restore();
-        }
-
-        // Bullet spawn position (gray circle)
-        var spawnX = barrelPos.x + gunDir.x * gunModel.barrelDistance;
-        var spawnY = barrelPos.y + gunDir.y * gunModel.barrelDistance;
-        var spx = (spawnX - camera.x) * scale;
-        var spy = (spawnY - camera.y) * scale;
-        var spawnRadius = Math.max(3, bulletSize * 2 * scale);
-        if(Math.abs(spx) < size/2 && Math.abs(spy) < size/2){
-            ctx.beginPath();
-            ctx.arc(pcx + spx, pcy + spy, spawnRadius, 0, Math.PI * 2);
-            ctx.fillStyle = '#888';
+            ctx.arc(rpx, rpy, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#aaaaaa';
             ctx.fill();
             ctx.strokeStyle = 'white';
             ctx.lineWidth = 1;
             ctx.stroke();
         }
-    } // end isAdmin overhead dev overlays
-
-    // Title
-    ctx.fillStyle = 'white';
-    ctx.font = '10px Arial';
-    if (isAdmin) {
-        var modeText = gunModel.pivotMode === 'barrel' ? '[ADS]' : '[HIP]';
-        ctx.fillText('OVERHEAD ' + modeText + ' [' + minimapZoomRange + '] Z=zoom', cx + 5, cy + 12);
-    } else {
-        ctx.fillText('MAP', cx + 5, cy + 12);
     }
 
-    // === SIDE VIEW and LEGEND (admin dev only) ===
+    ctx.restore();  // removes clip + undoes translate/rotate
+
+    // ---- Player icon: white triangle always pointing UP ----
+    var tri = Math.floor(8 * mmScale);
+    ctx.fillStyle   = 'rgba(255,255,255,1)';
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+    ctx.lineWidth   = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx,       cy - tri * 1.75);        // tip (north)
+    ctx.lineTo(cx - tri, cy + tri * 0.875);        // bottom-left
+    ctx.lineTo(cx + tri, cy + tri * 0.875);        // bottom-right
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // ---- Circular border ----
+    ctx.strokeStyle = 'rgba(80,160,220,0.5)';
+    ctx.lineWidth   = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // ---- N label: orbits the edge to show where north is ----
+    // At camera.angle=0 (facing north), N sits directly above at canvas -Y.
+    // Formula: camera.angle - π/2 keeps N correctly positioned as player rotates.
+    var nAngle = camera.angle - Math.PI / 2;
+    var nR     = R + Math.floor(14 * mmScale);
+    var nX     = cx + nR * Math.cos(nAngle);
+    var nY     = cy + nR * Math.sin(nAngle);
+
+    ctx.font         = 'bold ' + Math.floor(20 * mmScale) + 'px monospace';
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle    = 'rgba(255,210,80,0.95)';
+    ctx.fillText('N', nX, nY);
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign    = 'left';
+
+    // ---- Admin: side view and legend ----
     if (isAdmin) {
         DrawSideView(ctx);
         DrawMinimapLegend(ctx);
