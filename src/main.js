@@ -113,12 +113,12 @@ function Init(){
                 tab.style.display = 'none';
             });
             document.querySelectorAll('.tab-btn').forEach(function(b) {
-                b.style.background = '#333';
-                b.style.color = '#aaa';
+                b.style.background = 'transparent';
+                b.style.color = 'rgba(138,176,200,0.45)';
             });
             document.getElementById('tab-' + tabId).style.display = 'block';
-            this.style.background = '#555';
-            this.style.color = 'white';
+            this.style.background = 'rgba(80,160,220,0.15)';
+            this.style.color = '#8ab0c8';
         });
     });
 

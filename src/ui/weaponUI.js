@@ -31,16 +31,16 @@ function DrawWeaponUI(ctx) {
         });
 
         // Draw slot background
-        ctx.fillStyle = isActive ? weapon.bgColor : 'rgba(50,50,50,0.8)';
+        ctx.fillStyle = isActive ? weapon.bgColor : 'rgba(8,15,22,0.82)';
         ctx.fillRect(slotX, slotY, slotSize, slotSize);
 
         // Draw slot border
-        ctx.strokeStyle = isActive ? weapon.color : '#666';
+        ctx.strokeStyle = isActive ? weapon.color : 'rgba(80,160,220,0.2)';
         ctx.lineWidth = isActive ? 3 : 1;
         ctx.strokeRect(slotX, slotY, slotSize, slotSize);
 
         // Draw weapon letter
-        ctx.fillStyle = isActive ? 'white' : '#888';
+        ctx.fillStyle = isActive ? '#c0d8e8' : 'rgba(138,176,200,0.4)';
         ctx.font = 'bold ' + Math.floor(24 * scale) + 'px Arial';
         ctx.textAlign = 'center';
         ctx.fillText(weapon.letter, slotX + slotSize/2, slotY + slotSize/2 + Math.floor(8 * scale));
@@ -48,7 +48,7 @@ function DrawWeaponUI(ctx) {
         // Draw ammo count
         ctx.font = Math.floor(12 * scale) + 'px Arial';
         var ammoText = slot.ammo === Infinity ? '\u221E' : slot.ammo.toString();
-        ctx.fillStyle = slot.isReloading ? '#ff6666' : 'white';
+        ctx.fillStyle = slot.isReloading ? '#cc6666' : '#8ab0c8';
         ctx.fillText(ammoText, slotX + slotSize/2, slotY + slotSize - Math.floor(5 * scale));
     }
 
@@ -60,7 +60,7 @@ function DrawWeaponUI(ctx) {
         var promptY = slotY - Math.floor(40 * scale);
         var promptX = sw - Math.floor(200 * scale);
 
-        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillStyle = 'rgba(8,15,22,0.88)';
         var promptW = Math.floor(180 * scale);
         var promptH = Math.floor(30 * scale);
         ctx.fillRect(promptX, promptY, promptW, promptH);
@@ -69,7 +69,7 @@ function DrawWeaponUI(ctx) {
         ctx.lineWidth = 2;
         ctx.strokeRect(promptX, promptY, promptW, promptH);
 
-        ctx.fillStyle = 'white';
+        ctx.fillStyle = '#8ab0c8';
         ctx.font = Math.floor(14 * scale) + 'px Arial';
         ctx.fillText('[E] Pick up ' + weaponDef.name, promptX + Math.floor(10 * scale), promptY + Math.floor(20 * scale));
 

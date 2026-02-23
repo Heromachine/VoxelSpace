@@ -210,6 +210,36 @@
         #playerposition, #lastbulletdestroyedpos, #lastbulletdestroyedreason {
             display: none;
         }
+
+        /* ── HUD elements ── */
+        #healthbar {
+            background: rgba(8,15,22,0.82) !important;
+            border: 1px solid rgba(80,160,220,0.3) !important;
+        }
+        #jumpbar {
+            background: rgba(8,15,22,0.82) !important;
+            border: 1px solid rgba(80,160,220,0.3) !important;
+        }
+        #crosshair {
+            border-color: rgba(138,176,200,0.75) !important;
+        }
+
+        /* ── Settings panel ── */
+        #controls {
+            font-family: 'Segoe UI', system-ui, sans-serif !important;
+            color: #8ab0c8 !important;
+        }
+        #controls label {
+            color: #8ab0c8;
+            font-size: 11px;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+        #controls b { color: #5a90b0; }
+        #controls hr { border: none !important; border-top: 1px solid rgba(80,160,220,0.12) !important; margin: 8px 0; }
+        #controls input[type=range]     { accent-color: rgba(80,160,220,0.8); width: 100%; }
+        #controls input[type=checkbox]  { accent-color: rgba(80,160,220,0.8); }
+        #controls select { background: rgba(8,15,22,0.9); color: #8ab0c8; border: 1px solid rgba(80,160,220,0.2); border-radius: 3px; }
+        #controls span   { color: #8ab0c8; }
     </style>
 </head>
 <body>
@@ -267,20 +297,20 @@
   </div>
 </div>
 
-<div id="controls" style="display: none; position: absolute; top: 50px; left: 10px; background: rgba(0, 0, 0, 0.85); color: white; padding: 0; width: 360px; border-radius: 5px; overflow: hidden; z-index: 100;">
+<div id="controls" style="display: none; position: absolute; top: 50px; left: 10px; background: rgba(8,15,22,0.95); color: #8ab0c8; padding: 0; width: 360px; border-radius: 4px; overflow: hidden; z-index: 100; border: 1px solid rgba(80,160,220,0.15); font-family: 'Segoe UI', system-ui, sans-serif;">
   <!-- Panel Title -->
-  <div style="background: #222; padding: 8px 10px; font-weight: bold; font-size: 13px; border-bottom: 1px solid #444;">Settings <span style="float:right; font-weight:normal; font-size:10px; color:#888;">[ESC] toggle</span></div>
+  <div style="background: rgba(80,160,220,0.06); padding: 8px 12px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #5a90b0; border-bottom: 1px solid rgba(80,160,220,0.12);">Settings <span style="float:right; font-size:10px; color: rgba(138,176,200,0.35); letter-spacing:1px;">[ESC] toggle</span></div>
   <!-- Tab buttons -->
-  <div style="display: flex; background: #333;">
-    <button class="tab-btn active" data-tab="camera" style="flex:1;padding:8px 4px;border:none;background:#555;color:white;cursor:pointer;font-size:11px;">Camera</button>
-    <button class="tab-btn" data-tab="player" style="flex:1;padding:8px 4px;border:none;background:#333;color:#aaa;cursor:pointer;font-size:11px;">Player</button>
-    <button class="tab-btn" data-tab="bullet" style="flex:1;padding:8px 4px;border:none;background:#333;color:#aaa;cursor:pointer;font-size:11px;">Bullet</button>
-    <button class="tab-btn" data-tab="hit" style="flex:1;padding:8px 4px;border:none;background:#333;color:#aaa;cursor:pointer;font-size:11px;">Hit</button>
-    <button class="tab-btn" data-tab="gun" style="flex:1;padding:8px 4px;border:none;background:#333;color:#aaa;cursor:pointer;font-size:11px;">Gun</button>
-    <button class="tab-btn" data-tab="barrel" style="flex:1;padding:8px 4px;border:none;background:#333;color:#aaa;cursor:pointer;font-size:11px;">Barrel</button>
-    <button class="tab-btn" data-tab="ui" style="flex:1;padding:8px 4px;border:none;background:#333;color:#aaa;cursor:pointer;font-size:11px;">UI</button>
-    <button class="tab-btn" data-tab="gmd" style="flex:1;padding:8px 4px;border:none;background:#333;color:#aaa;cursor:pointer;font-size:11px;">GMD</button>
-    <button class="tab-btn" data-tab="debug" style="flex:1;padding:8px 4px;border:none;background:#333;color:#aaa;cursor:pointer;font-size:11px;">Debug</button>
+  <div style="display: flex; background: rgba(80,160,220,0.03); border-bottom: 1px solid rgba(80,160,220,0.1);">
+    <button class="tab-btn active" data-tab="camera" style="flex:1;padding:7px 2px;border:none;background:rgba(80,160,220,0.15);color:#8ab0c8;cursor:pointer;font-size:10px;font-family:inherit;letter-spacing:0.5px;">Camera</button>
+    <button class="tab-btn" data-tab="player" style="flex:1;padding:7px 2px;border:none;background:transparent;color:rgba(138,176,200,0.45);cursor:pointer;font-size:10px;font-family:inherit;letter-spacing:0.5px;">Player</button>
+    <button class="tab-btn" data-tab="bullet" style="flex:1;padding:7px 2px;border:none;background:transparent;color:rgba(138,176,200,0.45);cursor:pointer;font-size:10px;font-family:inherit;letter-spacing:0.5px;">Bullet</button>
+    <button class="tab-btn" data-tab="hit" style="flex:1;padding:7px 2px;border:none;background:transparent;color:rgba(138,176,200,0.45);cursor:pointer;font-size:10px;font-family:inherit;letter-spacing:0.5px;">Hit</button>
+    <button class="tab-btn" data-tab="gun" style="flex:1;padding:7px 2px;border:none;background:transparent;color:rgba(138,176,200,0.45);cursor:pointer;font-size:10px;font-family:inherit;letter-spacing:0.5px;">Gun</button>
+    <button class="tab-btn" data-tab="barrel" style="flex:1;padding:7px 2px;border:none;background:transparent;color:rgba(138,176,200,0.45);cursor:pointer;font-size:10px;font-family:inherit;letter-spacing:0.5px;">Barrel</button>
+    <button class="tab-btn" data-tab="ui" style="flex:1;padding:7px 2px;border:none;background:transparent;color:rgba(138,176,200,0.45);cursor:pointer;font-size:10px;font-family:inherit;letter-spacing:0.5px;">UI</button>
+    <button class="tab-btn" data-tab="gmd" style="flex:1;padding:7px 2px;border:none;background:transparent;color:rgba(138,176,200,0.45);cursor:pointer;font-size:10px;font-family:inherit;letter-spacing:0.5px;">GMD</button>
+    <button class="tab-btn" data-tab="debug" style="flex:1;padding:7px 2px;border:none;background:transparent;color:rgba(138,176,200,0.45);cursor:pointer;font-size:10px;font-family:inherit;letter-spacing:0.5px;">Debug</button>
   </div>
 
   <!-- Camera Tab -->
@@ -337,11 +367,11 @@
 
   <!-- Hit Detection Tab -->
   <div class="tab-content" id="tab-hit" style="padding: 10px; display: none;">
-    <b style="font-size:10px; color:#ff6666;">Hitscan (Instant)</b><br>
+    <b style="font-size:10px; color:rgba(200,100,100,0.8);">Hitscan (Instant)</b><br>
     <label for="hitscanDist">Distance: <span id="hitscanDist-value">50</span></label><br>
     <input type="range" id="hitscanDist" min="0" max="200" value="50" style="width:100%;"><br>
 
-    <b style="font-size:10px; color:#66aaff;">CCD (Projectile)</b><br>
+    <b style="font-size:10px; color:rgba(80,160,220,0.8);">CCD (Projectile)</b><br>
     <label for="ccdMaxDist">Max Distance: <span id="ccdMaxDist-value">500</span></label><br>
     <input type="range" id="ccdMaxDist" min="100" max="1000" step="50" value="500" style="width:100%;"><br>
 
@@ -352,9 +382,9 @@
   <div class="tab-content" id="tab-gun" style="padding: 10px; display: none;">
     <div style="margin-bottom:8px;">
       <b style="font-size:10px;">Edit Position:</b>
-      <button id="editADS" style="padding:2px 8px;margin-left:5px;background:#4CAF50;color:white;border:none;cursor:pointer;">ADS</button>
-      <button id="editHip" style="padding:2px 8px;margin-left:5px;background:#555;color:white;border:none;cursor:pointer;">Hip</button>
-      <span id="editModeLabel" style="margin-left:10px;font-size:10px;color:#4CAF50;">[Editing ADS]</span>
+      <button id="editADS" style="padding:2px 8px;margin-left:5px;background:rgba(80,160,220,0.2);color:#8ab0c8;border:1px solid rgba(80,160,220,0.3);border-radius:3px;cursor:pointer;font-family:inherit;">ADS</button>
+      <button id="editHip" style="padding:2px 8px;margin-left:5px;background:rgba(80,140,200,0.08);color:rgba(138,176,200,0.5);border:1px solid rgba(80,160,220,0.15);border-radius:3px;cursor:pointer;font-family:inherit;">Hip</button>
+      <span id="editModeLabel" style="margin-left:10px;font-size:10px;color:#5a90b0;">[Editing ADS]</span>
     </div>
 
     <label for="gunX">X Offset: <span id="gunX-value">0</span></label><br>
@@ -383,9 +413,9 @@
   <div class="tab-content" id="tab-barrel" style="padding: 10px; display: none;">
     <div style="margin-bottom:8px;">
       <b style="font-size:10px;">Edit Position:</b>
-      <button id="barrelEditADS" style="padding:2px 8px;margin-left:5px;background:#4CAF50;color:white;border:none;cursor:pointer;">ADS</button>
-      <button id="barrelEditHip" style="padding:2px 8px;margin-left:5px;background:#555;color:white;border:none;cursor:pointer;">Hip</button>
-      <span id="barrelEditModeLabel" style="margin-left:10px;font-size:10px;color:#4CAF50;">[Editing ADS]</span>
+      <button id="barrelEditADS" style="padding:2px 8px;margin-left:5px;background:rgba(80,160,220,0.2);color:#8ab0c8;border:1px solid rgba(80,160,220,0.3);border-radius:3px;cursor:pointer;font-family:inherit;">ADS</button>
+      <button id="barrelEditHip" style="padding:2px 8px;margin-left:5px;background:rgba(80,140,200,0.08);color:rgba(138,176,200,0.5);border:1px solid rgba(80,160,220,0.15);border-radius:3px;cursor:pointer;font-family:inherit;">Hip</button>
+      <span id="barrelEditModeLabel" style="margin-left:10px;font-size:10px;color:#5a90b0;">[Editing ADS]</span>
     </div>
 
     <label for="barrelYaw">Barrel Yaw: <span id="barrelYaw-value">0</span>°</label><br>
@@ -447,27 +477,27 @@
     <hr style="border-color:#555;margin:8px 0;">
     <b style="font-size:10px;">Sniper Scope Mode:</b><br>
     <div style="margin-top:5px;">
-      <button id="scopeModeForward" style="padding:4px 8px;background:#4CAF50;color:white;border:none;cursor:pointer;font-size:10px;">Forward Position</button>
-      <button id="scopeModeFocal" style="padding:4px 8px;background:#555;color:white;border:none;cursor:pointer;font-size:10px;">Focal Length</button>
+      <button id="scopeModeForward" style="padding:4px 8px;background:rgba(80,160,220,0.2);color:#8ab0c8;border:1px solid rgba(80,160,220,0.3);border-radius:3px;cursor:pointer;font-family:inherit;font-size:10px;">Forward Position</button>
+      <button id="scopeModeFocal" style="padding:4px 8px;background:rgba(80,140,200,0.08);color:rgba(138,176,200,0.5);border:1px solid rgba(80,160,220,0.15);border-radius:3px;cursor:pointer;font-family:inherit;font-size:10px;">Focal Length</button>
     </div>
-    <div id="scopeModeDesc" style="margin-top:5px;font-size:9px;color:#888;">Camera moves forward (may clip through walls)</div>
+    <div id="scopeModeDesc" style="margin-top:5px;font-size:9px;color:rgba(138,176,200,0.4);">Camera moves forward (may clip through walls)</div>
   </div>
 
   <!-- GMD (Gun Mechanics Debug) Tab -->
   <div class="tab-content" id="tab-gmd" style="padding: 10px; display: none;">
-    <b style="font-size:11px; color:#00ff00;">Gun Mechanics Debug</b><br><br>
+    <b style="font-size:11px; color:#5a90b0;">Gun Mechanics Debug</b><br><br>
     <label style="font-size:11px;"><input type="checkbox" id="showGMD" checked> Show debug overlay</label><br><br>
     <label style="font-size:11px;"><input type="checkbox" id="showTestTarget" checked> Enable test target</label><br><br>
     <label style="font-size:11px;"><input type="checkbox" id="showMinimaps" checked> Show minimaps &amp; legend</label><br><br>
 
-    <b style="font-size:10px; color:#ffff00;">Target Controls</b><br>
+    <b style="font-size:10px; color:#8ab0c8;">Target Controls</b><br>
     <label for="targetDistance">Distance: <span id="targetDistance-value">25</span></label><br>
     <input type="range" id="targetDistance" min="5" max="200" value="25" style="width:100%;"><br>
 
     <label for="targetRadius">Radius: <span id="targetRadius-value">2.0</span></label><br>
     <input type="range" id="targetRadius" min="0.5" max="10" step="0.5" value="2" style="width:100%;"><br>
 
-    <button id="resetHitCount" style="margin-top:8px;padding:4px 10px;background:#555;color:white;border:none;cursor:pointer;">Reset Hit/Miss Count</button>
+    <button id="resetHitCount" style="margin-top:8px;padding:4px 10px;background:rgba(80,140,200,0.08);color:rgba(138,176,200,0.5);border:1px solid rgba(80,160,220,0.15);border-radius:3px;cursor:pointer;font-family:inherit;">Reset Hit/Miss Count</button>
   </div>
 
   <!-- Debug Tab -->
@@ -491,10 +521,10 @@
   </div>
 
   <!-- Save/Reset Buttons -->
-  <div style="padding: 10px; border-top: 1px solid #555; display: flex; gap: 10px;">
-    <button id="saveSettings" style="flex:1; padding:8px; background:#2a6; color:white; border:none; border-radius:4px; cursor:pointer;">Save</button>
-    <button id="resetSettings" style="flex:1; padding:8px; background:#a62; color:white; border:none; border-radius:4px; cursor:pointer;">Reset</button>
-    <button onclick="localStorage.removeItem('voxelspace_display_config'); this.textContent='Cleared!'; setTimeout(()=>this.textContent='Clear Cache',1500);" style="flex:1; padding:8px; background:#555; color:white; border:none; border-radius:4px; cursor:pointer;">Clear Cache</button>
+  <div style="padding: 10px; border-top: 1px solid rgba(80,160,220,0.12); display: flex; gap: 8px;">
+    <button id="saveSettings" style="flex:1; padding:8px; background:rgba(40,120,80,0.25); color:#6abf8a; border:1px solid rgba(40,160,80,0.3); border-radius:3px; cursor:pointer; font-family:inherit; font-size:11px; letter-spacing:1px; text-transform:uppercase;">Save</button>
+    <button id="resetSettings" style="flex:1; padding:8px; background:rgba(160,60,40,0.2); color:#c07060; border:1px solid rgba(160,80,60,0.3); border-radius:3px; cursor:pointer; font-family:inherit; font-size:11px; letter-spacing:1px; text-transform:uppercase;">Reset</button>
+    <button onclick="localStorage.removeItem('voxelspace_display_config'); this.textContent='Cleared!'; setTimeout(()=>this.textContent='Clear Cache',1500);" style="flex:1; padding:8px; background:rgba(80,140,200,0.1); color:#8ab0c8; border:1px solid rgba(80,160,220,0.2); border-radius:3px; cursor:pointer; font-family:inherit; font-size:11px; letter-spacing:1px; text-transform:uppercase;">Clear Cache</button>
   </div>
 </div>
 

@@ -14,10 +14,10 @@ function DrawMinimap(){
     var cy = margin;
 
     // Draw background
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillStyle = 'rgba(8,15,22,0.82)';
     ctx.fillRect(cx, cy, size, size);
-    ctx.strokeStyle = 'white';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(80,160,220,0.3)';
+    ctx.lineWidth = 1.5;
     ctx.strokeRect(cx, cy, size, size);
 
     // Draw terrain colors from color map
@@ -345,9 +345,9 @@ function DrawSideView(ctx){
     var heightRange = Math.max(10, Math.floor(rangeForward / 2));  // world units of height to show
 
     // Background
-    ctx.fillStyle = 'rgba(0,0,0,0.8)';
+    ctx.fillStyle = 'rgba(8,15,22,0.85)';
     ctx.fillRect(sx, sy, width, height);
-    ctx.strokeStyle = 'white';
+    ctx.strokeStyle = 'rgba(80,160,220,0.25)';
     ctx.lineWidth = 1;
     ctx.strokeRect(sx, sy, width, height);
 
