@@ -76,8 +76,16 @@ function Draw(timestamp){
         DrawBackground();
         RenderCube();
         Render();
-        RenderItems();
-        RenderRemotePlayerBodies();
+        var playerSprites = [];
+        var _now = Date.now();
+        var _myId = (typeof NakamaClient !== "undefined") ? NakamaClient.getUserId() : null;
+        for (var _uid in nakamaState.remotePlayers) {
+            if (_uid === _myId) continue;
+            var _rp = nakamaState.remotePlayers[_uid];
+            if (_now - _rp.lastSeen > 10000) continue;
+            playerSprites.push({ x: _rp.x, y: _rp.y, z: _rp.height - 30, type: "player", image: textures.player });
+        }
+        RenderItems(playerSprites);
         Flip();
         RenderTestTarget();
         RenderGroundWeapons();

@@ -194,7 +194,8 @@ var updaterunning=false,time=Date.now(),timelastframe=Date.now(),frames=0,pitchO
 var textures = {
     bullet: (() => { let i = new Image(); i.src = "images/bullet.png"; return i; })(),
     heart:  (() => { let i = new Image(); i.src = "images/heart.png";  return i; })(),
-    tree:   (() => { let i = new Image(); i.src = "images/tree.png";   return i; })()
+    tree:   (() => { let i = new Image(); i.src = "images/tree.png";   return i; })(),
+    player: (() => { let i = new Image(); i.src = "images/MC.png";     return i; })()
 };
 
 // ===============================

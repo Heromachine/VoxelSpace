@@ -21,7 +21,7 @@ function getImagePixelData(img) {
     return data;
 }
 
-function RenderItems(){
+function RenderItems(extraItems){
     var sw = screendata.canvas.width,
         sh = screendata.canvas.height,
         depth = screendata.depthBuffer,
@@ -32,7 +32,8 @@ function RenderItems(){
         focal = camera.focalLength;
 
     // Project items using ground-plane distance (consistent with terrain rendering)
-    let projected = items.map(it => {
+    var allItems = extraItems ? items.concat(extraItems) : items;
+    let projected = allItems.map(it => {
         var dx = it.x - camera.x,
             dy = it.y - camera.y;
         var groundForward = -dx*sinYaw - dy*cosYaw;
@@ -60,6 +61,10 @@ function RenderItems(){
         if (it.type === "tree") {
             scaleX *= 6;   // wider trees
             scaleY *= 12;  // much taller trees (stretched)
+        }
+        if (it.type === "player") {
+            scaleX *= 2;   // ~24 units wide
+            scaleY *= 6.5; // ~78 units tall
         }
         if (it.type === "bullet") {
             scaleX *= bulletSize;
