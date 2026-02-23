@@ -19,6 +19,7 @@ var Multiplayer = (function () {
     var OP_KILL   = 10;
     var OP_PING   = 11;
     var OP_PONG   = 12;
+    var OP_SHOOT  = 13;
 
     var _matchId     = null;
     var _connected   = false;
@@ -114,6 +115,16 @@ var Multiplayer = (function () {
         NakamaClient.sendMatchData(_matchId, OP_CHAT, {
             emoji: emoji,
             shout: shout === true
+        });
+    }
+
+    // ── Broadcast a shot fired (visual only for other clients) ───
+
+    function sendShoot(x, y, z, dx, dy, dz) {
+        if (!_connected || !_matchId) return;
+        NakamaClient.sendMatchData(_matchId, OP_SHOOT, {
+            x: x, y: y, z: z,
+            dx: dx, dy: dy, dz: dz
         });
     }
 
@@ -222,6 +233,21 @@ var Multiplayer = (function () {
 
         } else if (opCode === OP_PONG) {
             nakamaState.myPing = Date.now() - _pingTs;
+
+        } else if (opCode === OP_SHOOT) {
+            if (data.userId === myId) return;
+            items.push({
+                type: "bullet",
+                x: data.x, y: data.y, z: data.z,
+                prevX: data.x, prevY: data.y, prevZ: data.z,
+                dx: data.dx, dy: data.dy, dz: data.dz,
+                distance: 0,
+                image: textures.bullet,
+                damage: 0,
+                hitscanHit: null,
+                stopDistance: null,
+                remote: true
+            });
         }
     }
 
@@ -276,6 +302,7 @@ var Multiplayer = (function () {
         update:     update,
         disconnect: disconnect,
         sendChat:   sendChat,
+        sendShoot:  sendShoot,
         reportHit:  reportHit,
         isConnected: function () { return _connected; }
     };

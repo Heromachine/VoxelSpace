@@ -77,6 +77,7 @@ function Draw(timestamp){
         RenderCube();
         Render();
         RenderItems();
+        RenderRemotePlayerBodies();
         Flip();
         RenderTestTarget();
         RenderGroundWeapons();
@@ -86,7 +87,7 @@ function Draw(timestamp){
         DrawWeaponUI(screendata.context);
         DrawTouchControls(screendata.context);
         DrawGunDebugInfo();
-        RenderRemotePlayers();
+        RenderRemotePlayerOverlays();
         if (typeof Multiplayer !== "undefined") Multiplayer.update();
         DrawScoreboard();
         frames++;

@@ -503,6 +503,10 @@ function UpdateCamera(){
         lastBullet = bullet;
         items.push(bullet);
 
+        if (typeof Multiplayer !== "undefined" && Multiplayer.isConnected()) {
+            Multiplayer.sendShoot(spawnX, spawnY, spawnZ, dirx, diry, dirz);
+        }
+
         currentSlot.ammo--;
         currentSlot.lastShot = current;
     }
@@ -526,7 +530,7 @@ function UpdateCamera(){
 
             it.x+=it.dx*deltaTime;it.y+=it.dy*deltaTime;it.z+=it.dz*deltaTime;it.distance+=Math.hypot(it.dx,it.dy,it.dz)*deltaTime;
 
-            if (it.hitscanHit && it.distance >= it.stopDistance) {
+            if (!it.remote && it.hitscanHit && it.distance >= it.stopDistance) {
                 if(it===lastBullet){
                     lastBullet=null;
                     lastBulletDestroyedPos={x:it.hitscanHit.x, y:it.hitscanHit.y, z:it.hitscanHit.z};
@@ -535,7 +539,7 @@ function UpdateCamera(){
                 return false;
             }
 
-            if (testTarget.enabled && !it.hitscanHit) {
+            if (!it.remote && testTarget.enabled && !it.hitscanHit) {
                 var segDirX = it.x - it.prevX;
                 var segDirY = it.y - it.prevY;
                 var segDirZ = it.z - it.prevZ;
@@ -585,6 +589,12 @@ function UpdateCamera(){
             }
 
             // Cube collision (CCD ray-AABB intersection)
+            if (it.remote) {
+                var terrainHeight=getRawTerrainHeight(it.x,it.y);
+                if(it.z<=terrainHeight) return false;
+                if(it.distance>=ccdMaxDistance) return false;
+                return true;
+            }
             var segDx = it.x - it.prevX;
             var segDy = it.y - it.prevY;
             var segDz = it.z - it.prevZ;

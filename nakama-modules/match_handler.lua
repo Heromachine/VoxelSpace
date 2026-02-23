@@ -17,6 +17,7 @@ local OP_RADAR_REVEAL  = 9
 local OP_KILL          = 10
 local OP_PING          = 11
 local OP_PONG          = 12
+local OP_SHOOT         = 13
 
 local TICK_RATE      = 20
 local VICINITY_RANGE = 150
@@ -116,13 +117,29 @@ function M.match_leave(context, dispatcher, tick, state, presences)
     return state
 end
 
+-- Nakama JS SDK (older versions) serialises a Uint8Array as {"0":N,"1":N,...}.
+-- Detect that format and reconstruct the original JSON string from the bytes.
+local function decode_msg_data(raw)
+    local t = _nk.json_decode(raw)
+    if type(t) == "table" and t["0"] ~= nil then
+        local bytes = {}
+        local i = 0
+        while t[tostring(i)] ~= nil do
+            bytes[i + 1] = string.char(t[tostring(i)])
+            i = i + 1
+        end
+        return _nk.json_decode(table.concat(bytes))
+    end
+    return t
+end
+
 local function handle_message(dispatcher, state, tick, msg)
     local sender_uid = msg.sender.user_id
     local record     = state.players[sender_uid]
     if not record then return end
 
     local op   = msg.op_code
-    local data = _nk.json_decode(msg.data)
+    local data = decode_msg_data(msg.data)
 
     if op == OP_POSITION then
         record.x      = data.x      or record.x
@@ -208,6 +225,19 @@ local function handle_message(dispatcher, state, tick, msg)
                 _nk.json_encode({ killerId = sender_uid, victimId = target_id,
                     kills = record.kills }),
                 nil, nil, true)
+        end
+
+    elseif op == OP_SHOOT then
+        local others = {}
+        for uid, p in pairs(state.presences) do
+            if uid ~= sender_uid then table.insert(others, p) end
+        end
+        if #others > 0 then
+            dispatcher.broadcast_message(OP_SHOOT,
+                _nk.json_encode({ userId = sender_uid,
+                    x = data.x, y = data.y, z = data.z,
+                    dx = data.dx, dy = data.dy, dz = data.dz }),
+                others, nil, false)
         end
 
     elseif op == OP_PING then
