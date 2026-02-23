@@ -8,14 +8,14 @@ function DrawMinimap() {
 
     var ctx     = screendata.context;
     var mmScale = uiScale.minimap;
-    var S       = Math.floor(200 * mmScale);   // diameter in canvas pixels
-    var margin  = Math.floor(10  * mmScale);
+    var S       = Math.floor(150 * mmScale);   // diameter in canvas pixels
+    var margin  = Math.floor(20  * mmScale);   // extra margin gives the N badge room to breathe
     var sw      = screendata.canvas.width;
 
     // Center of the round minimap (top-right corner)
     var cx = sw - S / 2 - margin;
     var cy = S / 2 + margin;
-    var R  = S / 2 - Math.floor(4 * mmScale);  // clip / border radius
+    var R  = S / 2 - Math.floor(3 * mmScale);  // clip / border radius
 
     // ---- Dark background circle + terrain (clipped, rotated) ----
     ctx.save();
@@ -119,18 +119,37 @@ function DrawMinimap() {
     ctx.arc(cx, cy, R, 0, Math.PI * 2);
     ctx.stroke();
 
-    // ---- N label: orbits the edge to show where north is ----
-    // At camera.angle=0 (facing north), N sits directly above at canvas -Y.
-    // Formula: camera.angle - π/2 keeps N correctly positioned as player rotates.
+    // ---- N compass badge: triangle orbiting the edge, tip pointing outward ----
+    // nAngle=0 faces the player north; the badge tip always points away from the circle.
     var nAngle = camera.angle - Math.PI / 2;
-    var nR     = R + Math.floor(14 * mmScale);
+    var nR     = R + Math.floor(12 * mmScale);  // orbit radius
     var nX     = cx + nR * Math.cos(nAngle);
     var nY     = cy + nR * Math.sin(nAngle);
+    var ts     = Math.floor(9  * mmScale);       // triangle half-size
 
-    ctx.font         = 'bold ' + Math.floor(20 * mmScale) + 'px monospace';
+    // Rotate so the tip points outward (away from the minimap centre)
+    ctx.save();
+    ctx.translate(nX, nY);
+    ctx.rotate(nAngle + Math.PI / 2);
+
+    ctx.beginPath();
+    ctx.moveTo(0,          -ts * 1.1);   // tip (outward)
+    ctx.lineTo(-ts * 0.9,   ts * 0.55);  // base-left
+    ctx.lineTo( ts * 0.9,   ts * 0.55);  // base-right
+    ctx.closePath();
+    ctx.fillStyle   = 'rgba(8,15,22,0.92)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(80,160,220,0.85)';
+    ctx.lineWidth   = 1.5;
+    ctx.stroke();
+
+    ctx.restore();
+
+    // N text drawn upright at the badge centre
+    ctx.font         = 'bold ' + Math.floor(10 * mmScale) + 'px monospace';
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle    = 'rgba(255,210,80,0.95)';
+    ctx.fillStyle    = '#8ab0c8';
     ctx.fillText('N', nX, nY);
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign    = 'left';
