@@ -16,9 +16,148 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Voxel Space Game</title>
+    <title>Ring — Combat Revolved</title>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
+        /* ── Halo font ── */
+        @font-face {
+            font-family: 'Halo';
+            src: url('fonts/halo/Halo.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'HaloOutline';
+            src: url('fonts/halo/Halo Outline.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        /* ── Splash screen ── */
+        #splash-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            overflow: hidden;
+            background: #000;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.9s ease;
+        }
+        #splash-screen.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+        /* Rotated portrait image to fill landscape viewport */
+        #splash-img {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            /* Before rotation: width covers screen height, height covers screen width */
+            width: 100vh;
+            height: 100vw;
+            min-width: 100vh;
+            min-height: 100vw;
+            object-fit: cover;
+            transform: translate(-50%, -50%) rotate(90deg) scale(1.05);
+        }
+        /* Radial vignette — keeps center clear so ring stays visible */
+        #splash-overlay {
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 55% 70% at 50% 50%, transparent 0%, rgba(0,0,0,0.18) 100%),
+                linear-gradient(to right, rgba(60,0,90,0.55) 0%, transparent 35%, transparent 65%, rgba(0,0,10,0.65) 100%),
+                linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.55) 100%);
+        }
+        /* Text content — centered over the ring opening */
+        #splash-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            user-select: none;
+            pointer-events: none;
+            padding: 0 20px;
+        }
+        /* "Ring" in Halo font */
+        #splash-title {
+            font-family: 'Halo', sans-serif;
+            font-size: clamp(72px, 16vw, 160px);
+            color: #ffffff;
+            margin: 0;
+            line-height: 1;
+            letter-spacing: 0.06em;
+            text-shadow:
+                0 0 15px #e080ff,
+                0 0 35px #c050ff,
+                0 0 70px #9920ee,
+                0 0 120px #7700cc,
+                0 2px 4px rgba(0,0,0,0.8);
+        }
+        /* Outline layer for depth */
+        #splash-title-outline {
+            font-family: 'HaloOutline', sans-serif;
+            font-size: clamp(72px, 16vw, 160px);
+            color: rgba(220, 150, 255, 0.35);
+            margin: 0;
+            line-height: 1;
+            letter-spacing: 0.06em;
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            text-align: center;
+            pointer-events: none;
+        }
+        #splash-title-wrap {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+        /* "Combat Revolved" subtitle */
+        #splash-subtitle {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-size: clamp(11px, 2vw, 20px);
+            color: #d4aaff;
+            letter-spacing: 0.45em;
+            text-transform: uppercase;
+            margin: 10px 0 0 0;
+            font-weight: 300;
+            text-shadow: 0 0 18px rgba(180, 80, 255, 0.7);
+        }
+        /* Divider line below subtitle */
+        #splash-divider {
+            width: clamp(120px, 22vw, 280px);
+            height: 1px;
+            background: linear-gradient(to right, transparent, rgba(180, 80, 255, 0.7), transparent);
+            margin: 18px auto 0;
+        }
+        /* "Tap to enter" CTA */
+        #splash-cta {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-size: clamp(9px, 1.3vw, 12px);
+            color: rgba(210, 170, 255, 0.45);
+            letter-spacing: 0.35em;
+            text-transform: uppercase;
+            margin: 50px 0 0 0;
+            animation: splash-pulse 2.2s ease-in-out infinite;
+        }
+        @keyframes splash-pulse {
+            0%, 100% { opacity: 0.25; }
+            50%       { opacity: 0.85; }
+        }
+        /* Ambient corner glow matching nebula */
+        #splash-corner-glow {
+            position: absolute;
+            left: -10%;
+            top: -10%;
+            width: 50%;
+            height: 120%;
+            background: radial-gradient(ellipse at left center, rgba(100, 0, 160, 0.22) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
         html, body {margin: 0; height: 100%; overflow: hidden; background: #000;}
 
         /* ── Multiplayer overlay base ── */
@@ -232,6 +371,28 @@
     </style>
 </head>
 <body>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- SPLASH / TITLE SCREEN                                    -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div id="splash-screen">
+    <!-- Background: portrait image rotated 90° to landscape -->
+    <img id="splash-img" src="images/splash.jpg" alt="">
+    <!-- Gradient vignette -->
+    <div id="splash-overlay"></div>
+    <!-- Ambient left-side nebula glow -->
+    <div id="splash-corner-glow"></div>
+    <!-- Title + subtitle -->
+    <div id="splash-content">
+        <div id="splash-title-wrap">
+            <div id="splash-title">Ring</div>
+            <div id="splash-title-outline">Ring</div>
+        </div>
+        <p id="splash-subtitle">Combat&nbsp;&nbsp;Revolved</p>
+        <div id="splash-divider"></div>
+        <p id="splash-cta">Tap anywhere to enter</p>
+    </div>
+</div>
 
     <!-- ── In-game notification toast ── -->
 <div id="mp-notification"></div>
@@ -634,6 +795,31 @@
 <!-- src/ files - Main Entry Point        -->
 <!-- ===================================== -->
 <script src="src/main.js?v=2"></script>
+
+<!-- ── Splash screen dismiss ── -->
+<script>
+(function () {
+    var splash = document.getElementById('splash-screen');
+    if (!splash) return;
+
+    function dismiss() {
+        if (splash.classList.contains('fade-out')) return;
+        splash.classList.add('fade-out');
+        setTimeout(function () {
+            splash.style.display = 'none';
+        }, 950);
+    }
+
+    splash.addEventListener('click', dismiss);
+    splash.addEventListener('touchstart', function (e) {
+        e.preventDefault();
+        dismiss();
+    }, { passive: false });
+
+    // Also dismiss after 8 seconds automatically
+    setTimeout(dismiss, 8000);
+}());
+</script>
 
 </body>
 </html>
