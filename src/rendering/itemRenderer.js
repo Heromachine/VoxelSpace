@@ -21,6 +21,21 @@ function getImagePixelData(img) {
     return data;
 }
 
+// Cache for sprite sheet pixel data at native resolution
+var spriteSheetCache = null;
+
+function getSpriteSheetData(img) {
+    if (spriteSheetCache) return spriteSheetCache;
+    if (!img.complete || !img.naturalWidth) return null;
+    var c = document.createElement('canvas');
+    c.width = img.naturalWidth;
+    c.height = img.naturalHeight;
+    var ctx = c.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    spriteSheetCache = ctx.getImageData(0, 0, c.width, c.height);
+    return spriteSheetCache;
+}
+
 function RenderItems(extraItems){
     var sw = screendata.canvas.width,
         sh = screendata.canvas.height,
@@ -77,10 +92,42 @@ function RenderItems(extraItems){
         if (screenX < -scaleX || screenX >= sw + scaleX || screenY < -scaleY || screenY >= sh + scaleY) return;
         if (!it.image || !it.image.complete) return;
 
-        // Get cached image pixel data (fixed size)
-        var imgData = getImagePixelData(it.image);
-        var srcSize = imgData.width; // BASE_SIZE
-        var pixels = imgData.data;
+        // Determine source pixel data and sampling region
+        var isSpriteSheet = (it.type === "player" && playerSprite.frameRects);
+        var pixels, srcW, srcH, srcOffX, srcOffY, srcStride;
+
+        if (isSpriteSheet) {
+            var sheetData = getSpriteSheetData(it.image);
+            if (!sheetData) return;
+            pixels    = sheetData.data;
+            srcStride = sheetData.width;  // full sheet width for row indexing
+            // Use per-item frame if available, otherwise fall back to global
+            var itemFrame = (it.spriteFrame != null) ? it.spriteFrame : playerSprite.currentFrame;
+            var itemRow   = (it.spriteRow   != null) ? it.spriteRow   : playerSprite.currentRow;
+            // Look up explicit frame rectangle
+            var rowFrames = playerSprite.frameRects[itemRow];
+            var rect = rowFrames ? rowFrames[Math.min(itemFrame, rowFrames.length - 1)] : null;
+            if (rect) {
+                srcOffX = rect.x;
+                srcOffY = rect.y;
+                srcW    = rect.w;
+                srcH    = rect.h;
+            } else {
+                // Fallback to uniform grid
+                srcW    = Math.floor(sheetData.width  / playerSprite.frameCount);
+                srcH    = Math.floor(sheetData.height / playerSprite.rows);
+                srcOffX = itemFrame * srcW;
+                srcOffY = itemRow   * srcH;
+            }
+        } else {
+            var imgData = getImagePixelData(it.image);
+            pixels    = imgData.data;
+            srcStride = imgData.width;    // BASE_SIZE
+            srcW      = imgData.width;
+            srcH      = imgData.height;
+            srcOffX   = 0;
+            srcOffY   = 0;
+        }
 
         // Destination size and position using actual scale
         var destW = Math.max(1, Math.ceil(scaleX));
@@ -97,8 +144,8 @@ function RenderItems(extraItems){
             var sy = destY + py;
             if (sy < 0 || sy >= sh) continue;
 
-            // Map destination Y to source Y
-            var srcY = Math.floor(py * srcSize / destH);
+            // Map destination Y to source Y (within frame region)
+            var sampY = Math.floor(py * srcH / destH) + srcOffY;
 
             for (var px = 0; px < destW; px++) {
                 var sx = destX + px;
@@ -109,9 +156,9 @@ function RenderItems(extraItems){
                 // Depth test - only draw if in front of terrain
                 if (groundForward >= depth[bufIdx]) continue;
 
-                // Map destination X to source X
-                var srcX = Math.floor(px * srcSize / destW);
-                var srcIdx = (srcY * srcSize + srcX) * 4;
+                // Map destination X to source X (within frame region)
+                var sampX = Math.floor(px * srcW / destW) + srcOffX;
+                var srcIdx = (sampY * srcStride + sampX) * 4;
 
                 var a = pixels[srcIdx + 3];
                 if (a < 128) continue; // skip transparent pixels

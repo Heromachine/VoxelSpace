@@ -158,7 +158,13 @@ var Multiplayer = (function () {
                         health:   p.health,
                         kills:    p.kills || 0,
                         ping:     null,
-                        lastSeen: Date.now()
+                        lastSeen: Date.now(),
+                        // Per-player sprite animation
+                        spriteFrame: 0,
+                        spriteRow: 0,
+                        spriteDistAccum: 0,
+                        prevX: p.x,
+                        prevY: p.y
                     };
                 }
             }
@@ -180,7 +186,13 @@ var Multiplayer = (function () {
                 health:   data.health,
                 kills:    0,
                 ping:     null,
-                lastSeen: Date.now()
+                lastSeen: Date.now(),
+                // Per-player sprite animation
+                spriteFrame: 0,
+                spriteRow: 0,
+                spriteDistAccum: 0,
+                prevX: data.x,
+                prevY: data.y
             };
             showChatNotification(data.username + " joined");
 
@@ -191,6 +203,26 @@ var Multiplayer = (function () {
             if (data.userId === myId) return;
             var rp = nakamaState.remotePlayers[data.userId];
             if (rp) {
+                // Advance sprite animation based on remote player's movement
+                var rpDx = data.x - rp.prevX;
+                var rpDy = data.y - rp.prevY;
+                var rpDist = Math.sqrt(rpDx * rpDx + rpDy * rpDy);
+                if (rpDist > 0.5) {
+                    rp.spriteDistAccum += rpDist;
+                    while (rp.spriteDistAccum >= playerSprite.animSpeed) {
+                        var nf = rp.spriteFrame + 1;
+                        if (nf < playerSprite.walkStart || nf > playerSprite.walkEnd) nf = playerSprite.walkStart;
+                        rp.spriteFrame = nf;
+                        rp.spriteDistAccum -= playerSprite.animSpeed;
+                    }
+                } else {
+                    // Remote player stopped
+                    rp.spriteFrame = playerSprite.idleFrame;
+                    rp.spriteDistAccum = 0;
+                }
+                rp.prevX = data.x;
+                rp.prevY = data.y;
+
                 rp.x        = data.x;
                 rp.y        = data.y;
                 rp.height   = data.height;
