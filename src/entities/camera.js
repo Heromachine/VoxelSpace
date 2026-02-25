@@ -196,6 +196,27 @@ function UpdateCamera(){
         camera.y += (ny - camera.y) * slopeMult;
     }
 
+    // Advance sprite sheet animation based on movement distance
+    var spDx = camera.x - playerSprite.lastX;
+    var spDy = camera.y - playerSprite.lastY;
+    var distMoved = Math.sqrt(spDx * spDx + spDy * spDy);
+    if (distMoved > 0.01) {
+        playerSprite.distAccum += distMoved;
+        if (playerSprite.distAccum >= playerSprite.animSpeed) {
+            // Cycle through walkStart..walkEnd only
+            var f = playerSprite.currentFrame + 1;
+            if (f < playerSprite.walkStart || f > playerSprite.walkEnd) f = playerSprite.walkStart;
+            playerSprite.currentFrame = f;
+            playerSprite.distAccum -= playerSprite.animSpeed;
+        }
+    } else {
+        // Player stopped — reset to idle frame
+        playerSprite.currentFrame = playerSprite.idleFrame;
+        playerSprite.distAccum = 0;
+    }
+    playerSprite.lastX = camera.x;
+    playerSprite.lastY = camera.y;
+
     camera.velocityY-=0.5*deltaTime;camera.height+=camera.velocityY*deltaTime;
 
     // Ground clamping FIRST - ensures consistent state for jump check
