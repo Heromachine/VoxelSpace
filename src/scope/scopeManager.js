@@ -14,8 +14,11 @@ function RenderSniperScope() {
     var renderFuncs = {
         DrawBackground: DrawBackground,
         RenderCube: RenderCube,
+        RenderGreenCube: RenderGreenCube,
+        RenderShadowCube: RenderShadowCube,
         Render: Render,
         RenderItems: RenderItems,
+        RenderGroundWeapons: RenderGroundWeapons,
         RenderTestTarget: RenderTestTarget
     };
 

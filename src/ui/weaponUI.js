@@ -1,88 +1,88 @@
 // ===============================
-// Weapon UI - Ammo display and weapon slots
+// Weapon UI — DOM-based (crisp at any resolution)
+//
+// Weapon slots and pickup prompt are HTML elements so they render
+// at full CSS pixel resolution regardless of the game canvas scale.
 // ===============================
 "use strict";
 
 function DrawWeaponUI(ctx) {
     var scale = uiScale.weaponUI;
-    var sw = screendata.canvas.width;
-    var sh = screendata.canvas.height;
 
-    // Clear weapon slot hitboxes
+    // ── Weapon slots ──────────────────────────────────────────
+    var slotsEl = document.getElementById('weapon-slots-ui');
+    if (!slotsEl) return;
+
     touchControls.weaponSlots = [];
 
-    // Weapon slots display (bottom right, above healthbar)
-    var slotSize = Math.floor(50 * scale);
-    var slotGap = Math.floor(10 * scale);
-    var slotY = sh - Math.floor(80 * scale);
+    // Apply uiScale to slot and gap sizes
+    var slotPx = Math.round(50 * scale);
+    slotsEl.style.gap = Math.round(10 * scale) + 'px';
 
-    // Center weapon squares at bottom of screen
-    var totalWidth = playerWeapons.length * slotSize + (playerWeapons.length - 1) * slotGap;
-    var slotStartX = Math.floor((sw - totalWidth) / 2);
-
-    for (var i = 0; i < playerWeapons.length; i++) {
-        var slot = playerWeapons[i];
-        var weapon = weapons[slot.type];
-        var slotX = slotStartX + i * (slotSize + slotGap);
-
-        var isActive = (i === currentWeaponIndex);
-
-        // Store hitbox for touch detection
-        touchControls.weaponSlots.push({
-            x: slotX, y: slotY,
-            w: slotSize, h: slotSize,
-            index: i
-        });
-
-        // Draw slot background
-        ctx.fillStyle = isActive ? weapon.bgColor : 'rgba(8,15,22,0.82)';
-        ctx.fillRect(slotX, slotY, slotSize, slotSize);
-
-        // Draw slot border
-        ctx.strokeStyle = isActive ? weapon.color : 'rgba(80,160,220,0.2)';
-        ctx.lineWidth = isActive ? 3 : 1;
-        ctx.strokeRect(slotX, slotY, slotSize, slotSize);
-
-        // Draw weapon letter
-        ctx.fillStyle = isActive ? '#c0d8e8' : 'rgba(138,176,200,0.4)';
-        ctx.font = 'bold ' + Math.floor(24 * scale) + 'px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(weapon.letter, slotX + slotSize/2, slotY + slotSize/2 + Math.floor(8 * scale));
-
-        // Draw ammo count
-        ctx.font = Math.floor(12 * scale) + 'px Arial';
-        var ammoText = slot.ammo === Infinity ? '\u221E' : slot.ammo.toString();
-        ctx.fillStyle = slot.isReloading ? '#cc6666' : '#8ab0c8';
-        ctx.fillText(ammoText, slotX + slotSize/2, slotY + slotSize - Math.floor(5 * scale));
+    // Rebuild slot elements only when weapon count changes
+    if (slotsEl.children.length !== playerWeapons.length) {
+        slotsEl.innerHTML = '';
+        for (var j = 0; j < playerWeapons.length; j++) {
+            var div = document.createElement('div');
+            div.className = 'ws-slot';
+            div.innerHTML = '<span class="ws-letter"></span><span class="ws-ammo"></span>';
+            slotsEl.appendChild(div);
+        }
     }
 
-    ctx.textAlign = 'left';
+    var slotEls = slotsEl.querySelectorAll('.ws-slot');
+    for (var i = 0; i < playerWeapons.length; i++) {
+        var slotData = playerWeapons[i];
+        var weapon   = weapons[slotData.type];
+        var isActive = (i === currentWeaponIndex);
+        var el       = slotEls[i];
+        if (!el) continue;
 
-    // Show pickup prompt if near a weapon
-    if (nearbyWeapon) {
-        var weaponDef = weapons[nearbyWeapon.type];
-        var promptY = slotY - Math.floor(40 * scale);
-        var promptX = sw - Math.floor(200 * scale);
+        // Size
+        el.style.width  = slotPx + 'px';
+        el.style.height = slotPx + 'px';
 
-        ctx.fillStyle = 'rgba(8,15,22,0.88)';
-        var promptW = Math.floor(180 * scale);
-        var promptH = Math.floor(30 * scale);
-        ctx.fillRect(promptX, promptY, promptW, promptH);
+        // Border / background — weapon colour when active
+        el.style.borderColor = isActive ? weapon.color   : 'rgba(80,160,220,0.2)';
+        el.style.borderWidth = isActive ? '2px'          : '1px';
+        el.style.background  = isActive ? weapon.bgColor : 'rgba(8,15,22,0.82)';
 
-        ctx.strokeStyle = weaponDef.color;
-        ctx.lineWidth = 2;
-        ctx.strokeRect(promptX, promptY, promptW, promptH);
+        var letterEl = el.querySelector('.ws-letter');
+        var ammoEl   = el.querySelector('.ws-ammo');
 
-        ctx.fillStyle = '#8ab0c8';
-        ctx.font = Math.floor(14 * scale) + 'px Arial';
-        ctx.fillText('[E] Pick up ' + weaponDef.name, promptX + Math.floor(10 * scale), promptY + Math.floor(20 * scale));
+        letterEl.textContent  = weapon.letter;
+        letterEl.style.color  = isActive ? '#c0d8e8' : 'rgba(138,176,200,0.4)';
+        letterEl.style.fontSize = Math.round(22 * scale) + 'px';
 
-        // Store pickup hitbox for touch
-        touchControls.pickupHitbox = {
-            x: promptX, y: promptY,
-            w: promptW, h: promptH
-        };
-    } else {
-        touchControls.pickupHitbox = null;
+        var ammoText        = slotData.ammo === Infinity ? '\u221E' : String(slotData.ammo);
+        ammoEl.textContent  = ammoText;
+        ammoEl.style.color  = slotData.isReloading ? '#cc6666' : '#8ab0c8';
+        ammoEl.style.fontSize = Math.round(10 * scale) + 'px';
+
+        // Touch hitbox — CSS pixel coords match touch event clientX/clientY
+        var rect = el.getBoundingClientRect();
+        touchControls.weaponSlots.push({
+            x: rect.left, y: rect.top,
+            w: rect.width, h: rect.height,
+            index: i
+        });
+    }
+
+    // ── Pickup prompt ─────────────────────────────────────────
+    var promptEl = document.getElementById('pickup-prompt');
+    if (promptEl) {
+        if (nearbyWeapon) {
+            var weaponDef = weapons[nearbyWeapon.type];
+            promptEl.textContent = '[E]  Pick up ' + weaponDef.name;
+            promptEl.style.display = 'block';
+            var pr = promptEl.getBoundingClientRect();
+            touchControls.pickupHitbox = {
+                x: pr.left, y: pr.top,
+                w: pr.width, h: pr.height
+            };
+        } else {
+            promptEl.style.display  = 'none';
+            touchControls.pickupHitbox = null;
+        }
     }
 }

@@ -32,7 +32,7 @@
   },
   "debug": {
     "showHitRanges": true,
-    "showGMD": true,
+    "showGMD": false,
     "showTestTarget": true,
     "targetDistance": 25,
     "targetRadius": 2.0

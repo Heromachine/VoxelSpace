@@ -15,6 +15,7 @@ function DetectKeysDown(e){
         case 82:input.reload=true;break;
         case 81:input.swapWeapon=true;break;
         case 69:input.pickupWeapon=true;break;
+        case 70:input.interact=true;break;  // F — interact / talk to NPC
         case 90: // Z - cycle zoom presets (admin only)
             if(!isAdmin) break;
             var zoomPresets=[20,50,100,200,300];
@@ -35,9 +36,9 @@ function DetectKeysDown(e){
             var ctrl=document.getElementById('controls');
             ctrl.style.display=ctrl.style.display==='none'?'block':'none';
             break;
-        case 9: // Tab — show scoreboard
+        case 9: // Tab — toggle in-game menu
             e.preventDefault();
-            showScoreboard = true;
+            if (typeof InGameMenu !== 'undefined') InGameMenu.toggle();
             break;
     }
     if(!updaterunning){time=Date.now();Draw();}
@@ -55,8 +56,8 @@ function DetectKeysUp(e){
         case 82:input.reload=false;break;
         case 81:input.swapWeapon=false;break;
         case 69:input.pickupWeapon=false;break;
-        case 9:
-            showScoreboard = false;
+        case 70:input.interact=false;break;
+        case 9: // Tab keyup — no action needed (menu is toggle, not hold)
             break;
     }
 }

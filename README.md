@@ -31,6 +31,7 @@ Built with vanilla JavaScript, HTML5 Canvas, and [Nakama](https://heroiclabs.com
 | Reload | R | X |
 | Swap Weapon | Q | Y |
 | Pickup Weapon | E | X (context) |
+| Talk to NPC   | F | — |
 | Settings | ESC | — |
 
 ---
@@ -46,6 +47,57 @@ Three clans are available on first login. Membership is **permanently secret** �
 | Silent Root | Dark green — patient, snipers and survivors |
 
 Friendly fire results in an immediate kick. This behaviour may change in future versions.
+
+---
+
+## Quest System
+
+Quests are data-driven. Each quest is a `.js` file in the `quests/` folder that calls `QuestManager.register()`. No build step or server is required.
+
+### Quest structure
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique quest identifier |
+| `npcId` | string | Matches the ID used in `QuestManager.setNpcPosition()` |
+| `npcName` | string | Display name shown in the dialog box |
+| `canReject` | boolean | Whether the player can decline this quest |
+| `keyItems` | array | Items that must be returned to complete the quest |
+| `dialog` | object | Keyed dialog phases: `greeting`, `accept`, `reject`, `active`, `readyToComplete`, `complete` |
+
+### Quest states
+
+`not_started` → `active` → `ready_to_complete` → `complete`
+
+The player can also `reject` a quest (if `canReject: true`), which resets to `not_started` on next conversation.
+
+### Key items
+
+Key items can be delivered by the player, another player, an NPC, or a game system:
+
+```js
+QuestManager.giveKeyItem("TestQuest", "green_fragment");
+```
+
+When all key items are received, the quest advances to `ready_to_complete` automatically and a HUD notification is shown.
+
+### Interaction
+
+Walk within **80 units** of an NPC and face it within **15°** — a prompt appears. Press **F** to open the dialog.
+
+### Adding a new quest
+
+1. Create `quests/YourQuest.js` calling `QuestManager.register({ ... })`
+2. Add the script tag to `index.html` after `greenCube.js`
+3. Call `QuestManager.setNpcPosition('yourNpcId', x, y)` when spawning the NPC
+
+### Future: Quest Editor
+
+A visual quest editor is planned that will:
+- Create and edit quest definitions through a UI
+- Generate `quests/*.js` files automatically
+- Support branching dialog trees, multiple NPCs per quest, timed quests, and repeatable quests
+- Integrate with a quest giver/delivery chain (player → NPC → player, system events, etc.)
 
 ---
 
@@ -164,8 +216,12 @@ VoxelSpace/
 │   ├── gunModel.json
 │   ├── weapons.json
 │   └── display.json
+├── quests/                          # Quest data files (one per quest)
+│   └── TestQuest.js                 # Demo quest — GreenBox NPC
 ├── src/
 │   ├── core/                        # Globals, config loader, polyfills
+│   ├── systems/
+│   │   └── questManager.js          # Quest state machine + NPC dialog
 │   ├── network/
 │   │   ├── nakamaClient.js          # Auth + socket wrapper
 │   │   └── multiplayer.js           # Position sync, chat, hit reporting

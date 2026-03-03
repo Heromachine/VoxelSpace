@@ -143,8 +143,13 @@ function Draw(timestamp){
         if (typeof updateTouchInput === 'function') updateTouchInput();
         UpdateCamera();
         updateTargetMetrics();
+        updateGreenCubeFloat(timestamp);
+        updateShadowCubeFloat(timestamp);
+        QuestManager.update();
         DrawBackground();
         RenderCube();
+        RenderGreenCube();
+        RenderShadowCube();
         Render();
         var playerSprites = [];
         var _now = Date.now();
@@ -186,6 +191,10 @@ function Init(){
     OnResizeWindow();
     loadGunModel();
     loadCubeTexture();
+    initGreenCube();
+    initShadowCube();
+    QuestManager.init();
+    InGameMenu.init();
 
     var canvas=document.getElementById("fullscreenCanvas");
 
@@ -207,7 +216,7 @@ function Init(){
     });
 
     // Initialize scope mode
-    setScopeMode('forward');
+    setScopeMode('focal');
 
     // Scope mode toggle buttons
     document.getElementById('scopeModeForward').addEventListener('click', function() {
@@ -315,5 +324,5 @@ async function beginGame(isAnonymous) {
     requestAnimationFrame(Draw);
 }
 
-// Start multiplayer auth flow
-StartMultiplayer();
+// Mode selection is handled by ModeMenu in index.html.
+// ModeMenu.show() is called after the splash screen dismisses.

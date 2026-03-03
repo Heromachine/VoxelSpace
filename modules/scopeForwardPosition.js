@@ -160,8 +160,11 @@ var ScopeForwardPosition = {
         // Render scope view
         renderFuncs.DrawBackground();
         renderFuncs.RenderCube();
+        if (renderFuncs.RenderGreenCube)  renderFuncs.RenderGreenCube();
+        if (renderFuncs.RenderShadowCube) renderFuncs.RenderShadowCube();
         renderFuncs.Render();
         renderFuncs.RenderItems();
+        if (renderFuncs.RenderGroundWeapons) renderFuncs.RenderGroundWeapons();
 
         // Copy buffer to scope canvas
         this.imagedata.data.set(this.buf8);

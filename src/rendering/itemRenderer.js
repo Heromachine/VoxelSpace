@@ -72,7 +72,6 @@ function RenderItems(extraItems){
             // Track screen position for debugging
             lastBulletScreen = {x: screenX, y: screenY, z: it.z, camH: camera.height, gf: groundForward};
         }
-
         // Quick bounds check
         if (screenX < -scaleX || screenX >= sw + scaleX || screenY < -scaleY || screenY >= sh + scaleY) return;
         if (!it.image || !it.image.complete) return;
