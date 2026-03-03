@@ -146,6 +146,40 @@ var NakamaClient = (function () {
         }
     }
 
+    // ── Admin settings (heromachine dev tuning, public read) ─
+
+    async function readAdminSettings() {
+        if (!_client || !_session) return null;
+        try {
+            var result = await _client.readStorageObjects(_session, {
+                object_ids: [{ collection: "admin_config", key: "game_settings", user_id: getUserId() }]
+            });
+            if (result.objects && result.objects.length > 0) {
+                return JSON.parse(result.objects[0].value);
+            }
+        } catch (e) {
+            console.warn("Could not read admin settings:", e);
+        }
+        return null;
+    }
+
+    async function writeAdminSettings(settings) {
+        if (!_client || !_session) return false;
+        try {
+            await _client.writeStorageObjects(_session, [{
+                collection:       "admin_config",
+                key:              "game_settings",
+                value:            JSON.stringify(settings),
+                permission_read:  2,  // public read
+                permission_write: 1   // owner write only
+            }]);
+            return true;
+        } catch (e) {
+            console.warn("Could not write admin settings:", e);
+            return false;
+        }
+    }
+
     // ── Disconnect ───────────────────────────────────────────
 
     function disconnect() {
@@ -169,6 +203,8 @@ var NakamaClient = (function () {
         sendMatchData:     sendMatchData,
         readPlayerData:    readPlayerData,
         writePlayerData:   writePlayerData,
+        readAdminSettings: readAdminSettings,
+        writeAdminSettings: writeAdminSettings,
         disconnect:        disconnect
     };
 

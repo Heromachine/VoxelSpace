@@ -372,8 +372,11 @@ function UpdateCamera(){
     gunModel.worldRight = lerp(gunModel.hipWorldRight, gunModel.adsWorldRight, gunModel.adsLerp);
     gunModel.worldDown = lerp(gunModel.hipWorldDown, gunModel.adsWorldDown, gunModel.adsLerp);
 
-    // Update pivot mode based on ADS state
-    gunModel.pivotMode = isAiming ? 'barrel' : 'grip';
+    // Update pivot mode — always use barrel-pivot (screen-center aim) for both hip and ADS.
+    // Hip fire visuals still use hipOffset/hipBarrel/hipWorld positions (tuned via admin settings).
+    // Old grip-pivot mechanic preserved below for reference:
+    // gunModel.pivotMode = isAiming ? 'barrel' : 'grip';
+    gunModel.pivotMode = 'barrel';
 
     // Update crosshair style based on ADS and current weapon
     var crosshair = document.getElementById('crosshair');

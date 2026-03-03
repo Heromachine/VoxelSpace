@@ -3,6 +3,11 @@
 // ===============================
 "use strict";
 
+// Scale reference: 1 world unit (WU) ≈ 30 cm
+// Calibrated: playerHeightOffset=7 WU ≈ 7 feet ≈ 210 cm (eye level)
+// For metric: average 175 cm person → eye at ~165 cm ≈ 5.5 WU
+var WU_TO_CM = 30;
+
 var camera = {
     x: 0, y: 0, height: 78, angle: 0, horizon: 100,
     distance: 2000, velocityY: 0,
@@ -56,12 +61,12 @@ var weapons = {
         adsZoom: 1.8           // 1.8x zoom when aiming
     },
     pistol: {
-        name: "Pistol",
+        name: "Desert Eagle .50 AE",
         letter: "P",
         color: "#C0C0C0",      // Silver
         bgColor: "#808080",
-        magazine: 12,
-        maxMagazine: 12,
+        magazine: 7,
+        maxMagazine: 7,
         reloadTime: 1000,
         fireRate: 200,         // Semi-auto
         fireMode: "semi",

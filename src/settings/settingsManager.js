@@ -3,6 +3,14 @@
 // ===============================
 "use strict";
 
+// Metric label helpers (scale: 1 WU ≈ 30 cm)
+function wuLabelM(wu) {
+    return wu + ' (' + Math.round(parseFloat(wu) * 0.30) + ' m)';
+}
+function wuLabelCm(wu) {
+    return wu + ' (' + Math.round(parseFloat(wu) * 30) + ' cm)';
+}
+
 var savedSettings = null;
 var editMode = 'ads';  // 'ads' or 'hip' - which mode we're editing
 
@@ -42,11 +50,11 @@ function updateBarrelSliders() {
 function updateWorldOffsetSliders() {
     var prefix = editMode === 'ads' ? 'ads' : 'hip';
     document.getElementById('gunWorldFwd').value = gunModel[prefix + 'WorldForward'];
-    document.getElementById('gunWorldFwd-value').innerText = gunModel[prefix + 'WorldForward'];
+    document.getElementById('gunWorldFwd-value').innerText = wuLabelCm(gunModel[prefix + 'WorldForward']);
     document.getElementById('gunWorldRight').value = gunModel[prefix + 'WorldRight'];
-    document.getElementById('gunWorldRight-value').innerText = gunModel[prefix + 'WorldRight'];
+    document.getElementById('gunWorldRight-value').innerText = wuLabelCm(gunModel[prefix + 'WorldRight']);
     document.getElementById('gunWorldDown').value = gunModel[prefix + 'WorldDown'];
-    document.getElementById('gunWorldDown-value').innerText = gunModel[prefix + 'WorldDown'];
+    document.getElementById('gunWorldDown-value').innerText = wuLabelCm(gunModel[prefix + 'WorldDown']);
 }
 
 // Unified function to set edit mode for both Gun and Barrel tabs
@@ -130,13 +138,13 @@ function setupSliders() {
     // Draw distance slider
     document.getElementById('drawDistance').addEventListener('input', function(e){
         camera.distance = parseInt(e.target.value);
-        document.getElementById('drawDistance-value').innerText = camera.distance;
+        document.getElementById('drawDistance-value').innerText = wuLabelM(camera.distance);
     });
 
     // Player height slider
     document.getElementById('playerHeight').addEventListener('input', function(e){
         playerHeightOffset = parseInt(e.target.value);
-        document.getElementById('playerHeight-value').innerText = playerHeightOffset;
+        document.getElementById('playerHeight-value').innerText = wuLabelCm(playerHeightOffset);
     });
 
     // Standing height slider
@@ -184,17 +192,17 @@ function setupSliders() {
     // Barrel distance slider
     document.getElementById('barrelDistance').addEventListener('input', function(e){
         gunModel.barrelDistance = parseInt(e.target.value);
-        document.getElementById('barrelDistance-value').innerText = gunModel.barrelDistance;
+        document.getElementById('barrelDistance-value').innerText = wuLabelCm(gunModel.barrelDistance);
     });
 
     // Hit Detection sliders
     document.getElementById('hitscanDist').addEventListener('input', function(e){
         hitscanDist = parseInt(e.target.value);
-        document.getElementById('hitscanDist-value').innerText = hitscanDist;
+        document.getElementById('hitscanDist-value').innerText = wuLabelM(hitscanDist);
     });
     document.getElementById('ccdMaxDist').addEventListener('input', function(e){
         ccdMaxDist = parseInt(e.target.value);
-        document.getElementById('ccdMaxDist-value').innerText = ccdMaxDist;
+        document.getElementById('ccdMaxDist-value').innerText = wuLabelM(ccdMaxDist);
     });
     document.getElementById('showHitRanges').addEventListener('change', function(e){
         showHitRanges = e.target.checked;
@@ -212,13 +220,13 @@ function setupSliders() {
     });
     document.getElementById('targetDistance').addEventListener('input', function(e){
         var dist = parseInt(e.target.value);
-        document.getElementById('targetDistance-value').innerText = dist;
+        document.getElementById('targetDistance-value').innerText = wuLabelM(dist);
         testTarget.distance = dist;
         positionTestTarget();
     });
     document.getElementById('targetRadius').addEventListener('input', function(e){
         testTarget.radius = parseFloat(e.target.value);
-        document.getElementById('targetRadius-value').innerText = testTarget.radius.toFixed(1);
+        document.getElementById('targetRadius-value').innerText = testTarget.radius.toFixed(1) + ' (' + Math.round(testTarget.radius * 30) + ' cm)';
     });
     document.getElementById('resetHitCount').addEventListener('click', function(){
         testTarget.hits = 0;
@@ -319,19 +327,19 @@ function setupSliders() {
         var val = parseInt(e.target.value);
         if (editMode === 'ads') gunModel.adsWorldForward = val;
         else gunModel.hipWorldForward = val;
-        document.getElementById('gunWorldFwd-value').innerText = val;
+        document.getElementById('gunWorldFwd-value').innerText = wuLabelCm(val);
     });
     document.getElementById('gunWorldRight').addEventListener('input', function(e){
         var val = parseInt(e.target.value);
         if (editMode === 'ads') gunModel.adsWorldRight = val;
         else gunModel.hipWorldRight = val;
-        document.getElementById('gunWorldRight-value').innerText = val;
+        document.getElementById('gunWorldRight-value').innerText = wuLabelCm(val);
     });
     document.getElementById('gunWorldDown').addEventListener('input', function(e){
         var val = parseInt(e.target.value);
         if (editMode === 'ads') gunModel.adsWorldDown = val;
         else gunModel.hipWorldDown = val;
-        document.getElementById('gunWorldDown-value').innerText = val;
+        document.getElementById('gunWorldDown-value').innerText = wuLabelCm(val);
     });
 
     // UI Scale sliders
@@ -380,11 +388,11 @@ function setupSliders() {
     });
     document.getElementById('minimapZoomRange').addEventListener('input', function(e){
         minimapZoomRange = parseInt(e.target.value);
-        document.getElementById('minimapZoomRange-value').innerText = minimapZoomRange;
+        document.getElementById('minimapZoomRange-value').innerText = wuLabelM(minimapZoomRange);
     });
     document.getElementById('sideViewZoomRange').addEventListener('input', function(e){
         sideViewZoomRange = parseInt(e.target.value);
-        document.getElementById('sideViewZoomRange-value').innerText = sideViewZoomRange;
+        document.getElementById('sideViewZoomRange-value').innerText = wuLabelM(sideViewZoomRange);
     });
     document.getElementById('uiScaleWeaponUI').addEventListener('input', function(e){
         uiScale.weaponUI = parseFloat(e.target.value);
@@ -398,13 +406,22 @@ function setupSliders() {
     updateWorldOffsetSliders();
 
     // Save button
-    document.getElementById('saveSettings').addEventListener('click', function() {
+    document.getElementById('saveSettings').addEventListener('click', async function() {
+        var btn = this;
         savedSettings = getAllSettings();
         localStorage.setItem('voxelSpaceSettings', JSON.stringify(savedSettings));
+
+        // Push to Nakama for cross-device persistence
+        if (NakamaClient.isLoggedIn()) {
+            var ok = await NakamaClient.writeAdminSettings(savedSettings);
+            if (ok) console.log('Settings saved to Nakama admin storage');
+        }
+
+        // Copy full JSON (settings.json + gunModel.json + gamepad.json) to clipboard
         ConfigLoader.copyToClipboard(gunModel);
-        console.log('Settings saved to localStorage AND copied to clipboard as JSON');
-        this.textContent = 'Saved + Copied!';
-        setTimeout(() => this.textContent = 'Save', 2000);
+        console.log('Settings saved to localStorage + Nakama + copied to clipboard as JSON');
+        btn.textContent = 'Saved!';
+        setTimeout(() => btn.textContent = 'Save', 2000);
     });
 
     // Reset button
@@ -506,12 +523,12 @@ function applySettings(s) {
     if (s.drawDistance !== undefined) {
         camera.distance = s.drawDistance;
         document.getElementById('drawDistance').value = s.drawDistance;
-        document.getElementById('drawDistance-value').innerText = s.drawDistance;
+        document.getElementById('drawDistance-value').innerText = wuLabelM(s.drawDistance);
     }
     if (s.playerHeight !== undefined) {
         playerHeightOffset = s.playerHeight;
         document.getElementById('playerHeight').value = s.playerHeight;
-        document.getElementById('playerHeight-value').innerText = s.playerHeight;
+        document.getElementById('playerHeight-value').innerText = wuLabelCm(s.playerHeight);
     }
     if (s.normalHeight !== undefined) {
         player.normalHeight = s.normalHeight;
@@ -551,7 +568,7 @@ function applySettings(s) {
     if (s.barrelDistance !== undefined) {
         gunModel.barrelDistance = s.barrelDistance;
         document.getElementById('barrelDistance').value = s.barrelDistance;
-        document.getElementById('barrelDistance-value').innerText = s.barrelDistance;
+        document.getElementById('barrelDistance-value').innerText = wuLabelCm(s.barrelDistance);
     }
     // Gun position - ADS
     if (s.adsOffsetX !== undefined) {
@@ -633,12 +650,12 @@ function applySettings(s) {
     if (s.minimapZoomRange !== undefined) {
         minimapZoomRange = s.minimapZoomRange;
         document.getElementById('minimapZoomRange').value = s.minimapZoomRange;
-        document.getElementById('minimapZoomRange-value').innerText = s.minimapZoomRange;
+        document.getElementById('minimapZoomRange-value').innerText = wuLabelM(s.minimapZoomRange);
     }
     if (s.sideViewZoomRange !== undefined) {
         sideViewZoomRange = s.sideViewZoomRange;
         document.getElementById('sideViewZoomRange').value = s.sideViewZoomRange;
-        document.getElementById('sideViewZoomRange-value').innerText = s.sideViewZoomRange;
+        document.getElementById('sideViewZoomRange-value').innerText = wuLabelM(s.sideViewZoomRange);
     }
     if (s.scopeMode !== undefined) {
         setScopeMode(s.scopeMode);
@@ -663,12 +680,12 @@ function applySettings(s) {
     if (s.targetDistance !== undefined) {
         testTarget.distance = s.targetDistance;
         document.getElementById('targetDistance').value = s.targetDistance;
-        document.getElementById('targetDistance-value').innerText = s.targetDistance;
+        document.getElementById('targetDistance-value').innerText = wuLabelM(s.targetDistance);
     }
     if (s.targetRadius !== undefined) {
         testTarget.radius = s.targetRadius;
         document.getElementById('targetRadius').value = s.targetRadius;
-        document.getElementById('targetRadius-value').innerText = s.targetRadius.toFixed(1);
+        document.getElementById('targetRadius-value').innerText = s.targetRadius.toFixed(1) + ' (' + Math.round(s.targetRadius * 30) + ' cm)';
     }
     // Update sliders
     updateGunSliders();
@@ -677,36 +694,51 @@ function applySettings(s) {
     applyUIScales();
 }
 
-// Load settings from localStorage or JSON
-function loadSettings() {
-    ConfigLoader.loadAll().then(function(jsonLoaded) {
-        // Only admin can benefit from cached localStorage settings
-        if (isAdmin) {
-            var stored = localStorage.getItem('voxelSpaceSettings');
-            if (stored) {
-                try {
-                    savedSettings = JSON.parse(stored);
-                    console.log('Loading saved settings from localStorage');
-                    applySettings(savedSettings);
-                    if (jsonLoaded) {
-                        ConfigLoader.applyWeapons();
-                        ConfigLoader.applyGamepad();
-                    }
-                    return;
-                } catch(e) {
-                    console.log('Could not load saved settings:', e);
-                }
+// Load settings from localStorage, Nakama, or JSON
+async function loadSettings() {
+    var jsonLoaded = await ConfigLoader.loadAll();
+
+    if (isAdmin) {
+        // 1. Try localStorage first (fastest, same machine)
+        var stored = localStorage.getItem('voxelSpaceSettings');
+        if (stored) {
+            try {
+                savedSettings = JSON.parse(stored);
+                console.log('Loading saved settings from localStorage');
+                applySettings(savedSettings);
+                if (jsonLoaded) { ConfigLoader.applyWeapons(); ConfigLoader.applyGamepad(); }
+                return;
+            } catch(e) {
+                console.log('Could not load saved settings from localStorage:', e);
             }
         }
 
-        // Everyone else (and admin fallback): use hardcoded JSON files only
-        if (jsonLoaded && ConfigLoader.gunModel) {
-            ConfigLoader.applyGunModel(gunModel);
-            ConfigLoader.applyWeapons();
-            ConfigLoader.applyGamepad();
-            console.log('Settings loaded from data/*.json files');
+        // 2. Try Nakama admin storage (cross-device fallback)
+        if (NakamaClient.isLoggedIn()) {
+            try {
+                var nakamaSettings = await NakamaClient.readAdminSettings();
+                if (nakamaSettings) {
+                    savedSettings = nakamaSettings;
+                    // Also cache locally so next load is instant
+                    localStorage.setItem('voxelSpaceSettings', JSON.stringify(savedSettings));
+                    console.log('Loading saved settings from Nakama admin storage');
+                    applySettings(savedSettings);
+                    if (jsonLoaded) { ConfigLoader.applyWeapons(); ConfigLoader.applyGamepad(); }
+                    return;
+                }
+            } catch(e) {
+                console.log('Could not load settings from Nakama:', e);
+            }
         }
-    });
+    }
+
+    // Everyone else (and admin fallback): use data/*.json files
+    if (jsonLoaded && ConfigLoader.gunModel) {
+        ConfigLoader.applyGunModel(gunModel);
+        ConfigLoader.applyWeapons();
+        ConfigLoader.applyGamepad();
+        console.log('Settings loaded from data/*.json files');
+    }
 }
 
 // Debug functions

@@ -38,19 +38,20 @@ var WeaponConfig = {
         },
 
         pistol: {
-            name: "Pistol",
-            // Real: ~8 inches (Glock 17) vs 72 inch human = 0.11
-            lengthScale: 0.11,      // 11% of player height
-            widthScale: 0.02,       // Narrow profile
-            heightScale: 0.08,      // Grip height
+            name: "Desert Eagle .50 AE",
+            // Real: ~269mm (Desert Eagle .50 AE, 6" barrel) vs 1750mm human = 0.154
+            // Barrel: 152mm | Total: 269mm | Caliber: .50 AE (12.7mm)
+            lengthScale: 0.15,      // 15% of player height (269mm)
+            widthScale: 0.025,      // Slightly wide (Desert Eagle is a large pistol)
+            heightScale: 0.09,      // Grip height
 
             // Accuracy
             hipSpread: 0.04,        // Tight hip fire spread
             adsSpread: 0.01,        // Very accurate when aimed
 
             // Visual representation
-            barrelLengthRatio: 0.5, // Barrel is 50% of total length
-            gripLengthRatio: 0.4,   // Grip is 40% of total length
+            barrelLengthRatio: 0.565, // Barrel is 56.5% of total length (152mm/269mm)
+            gripLengthRatio: 0.35,    // Grip is 35% of total length
 
             // Icon display
             iconColor: '#808080',
