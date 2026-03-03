@@ -203,7 +203,51 @@ var textures = {
     bullet: (() => { let i = new Image(); i.src = "images/bullet.png"; return i; })(),
     heart:  (() => { let i = new Image(); i.src = "images/heart.png";  return i; })(),
     tree:   (() => { let i = new Image(); i.src = "images/tree.png";   return i; })(),
-    player: (() => { let i = new Image(); i.src = "images/MC.png";     return i; })()
+    player: (() => { let i = new Image(); i.src = "images/MC_sprite_sheet.png"; return i; })()
+};
+
+// ===============================
+// Sprite sheet animation state
+var playerSprite = {
+    frameCount: 12,       // columns (frames per row) in the sprite sheet
+    rows: 4,              // rows in the sprite sheet
+    currentRow: 0,        // which row to display (0 = first walk cycle)
+    currentFrame: 0,      // current frame index within the row
+    idleFrame: 0,         // frame to show when standing still
+    walkStart: 2,         // first walk-cycle frame (skip 0 and 1)
+    walkEnd: 11,          // last walk-cycle frame (inclusive)
+    animSpeed: 8,         // world units of movement per frame advance
+    distAccum: 0,         // accumulated movement distance
+    lastX: 0,             // previous x for distance calc
+    lastY: 0,             // previous y for distance calc
+    // Explicit frame rectangles per row (pixel coords in sprite sheet)
+    // Each row is an array of {x, y, w, h} for every frame in that row
+    frameRects: [
+        // Row 0 – 12 frames (walk + shoot cycle)
+        [
+            {x:1,y:0,w:44,h:69},{x:51,y:0,w:57,h:69},{x:120,y:0,w:40,h:69},
+            {x:170,y:0,w:36,h:69},{x:216,y:0,w:39,h:69},{x:265,y:0,w:44,h:69},
+            {x:319,y:0,w:45,h:69},{x:374,y:0,w:39,h:69},{x:424,y:0,w:36,h:69},
+            {x:468,y:0,w:39,h:69},{x:512,y:0,w:44,h:69},{x:571,y:0,w:44,h:69}
+        ],
+        // Row 1 – 6 frames
+        [
+            {x:12,y:69,w:36,h:75},{x:53,y:69,w:39,h:75},{x:105,y:69,w:38,h:75},
+            {x:150,y:69,w:41,h:75},{x:197,y:69,w:37,h:75},{x:240,y:69,w:36,h:75}
+        ],
+        // Row 2 – 12 frames (mirror of row 0)
+        [
+            {x:1,y:144,w:44,h:75},{x:51,y:144,w:57,h:75},{x:120,y:144,w:40,h:75},
+            {x:170,y:144,w:37,h:75},{x:216,y:144,w:39,h:75},{x:265,y:144,w:44,h:75},
+            {x:319,y:144,w:46,h:75},{x:374,y:144,w:39,h:75},{x:424,y:144,w:36,h:75},
+            {x:468,y:144,w:39,h:75},{x:512,y:144,w:44,h:75},{x:571,y:144,w:44,h:75}
+        ],
+        // Row 3 – 6 frames
+        [
+            {x:12,y:219,w:36,h:56},{x:53,y:219,w:39,h:56},{x:105,y:219,w:38,h:56},
+            {x:150,y:219,w:41,h:56},{x:198,y:219,w:36,h:56},{x:240,y:219,w:39,h:56}
+        ]
+    ]
 };
 
 // ===============================
