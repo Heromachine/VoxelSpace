@@ -85,13 +85,17 @@ function flattenTerrainUnderCube() {
         image: textures.heart
     });
 
-    // Spawn a pistol on the ground near player start
-    groundWeapons.push({
-        type: "pistol",
-        x: 40,
-        y: 40,
-        z: getRawTerrainHeight(40, 40)
-    });
+    // Spawn weapons near player start for testing.
+    // Pistol — right of start
+    groundWeapons.push({ type: "pistol",      x:  40, y:  40, z: getRawTerrainHeight( 40,  40) });
+    // Shotgun — straight ahead
+    groundWeapons.push({ type: "shotgun",     x:   0, y: -80, z: getRawTerrainHeight(  0, -80) });
+    // Tracer — left diagonal
+    groundWeapons.push({ type: "tracer",      x: -70, y: -70, z: getRawTerrainHeight(-70, -70) });
+    // Plasma Rifle — right diagonal
+    groundWeapons.push({ type: "plasmaRifle", x:  70, y: -70, z: getRawTerrainHeight( 70, -70) });
+    // Plasma Pistol — further ahead
+    groundWeapons.push({ type: "plasmaPistol",x:   0, y:-140, z: getRawTerrainHeight(  0,-140) });
 
     // Spawn random trees on green-ish terrain
     spawnRandomItems("tree", textures.tree, {
