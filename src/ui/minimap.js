@@ -245,9 +245,12 @@ function DrawDebugMinimap() {
     ctx.stroke();
     ctx.restore();
 
-    // Player dot
+    // Player head (world-scaled to match side view)
+    var _ohTotalHeight = playerHeightOffset / 0.93;
+    var _ohHeadDiameter = _ohTotalHeight / 8;
+    var _ohHeadRadius = Math.max(3, _ohHeadDiameter * scale / 2);
     ctx.beginPath();
-    ctx.arc(pcx, pcy, 4, 0, Math.PI * 2);
+    ctx.arc(pcx, pcy, _ohHeadRadius, 0, Math.PI * 2);
     ctx.fillStyle = 'yellow';
     ctx.fill();
     ctx.strokeStyle = 'black';
@@ -388,25 +391,35 @@ function DrawDebugMinimap() {
     if (Math.abs(bpx) < size / 2 && Math.abs(bpy) < size / 2) {
         ctx.save();
         ctx.translate(pcx + bpx, pcy + bpy);
-        var gunAngle = Math.atan2(-gunDir.y, -gunDir.x);
+        var gunAngle = Math.atan2(gunDir.y, gunDir.x);
         ctx.rotate(gunAngle);
         var currentSlot = playerWeapons[currentWeaponIndex];
         var totalPlayerHeight = playerHeightOffset / 0.93;
-        var gunWorldLength = WeaponConfig.getWeaponLength(currentSlot.type, totalPlayerHeight);
         var pxPerUnit = scale;
-        var gunBodyLen = Math.max(8, 0.5 * gunWorldLength * pxPerUnit);
-        var gunBodyWidth = Math.max(4, 0.25 * gunWorldLength * pxPerUnit);
-        var barrelLen = Math.max(6, 0.5 * gunWorldLength * pxPerUnit);
-        var barrelWidth = Math.max(2, 0.15 * gunWorldLength * pxPerUnit);
+        var weaponDef = WeaponConfig.weapons[currentSlot.type] || {};
+        var barrelWorldLen = totalPlayerHeight * (weaponDef.barrelScale || 0.1);
+        var gunBodyLen = Math.max(8, totalPlayerHeight * 0.10 * pxPerUnit);   // fixed body size
+        var gunBodyWidth = Math.max(4, totalPlayerHeight * 0.04 * pxPerUnit);
+        var barrelLen = Math.max(4, barrelWorldLen * pxPerUnit);               // weapon-specific barrel
+        var barrelWidth = Math.max(2, totalPlayerHeight * 0.02 * pxPerUnit);
+        // Body (dark gray - firing mechanism)
         ctx.beginPath();
         ctx.rect(-gunBodyLen * 0.6, -gunBodyWidth / 2, gunBodyLen, gunBodyWidth);
-        ctx.rect(gunBodyLen * 0.3, -barrelWidth / 2, barrelLen, barrelWidth);
-        ctx.fillStyle = 'rgba(80,80,80,0.9)';
+        ctx.fillStyle = 'rgba(50,50,50,0.95)';
         ctx.fill();
         ctx.strokeStyle = 'cyan';
         ctx.lineWidth = 1;
         ctx.stroke();
-        var tipRadius = Math.max(2, 0.1 * gunWorldLength * pxPerUnit);
+        // Barrel (light gray - the shaft, length changes per weapon)
+        ctx.beginPath();
+        ctx.rect(gunBodyLen * 0.3, -barrelWidth / 2, barrelLen, barrelWidth);
+        ctx.fillStyle = 'rgba(180,180,180,0.95)';
+        ctx.fill();
+        ctx.strokeStyle = 'cyan';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        // Barrel tip cap
+        var tipRadius = barrelWidth / 2;
         ctx.beginPath();
         ctx.arc(gunBodyLen * 0.3 + barrelLen, 0, tipRadius, 0, Math.PI * 2);
         ctx.fillStyle = 'cyan';
@@ -732,64 +745,80 @@ function DrawSideView(ctx){
     // Draw gun shape (side silhouette) - realistic size from WeaponConfig
     var currentSlot = playerWeapons[currentWeaponIndex];
     var pxPerUnit = Math.min(scaleX, scaleY);  // pixels per world unit on side view
-    var gunBodyLen = 0.5 * gunWorldLength * pxPerUnit;
-    var gunBodyH = 0.3 * gunWorldLength * pxPerUnit;
-    var barrelLen = 0.5 * gunWorldLength * pxPerUnit;
-    var barrelH = 0.15 * gunWorldLength * pxPerUnit;
-    var gripLen = 0.2 * gunWorldLength * pxPerUnit;
-    var gripH = 0.35 * gunWorldLength * pxPerUnit;
-    // Ensure minimum visibility
-    gunBodyLen = Math.max(gunBodyLen, 6);
-    gunBodyH = Math.max(gunBodyH, 3);
-    barrelLen = Math.max(barrelLen, 5);
-    barrelH = Math.max(barrelH, 2);
-    gripLen = Math.max(gripLen, 3);
-    gripH = Math.max(gripH, 4);
+    var svWeaponDef = WeaponConfig.weapons[currentSlot.type] || {};
+    var svBarrelWorldLen = totalPlayerHeight * (svWeaponDef.barrelScale || 0.1);
+    var gunBodyLen = Math.max(6,  totalPlayerHeight * 0.10 * pxPerUnit);  // fixed body
+    var gunBodyH   = Math.max(3,  totalPlayerHeight * 0.04 * pxPerUnit);
+    var barrelLen  = Math.max(4,  svBarrelWorldLen * pxPerUnit);           // weapon-specific barrel
+    var barrelH    = Math.max(2,  totalPlayerHeight * 0.02 * pxPerUnit);
+    var gripLen    = Math.max(3,  totalPlayerHeight * 0.05 * pxPerUnit);  // fixed grip
+    var gripH      = Math.max(4,  totalPlayerHeight * 0.07 * pxPerUnit);
+    // Grip (brown - handle)
     ctx.beginPath();
-    // Gun body
-    ctx.rect(-gunBodyLen * 0.7, -gunBodyH/2, gunBodyLen, gunBodyH);
-    // Barrel
-    ctx.rect(gunBodyLen * 0.3, -barrelH/2, barrelLen, barrelH);
-    // Grip
     ctx.rect(-gunBodyLen * 0.4, gunBodyH/2, gripLen, gripH);
-    ctx.fillStyle = 'rgba(80,80,80,0.9)';
+    ctx.fillStyle = 'rgba(120,60,20,0.95)';
+    ctx.fill();
+    ctx.strokeStyle = 'cyan';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // Body (dark gray - firing mechanism)
+    ctx.beginPath();
+    ctx.rect(-gunBodyLen * 0.7, -gunBodyH/2, gunBodyLen, gunBodyH);
+    ctx.fillStyle = 'rgba(50,50,50,0.95)';
+    ctx.fill();
+    ctx.strokeStyle = 'cyan';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // Barrel (light gray - the shaft, length changes per weapon)
+    ctx.beginPath();
+    ctx.rect(gunBodyLen * 0.3, -barrelH/2, barrelLen, barrelH);
+    ctx.fillStyle = 'rgba(180,180,180,0.95)';
     ctx.fill();
     ctx.strokeStyle = 'cyan';
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Barrel tip marker
-    var tipR = Math.max(2, 0.05 * gunWorldLength * pxPerUnit);
+    // Barrel tip marker — also capture screen position for bullet spawn dot below
+    var tipR = barrelH / 2;
+    var svTipOffsetX = gunBodyLen * 0.3 + barrelLen;
     ctx.beginPath();
-    ctx.arc(gunBodyLen * 0.3 + barrelLen, 0, tipR, 0, Math.PI * 2);
+    ctx.arc(svTipOffsetX, 0, tipR, 0, Math.PI * 2);
     ctx.fillStyle = 'cyan';
     ctx.fill();
 
     ctx.restore();
 
-    // Calculate bullet spawn position (offset from barrel by barrelDistance)
-    var bulletSpawnX = barrelPos.x + gunDir.x * gunModel.barrelDistance;
-    var bulletSpawnY = barrelPos.y + gunDir.y * gunModel.barrelDistance;
-    var bulletSpawnZ = barrelPos.z + gunDir.z * gunModel.barrelDistance;
-    var bulletDx = bulletSpawnX - camera.x;
-    var bulletDy = bulletSpawnY - camera.y;
-    var bulletDist = bulletDx * fx + bulletDy * fy;
-
-    // Draw bullet spawn position (gray dot) - scaled to world units
+    // Bullet spawn dot: project barrelPos into side-view space then add barrelDistance
+    // (mirrors overhead logic exactly: spawnX = barrelPos + gunDir * barrelDistance)
+    var barrelFwdDist = (barrelPos.x - camera.x) * fx + (barrelPos.y - camera.y) * fy;
+    var svGunFwdComp, svGunZComp;
+    if (gunModel.pivotMode === 'barrel') {
+        // ADS: gun aims at screen center
+        svGunFwdComp = Math.cos(viewPitch);
+        svGunZComp = Math.sin(viewPitch);
+    } else {
+        // Hip: use actual gun direction
+        svGunFwdComp = gunDir.x * fx + gunDir.y * fy;
+        svGunZComp = gunDir.z;
+    }
+    var svSpawnFwdDist = barrelFwdDist + gunModel.barrelDistance * svGunFwdComp;
+    var svSpawnZ = barrelPos.z + gunModel.barrelDistance * svGunZComp;
+    var svSpawnPos = toScreen(svSpawnFwdDist, svSpawnZ);
+    var svSpawnScreenX = svSpawnPos.x;
+    var svSpawnScreenY = svSpawnPos.y;
     var spawnR = Math.max(3, bulletSize * 2 * Math.min(scaleX, scaleY));
-    var bulletScreen = toScreen(bulletDist, bulletSpawnZ);
     ctx.beginPath();
-    ctx.arc(bulletScreen.x, bulletScreen.y, spawnR, 0, Math.PI * 2);
+    ctx.arc(svSpawnScreenX, svSpawnScreenY, spawnR, 0, Math.PI * 2);
     ctx.fillStyle = '#888';
     ctx.fill();
     ctx.strokeStyle = 'white';
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Draw line from gun to bullet spawn
+    // Draw line from gun pivot to spawn point (red)
     ctx.beginPath();
     ctx.moveTo(gunScreen.x, gunScreen.y);
-    ctx.lineTo(bulletScreen.x, bulletScreen.y);
+    ctx.lineTo(svSpawnScreenX, svSpawnScreenY);
     ctx.strokeStyle = 'rgba(255,100,100,0.7)';
     ctx.lineWidth = 2;
     ctx.stroke();

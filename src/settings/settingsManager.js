@@ -12,7 +12,7 @@ function wuLabelCm(wu) {
 }
 
 var savedSettings = null;
-var editMode = 'ads';  // 'ads' or 'hip' - which mode we're editing
+var editMode = 'hip';  // 'ads' or 'hip' - which mode we're editing (mirrors input.aimToggled)
 
 // Function to update gun sliders to show current mode's values
 function updateGunSliders() {
@@ -234,11 +234,13 @@ function setupSliders() {
         testTarget.bulletHitPos = null;
     });
 
-    // Gun Tab edit mode buttons
+    // Gun Tab edit mode buttons — also sync ADS state so the gun moves to match
     document.getElementById('editADS').addEventListener('click', function() {
+        input.aimToggled = true;
         setEditMode('ads');
     });
     document.getElementById('editHip').addEventListener('click', function() {
+        input.aimToggled = false;
         setEditMode('hip');
     });
 
@@ -286,11 +288,13 @@ function setupSliders() {
         document.getElementById('gunRotZ-value').innerText = val;
     });
 
-    // Barrel Tab edit mode buttons (use shared setEditMode)
+    // Barrel Tab edit mode buttons — also sync ADS state
     document.getElementById('barrelEditADS').addEventListener('click', function() {
+        input.aimToggled = true;
         setEditMode('ads');
     });
     document.getElementById('barrelEditHip').addEventListener('click', function() {
+        input.aimToggled = false;
         setEditMode('hip');
     });
 
@@ -400,10 +404,8 @@ function setupSliders() {
         applyUIScales();
     });
 
-    // Initialize sliders with ADS values
-    updateGunSliders();
-    updateBarrelSliders();
-    updateWorldOffsetSliders();
+    // Initialize sliders in hip fire mode (player starts in hip fire)
+    setEditMode('hip');
 
     // Save button
     document.getElementById('saveSettings').addEventListener('click', async function() {

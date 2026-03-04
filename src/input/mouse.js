@@ -5,7 +5,10 @@
 
 function DetectMouseDown(e){
     if(e.button===0) input.shoot=true;
-    if(e.button===2) input.aimToggled = !input.aimToggled; // Right-click toggles ADS
+    if(e.button===2){
+        input.aimToggled = !input.aimToggled;
+        if(typeof setEditMode==='function') setEditMode(input.aimToggled ? 'ads' : 'hip');
+    }
 }
 
 function DetectMouseUp(e){

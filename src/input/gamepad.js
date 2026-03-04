@@ -75,6 +75,7 @@ function pollGamepad(){
     // ADS toggle for gamepad (edge detection: toggle on press)
     if(gpAim && !input.prevGpAim){
         input.aimToggled = !input.aimToggled;
+        if(typeof setEditMode==='function') setEditMode(input.aimToggled ? 'ads' : 'hip');
     }
     input.prevGpAim = gpAim;
 

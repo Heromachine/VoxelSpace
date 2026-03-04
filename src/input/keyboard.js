@@ -20,12 +20,12 @@ function DetectKeysDown(e){
             if(!isAdmin) break;
             var zoomPresets=[20,50,100,200,300];
             var idx=zoomPresets.indexOf(minimapZoomRange);
-            minimapZoomRange=zoomPresets[(idx+1)%zoomPresets.length];
+            if(idx===-1) idx=0;
+            var nextIdx=(idx+1)%zoomPresets.length;
+            minimapZoomRange=zoomPresets[nextIdx];
+            sideViewZoomRange=zoomPresets[nextIdx];
             document.getElementById('minimapZoomRange').value=minimapZoomRange;
             document.getElementById('minimapZoomRange-value').innerText=minimapZoomRange;
-            var sidePresets=[20,50,100,200,300,500];
-            var sidx=sidePresets.indexOf(sideViewZoomRange);
-            sideViewZoomRange=sidePresets[(sidx+1)%sidePresets.length];
             document.getElementById('sideViewZoomRange').value=sideViewZoomRange;
             document.getElementById('sideViewZoomRange-value').innerText=sideViewZoomRange;
             break;

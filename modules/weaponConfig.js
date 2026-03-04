@@ -31,6 +31,7 @@ var WeaponConfig = {
             // Visual representation
             barrelLengthRatio: 0.5,
             gripLengthRatio: 0.4,
+            barrelScale: 0.06,      // barrel length as fraction of player height (~105mm)
 
             // Icon display
             iconColor: '#00FFFF',   // Cyan
@@ -52,6 +53,7 @@ var WeaponConfig = {
             // Visual representation
             barrelLengthRatio: 0.565, // Barrel is 56.5% of total length (152mm/269mm)
             gripLengthRatio: 0.35,    // Grip is 35% of total length
+            barrelScale: 0.087,       // barrel length as fraction of player height (152mm / 1750mm)
 
             // Icon display
             iconColor: '#808080',
@@ -73,6 +75,7 @@ var WeaponConfig = {
             barrelLengthRatio: 0.45, // Barrel is 45% of total length
             stockLengthRatio: 0.3,   // Stock is 30% of total length
             gripLengthRatio: 0.15,   // Grip is 15% of total length
+            barrelScale: 0.21,       // barrel length as fraction of player height (368mm / 1750mm, M4 14.5")
 
             // Icon display
             iconColor: '#4B0082',
@@ -94,6 +97,7 @@ var WeaponConfig = {
             barrelLengthRatio: 0.55, // Longer barrel
             stockLengthRatio: 0.30,  // Stock
             scopeScale: 0.08,        // Scope size relative to weapon
+            barrelScale: 0.35,       // barrel length as fraction of player height (610mm / 1750mm, M24 24")
 
             // Icon display
             iconColor: '#006400',
@@ -114,6 +118,7 @@ var WeaponConfig = {
             // Visual representation
             barrelLengthRatio: 0.50,
             stockLengthRatio: 0.35,
+            barrelScale: 0.26,       // barrel length as fraction of player height (457mm / 1750mm, Remington 870 18")
 
             // Icon display
             iconColor: '#8B4513',
@@ -135,6 +140,7 @@ var WeaponConfig = {
             barrelLengthRatio: 0.35,
             stockLengthRatio: 0.25,
             gripLengthRatio: 0.20,
+            barrelScale: 0.13,       // barrel length as fraction of player height (226mm / 1750mm, MP5 8.9")
 
             // Icon display
             iconColor: '#2F4F4F',
@@ -156,6 +162,7 @@ var WeaponConfig = {
             barrelLengthRatio: 0.45,
             stockLengthRatio: 0.25,
             boxMagScale: 0.12,      // Ammo box
+            barrelScale: 0.27,       // barrel length as fraction of player height (470mm / 1750mm, M249 18.5")
 
             // Icon display
             iconColor: '#556B2F',
@@ -175,6 +182,7 @@ var WeaponConfig = {
 
             // Visual representation
             tubeDiameterRatio: 0.15, // Tube diameter relative to length
+            barrelScale: 0.49,       // barrel length as fraction of player height (RPG-7 tube ~850mm / 1750mm)
 
             // Icon display
             iconColor: '#3d3d3d',

@@ -155,8 +155,8 @@ var ccdMaxDistance=500;    // Max distance for CCD bullets before despawn
 var showHitRanges=true;    // Show hitscan/CCD radius circles on minimap
 var showGMD=false;         // Show Gun Mechanics Debug overlay
 var showMinimaps=true;     // Show minimaps and legend overlays
-var minimapZoomRange=200;  // Minimap zoom range in world units (10-300)
-var sideViewZoomRange=300; // Side view zoom range in world units (10-500)
+var minimapZoomRange=200;  // Minimap zoom range in world units
+var sideViewZoomRange=200; // Side view zoom range (synced with minimapZoomRange via Z key)
 
 // Sniper scope mode - modular scope system
 var scopeMode = 'forward';  // 'forward' or 'focal'

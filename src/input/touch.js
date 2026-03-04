@@ -113,6 +113,7 @@ function handleTouchStart(e) {
         if (Math.hypot(x - zb.x, y - zb.y) < zb.radius) {
             zb.active = true; zb.touchId = touch.identifier;
             input.aimToggled = !input.aimToggled;
+            if(typeof setEditMode==='function') setEditMode(input.aimToggled ? 'ads' : 'hip');
             continue;
         }
 
