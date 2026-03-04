@@ -64,12 +64,24 @@ reloadJsonConfigs()
 **gunModel.json:**
 ```json
 {
-  "ads": { "offsetX": 0, "offsetY": 100, "scale": 350, ... },
-  "hip": { "offsetX": 100, "offsetY": 50, "scale": 300, ... },
-  "barrel": { "x": 0.26, "y": 0.08, "z": 0.0, "distance": 5 },
-  "world": { "forward": 10, "right": 15, "down": 8 }
+  "ads": { "offsetX": 0, "offsetY": 165, "offsetZ": -100, "scale": 1000, "rotationX": 0, "rotationY": -90, "rotationZ": 0 },
+  "hip": { "offsetX": 223, "offsetY": 290, "offsetZ": -100, "scale": 762, "rotationX": 23, "rotationY": -81, "rotationZ": -28 },
+  "barrel": {
+    "ads": { "x": 0.04, "y": 0, "z": 0, "yaw": 0 },
+    "hip": { "x": -0.5, "y": -0.3, "z": -0.3, "yaw": 15 },
+    "distance": 1
+  },
+  "world": {
+    "ads": { "forward": 1, "right": 0, "down": 1 },
+    "hip": { "forward": 2.2, "right": 5, "down": 5 }
+  },
+  "adsLerpSpeed": 0.15
 }
 ```
+
+> **Note:** `ads`/`hip` in gunModel.json control the **visual 3D gun model only** (`gunViewModel`).
+> Barrel direction and bullet mechanics are separate (`gunModel` in globals.js).
+> The `barrel` and `world` sections each have separate `ads` and `hip` sub-objects.
 
 ---
 
