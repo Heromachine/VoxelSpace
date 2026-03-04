@@ -405,156 +405,213 @@ function UpdateCamera(){
 
     // Check fire mode - semi-auto requires trigger release between shots
     var canShoot = true;
+    var wasShootingBefore = player.wasShooting;  // capture before update for edge detection
     if(currentWeapon.fireMode === "semi" && player.wasShooting){
         canShoot = false;
     }
     player.wasShooting = isShooting;
 
-    if(isShooting && canShoot && !currentSlot.isReloading && currentSlot.ammo > 0 && current - currentSlot.lastShot > currentWeapon.fireRate){
-        var bulletSpeed = currentWeapon.bulletSpeed;
-
-        // Camera direction vectors (horizontal)
-        var fx = -Math.sin(camera.angle), fy = -Math.cos(camera.angle);
-        var rx = Math.cos(camera.angle), ry = -Math.sin(camera.angle);
-
-        // Get bullet direction based on ADS mode
-        var aimDirX, aimDirY, aimDirZ;
-        var barrelYawRad = (gunModel.barrelYaw || 0) * Math.PI / 180;
+    // Helper: compute aim direction for current ADS/hip state
+    function getAimDir() {
+        var bYawRad = (gunModel.barrelYaw || 0) * Math.PI / 180;
+        var adx, ady, adz;
         if (gunModel.pivotMode === 'barrel') {
-            // ADS mode: bullet goes toward SCREEN CENTER (where crosshair is), plus barrelYaw offset
-            var screenCenterY = screendata.canvas.height / 2;
-            var screenCenterPitch = Math.atan((camera.horizon - screenCenterY) / camera.focalLength);
-            var cosPitch = Math.cos(screenCenterPitch);
-            var sinPitch = Math.sin(screenCenterPitch);
-            var aimAngle = camera.angle + barrelYawRad;
-            aimDirX = -Math.sin(aimAngle) * cosPitch;
-            aimDirY = -Math.cos(aimAngle) * cosPitch;
-            aimDirZ = sinPitch;
+            var scY = screendata.canvas.height / 2;
+            var scPitch = Math.atan((camera.horizon - scY) / camera.focalLength);
+            var aAngle = camera.angle + bYawRad;
+            adx = -Math.sin(aAngle) * Math.cos(scPitch);
+            ady = -Math.cos(aAngle) * Math.cos(scPitch);
+            adz = Math.sin(scPitch);
         } else {
-            // Hip fire: bullet goes toward the hip screen anchor, plus barrelYaw offset
-            var sw = screendata.canvas.width, sh = screendata.canvas.height;
-            var hipX = sw / 2 + gunModel.hipOffsetX, hipY = sh / 2 + gunModel.hipOffsetY;
-            var hAngle = Math.atan((hipX - sw / 2) / (sw / 2));
-            var hipAimAngle = camera.angle - hAngle + barrelYawRad;
-            var hipPitch = Math.atan((camera.horizon - hipY) / camera.focalLength);
-            var cosPitch = Math.cos(hipPitch);
-            var sinPitch = Math.sin(hipPitch);
-            aimDirX = -Math.sin(hipAimAngle) * cosPitch;
-            aimDirY = -Math.cos(hipAimAngle) * cosPitch;
-            aimDirZ = sinPitch;
+            var sw2 = screendata.canvas.width, sh2 = screendata.canvas.height;
+            var hx2 = sw2 / 2 + gunModel.hipOffsetX, hy2 = sh2 / 2 + gunModel.hipOffsetY;
+            var hAng2 = Math.atan((hx2 - sw2 / 2) / (sw2 / 2));
+            var haAngle = camera.angle - hAng2 + bYawRad;
+            var hPitch2 = Math.atan((camera.horizon - hy2) / camera.focalLength);
+            adx = -Math.sin(haAngle) * Math.cos(hPitch2);
+            ady = -Math.cos(haAngle) * Math.cos(hPitch2);
+            adz = Math.sin(hPitch2);
         }
+        return { x: adx, y: ady, z: adz };
+    }
 
-        // Apply spread based on hip fire vs ADS (from WeaponConfig)
-        var weaponSpread = WeaponConfig.getWeaponSpread(currentSlot.type);
-        var spread = isAiming ? weaponSpread.adsSpread : weaponSpread.hipSpread;
-        var spreadX = (Math.random() - 0.5) * spread;
-        var spreadY = (Math.random() - 0.5) * spread;
+    // Helper: spawn barrel position
+    function getSpawnPos() {
+        var bp = getBarrelWorldPos();
+        return {
+            x: bp.x + bp.dirX * gunModel.barrelDistance,
+            y: bp.y + bp.dirY * gunModel.barrelDistance,
+            z: bp.z + bp.dirZ * gunModel.barrelDistance
+        };
+    }
 
-        // Add spread to aim direction
-        var dirx = aimDirX + rx * spreadX;
-        var diry = aimDirY + ry * spreadX;
-        var dirz = aimDirZ + spreadY;
-
-        var mag = Math.hypot(dirx, diry, dirz) || 1;
-        dirx = (dirx / mag) * bulletSpeed;
-        diry = (diry / mag) * bulletSpeed;
-        dirz = (dirz / mag) * bulletSpeed;
-
-        // Spawn bullet from gun barrel position in world space
-        var barrelPos = getBarrelWorldPos();
-        var spawnX = barrelPos.x + barrelPos.dirX * gunModel.barrelDistance;
-        var spawnY = barrelPos.y + barrelPos.dirY * gunModel.barrelDistance;
-        var spawnZ = barrelPos.z + barrelPos.dirZ * gunModel.barrelDistance;
-
-        lastBulletDestroyedPos = null;
-        lastBulletDestroyedReason = null;
-
-        // Normalize direction for raycast
-        var rayDirX = dirx / bulletSpeed;
-        var rayDirY = diry / bulletSpeed;
-        var rayDirZ = dirz / bulletSpeed;
-
-        // Try hitscan first (for targets within hitscan range)
-        var hitscanHitPos = null;
-
-        // Hitscan cube collision
+    // Helper: run hitscan tests and return hit position (or null)
+    function runHitscan(spawnX, spawnY, spawnZ, rdx, rdy, rdz) {
+        var hsHit = null;
         if (hitscanDistance > 0 && !currentWeapon.ccdOnly) {
-            var cubeHitscan = rayIntersectsCube(
-                {x: spawnX, y: spawnY, z: spawnZ},
-                {x: rayDirX, y: rayDirY, z: rayDirZ},
-                hitscanDistance
-            );
-            if (cubeHitscan) {
-                hitscanHitPos = {x: cubeHitscan.hit.x, y: cubeHitscan.hit.y, z: cubeHitscan.hit.z, dist: cubeHitscan.t};
-            }
+            var ch = rayIntersectsCube({x:spawnX,y:spawnY,z:spawnZ},{x:rdx,y:rdy,z:rdz},hitscanDistance);
+            if (ch) hsHit = {x:ch.hit.x,y:ch.hit.y,z:ch.hit.z,dist:ch.t};
         }
-
-        // Hitscan test target collision (only if we didn't hit cube first, or cube is further)
         if (testTarget.enabled && hitscanDistance > 0 && !currentWeapon.ccdOnly) {
-            // Ray-sphere intersection test
-            var ocX = spawnX - testTarget.x;
-            var ocY = spawnY - testTarget.y;
-            var ocZ = spawnZ - testTarget.z;
-
-            var a = rayDirX*rayDirX + rayDirY*rayDirY + rayDirZ*rayDirZ;
-            var b = 2 * (ocX*rayDirX + ocY*rayDirY + ocZ*rayDirZ);
-            var c = ocX*ocX + ocY*ocY + ocZ*ocZ - testTarget.radius*testTarget.radius;
-            var discriminant = b*b - 4*a*c;
-
-            if (discriminant >= 0) {
-                var t = (-b - Math.sqrt(discriminant)) / (2*a);
-                if (t < 0) t = (-b + Math.sqrt(discriminant)) / (2*a);
-
-                if (t >= 0 && t <= hitscanDistance) {
-                    // Only count as target hit if closer than cube hit
-                    if (!hitscanHitPos || t < hitscanHitPos.dist) {
-                        testTarget.hits++;
-                        var hitX = spawnX + rayDirX * t;
-                        var hitY = spawnY + rayDirY * t;
-                        var hitZ = spawnZ + rayDirZ * t;
-                        hitscanHitPos = {x: hitX, y: hitY, z: hitZ, dist: t};
-                        testTarget.bulletHitPos = {
-                            x: hitX - testTarget.x,
-                            y: hitY - testTarget.y,
-                            z: hitZ - testTarget.z,
-                            dist: Math.sqrt((hitX-testTarget.x)**2 + (hitY-testTarget.y)**2 + (hitZ-testTarget.z)**2)
-                        };
-                    }
+            var ocX=spawnX-testTarget.x, ocY=spawnY-testTarget.y, ocZ=spawnZ-testTarget.z;
+            var ta=rdx*rdx+rdy*rdy+rdz*rdz;
+            var tb=2*(ocX*rdx+ocY*rdy+ocZ*rdz);
+            var tc=ocX*ocX+ocY*ocY+ocZ*ocZ-testTarget.radius*testTarget.radius;
+            var disc=tb*tb-4*ta*tc;
+            if (disc >= 0) {
+                var tt=(-tb-Math.sqrt(disc))/(2*ta);
+                if (tt < 0) tt=(-tb+Math.sqrt(disc))/(2*ta);
+                if (tt >= 0 && tt <= hitscanDistance && (!hsHit || tt < hsHit.dist)) {
+                    testTarget.hits++;
+                    var hx=spawnX+rdx*tt, hy=spawnY+rdy*tt, hz=spawnZ+rdz*tt;
+                    hsHit = {x:hx,y:hy,z:hz,dist:tt};
+                    testTarget.bulletHitPos = {
+                        x:hx-testTarget.x, y:hy-testTarget.y, z:hz-testTarget.z,
+                        dist:Math.sqrt((hx-testTarget.x)**2+(hy-testTarget.y)**2+(hz-testTarget.z)**2)
+                    };
                 }
             }
         }
+        return hsHit;
+    }
 
-        // Always spawn a bullet (for visual)
-        var bullet = {
-            type: "bullet",
-            x: spawnX, y: spawnY, z: spawnZ,
-            prevX: spawnX, prevY: spawnY, prevZ: spawnZ,
-            dx: dirx, dy: diry, dz: dirz,
-            distance: 0,
-            image: textures.bullet,
-            damage: currentWeapon.damage,
-            hitscanHit: hitscanHitPos,
-            stopDistance: hitscanHitPos ? hitscanHitPos.dist : null
-        };
-        lastBullet = bullet;
-        items.push(bullet);
+    // --- Charge weapon (Tracer): fires on trigger RELEASE ---
+    if (currentWeapon.fireMode === 'charge') {
+        if (isShooting && !wasShootingBefore && !currentSlot.isReloading && currentSlot.ammo > 0) {
+            currentSlot.chargeStartTime = current;  // just pressed — begin charging
+        }
+        if (!isShooting && wasShootingBefore && currentSlot.chargeStartTime && currentSlot.ammo > 0) {
+            // Released — fire homing tracer
+            var cAimDir = getAimDir();
+            var cSpd = currentWeapon.bulletSpeed;
+            var cMag = Math.hypot(cAimDir.x, cAimDir.y, cAimDir.z) || 1;
+            var cdx = (cAimDir.x / cMag) * cSpd;
+            var cdy = (cAimDir.y / cMag) * cSpd;
+            var cdz = (cAimDir.z / cMag) * cSpd;
 
-        if (typeof Multiplayer !== "undefined" && Multiplayer.isConnected()) {
-            Multiplayer.sendShoot(spawnX, spawnY, spawnZ, dirx, diry, dirz);
+            // Find closest target within cone
+            var homingTarget = null;
+            var coneRange = currentWeapon.coneRange || 300;
+            var cosHalfCone = Math.cos(currentWeapon.coneAngle || 0.4);
+            if (testTarget.enabled) {
+                var ttdx = testTarget.x - camera.x, ttdy = testTarget.y - camera.y, ttdz = testTarget.z - camera.height;
+                var ttDist = Math.hypot(ttdx, ttdy, ttdz);
+                if (ttDist > 0 && ttDist <= coneRange) {
+                    var ttDot = cAimDir.x*(ttdx/ttDist) + cAimDir.y*(ttdy/ttDist) + cAimDir.z*(ttdz/ttDist);
+                    if (ttDot >= cosHalfCone) homingTarget = testTarget;
+                }
+            }
+
+            var cSpawn = getSpawnPos();
+            lastBulletDestroyedPos = null; lastBulletDestroyedReason = null;
+            var tracerBullet = {
+                type: "bullet",
+                x: cSpawn.x, y: cSpawn.y, z: cSpawn.z,
+                prevX: cSpawn.x, prevY: cSpawn.y, prevZ: cSpawn.z,
+                dx: cdx, dy: cdy, dz: cdz,
+                distance: 0,
+                image: textures.bullet,
+                damage: currentWeapon.damage,
+                hitscanHit: null, stopDistance: null,
+                homing: !!homingTarget,
+                homingTarget: homingTarget,
+                homingSpeed: currentWeapon.homingSpeed || 3
+            };
+            lastBullet = tracerBullet;
+            items.push(tracerBullet);
+            if (typeof Multiplayer !== "undefined" && Multiplayer.isConnected()) {
+                Multiplayer.sendShoot(cSpawn.x, cSpawn.y, cSpawn.z, cdx, cdy, cdz);
+            }
+            currentSlot.ammo--;
+            currentSlot.lastShot = current;
+            currentSlot.chargeStartTime = 0;
+        }
+        if (!isShooting) currentSlot.chargeStartTime = 0;
+    }
+
+    // --- Standard fire (semi, auto, spread/pellets) ---
+    if (currentWeapon.fireMode !== 'charge' &&
+        isShooting && canShoot && !currentSlot.isReloading && currentSlot.ammo > 0 &&
+        current - currentSlot.lastShot > currentWeapon.fireRate) {
+
+        var bulletSpeed = currentWeapon.bulletSpeed;
+        var rx = Math.cos(camera.angle), ry = -Math.sin(camera.angle);
+        var aimDir = getAimDir();
+        var aimDirX = aimDir.x, aimDirY = aimDir.y, aimDirZ = aimDir.z;
+
+        var weaponSpread = WeaponConfig.getWeaponSpread(currentSlot.type);
+        var spread = isAiming ? weaponSpread.adsSpread : weaponSpread.hipSpread;
+
+        var spawn = getSpawnPos();
+        var spawnX = spawn.x, spawnY = spawn.y, spawnZ = spawn.z;
+        lastBulletDestroyedPos = null;
+        lastBulletDestroyedReason = null;
+
+        // Pellet loop: shotgun fires multiple, all others fire 1
+        var pellets = currentWeapon.pellets || 1;
+        for (var p = 0; p < pellets; p++) {
+            var spreadX = (Math.random() - 0.5) * spread;
+            var spreadY = (Math.random() - 0.5) * spread;
+
+            var dirx = aimDirX + rx * spreadX;
+            var diry = aimDirY + ry * spreadX;
+            var dirz = aimDirZ + spreadY;
+
+            var mag = Math.hypot(dirx, diry, dirz) || 1;
+            dirx = (dirx / mag) * bulletSpeed;
+            diry = (diry / mag) * bulletSpeed;
+            dirz = (dirz / mag) * bulletSpeed;
+
+            var rayDirX = dirx / bulletSpeed;
+            var rayDirY = diry / bulletSpeed;
+            var rayDirZ = dirz / bulletSpeed;
+
+            var hitscanHitPos = runHitscan(spawnX, spawnY, spawnZ, rayDirX, rayDirY, rayDirZ);
+
+            var bullet = {
+                type: "bullet",
+                x: spawnX, y: spawnY, z: spawnZ,
+                prevX: spawnX, prevY: spawnY, prevZ: spawnZ,
+                dx: dirx, dy: diry, dz: dirz,
+                distance: 0,
+                image: textures.bullet,
+                damage: currentWeapon.damage,
+                hitscanHit: hitscanHitPos,
+                stopDistance: hitscanHitPos ? hitscanHitPos.dist : null
+            };
+            lastBullet = bullet;
+            items.push(bullet);
+
+            if (typeof Multiplayer !== "undefined" && Multiplayer.isConnected()) {
+                Multiplayer.sendShoot(spawnX, spawnY, spawnZ, dirx, diry, dirz);
+            }
         }
 
         currentSlot.ammo--;
         currentSlot.lastShot = current;
     }
 
-    // Reload current weapon
+    // Reload current weapon (skip for ammoRegen weapons — they refill automatically)
     var isReloading = input.reload || input.gpReload;
-    if(isReloading && !currentSlot.isReloading && currentSlot.ammo < currentWeapon.maxMagazine){
+    if(isReloading && !currentSlot.isReloading && !currentWeapon.ammoRegen && currentSlot.ammo < currentWeapon.maxMagazine){
         currentSlot.isReloading = true;
         setTimeout(function(){
             currentSlot.ammo = currentWeapon.maxMagazine;
             currentSlot.isReloading = false;
         }, currentWeapon.reloadTime);
+    }
+
+    // Ammo regeneration for plasma and tracer weapons
+    if (currentWeapon.ammoRegen) {
+        if (currentSlot.ammo <= 0) {
+            if (!currentSlot.depletedTime) currentSlot.depletedTime = current;
+            if (current - currentSlot.depletedTime >= currentWeapon.regenCooldown) {
+                currentSlot.ammo = currentWeapon.maxMagazine;
+                currentSlot.depletedTime = null;
+            }
+        } else {
+            currentSlot.depletedTime = null;
+        }
     }
 
     // Update moving items (bullets only) - with CCD collision detection
@@ -563,6 +620,11 @@ function UpdateCamera(){
             it.prevX = it.x;
             it.prevY = it.y;
             it.prevZ = it.z;
+
+            // Homing steering (tracer bullets)
+            if (it.homing && it.homingTarget) {
+                updateHoming3D(it, deltaTime / 30);
+            }
 
             it.x+=it.dx*deltaTime;it.y+=it.dy*deltaTime;it.z+=it.dz*deltaTime;it.distance+=Math.hypot(it.dx,it.dy,it.dz)*deltaTime;
 

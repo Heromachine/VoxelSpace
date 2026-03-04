@@ -89,6 +89,73 @@ var weapons = {
         adsZoom: 4.0,          // 4x scope zoom (base)
         useScope: true,        // Has picture-in-picture scope
         ccdOnly: true          // No hitscan, CCD only for realistic bullet travel
+    },
+    shotgun: {
+        name: "Shotgun",
+        letter: "G",
+        color: "#D2691E",
+        bgColor: "#8B4513",
+        magazine: 8,
+        maxMagazine: 8,
+        reloadTime: 1800,
+        fireRate: 700,
+        fireMode: "semi",
+        damage: 12,            // Per pellet
+        bulletSpeed: 9,
+        pellets: 6,            // Pellets per shot
+        adsZoom: 1.2
+    },
+    tracer: {
+        name: "Tracer",
+        letter: "C",
+        color: "#00FFAA",
+        bgColor: "#008866",
+        magazine: 3,
+        maxMagazine: 3,
+        reloadTime: 0,
+        fireRate: 0,
+        fireMode: "charge",    // Hold to charge, release to fire
+        chargeTime: 1500,      // ms to fully charge
+        damage: 30,
+        bulletSpeed: 18,
+        homingSpeed: 3,        // Radians/sec turn rate
+        coneAngle: 0.4,        // Half-angle of targeting cone (radians)
+        coneRange: 300,        // Max target acquisition range (world units)
+        ammoRegen: true,
+        regenCooldown: 8000,   // ms after depletion before regen
+        adsZoom: 1.5
+    },
+    plasmaRifle: {
+        name: "Plasma Rifle",
+        letter: "A",
+        color: "#FF00FF",
+        bgColor: "#880088",
+        magazine: 40,
+        maxMagazine: 40,
+        reloadTime: 0,
+        fireRate: 80,
+        fireMode: "auto",
+        damage: 5,
+        bulletSpeed: 14,
+        ammoRegen: true,
+        regenCooldown: 10000,
+        adsZoom: 1.6
+    },
+    plasmaPistol: {
+        name: "Plasma Pistol",
+        letter: "L",
+        color: "#CC00FF",
+        bgColor: "#660088",
+        magazine: 12,
+        maxMagazine: 12,
+        reloadTime: 0,
+        fireRate: 400,
+        fireMode: "semi",
+        damage: 12,
+        bulletSpeed: 11,
+        ammoRegen: true,
+        regenCooldown: 10000,
+        adsZoom: 1.3
     }
 };
 

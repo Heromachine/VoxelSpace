@@ -187,6 +187,48 @@ var WeaponConfig = {
             // Icon display
             iconColor: '#3d3d3d',
             iconOutline: '#5a5a5a'
+        },
+
+        tracer: {
+            name: "Tracer",
+            lengthScale: 0.20,
+            widthScale: 0.025,
+            heightScale: 0.09,
+            hipSpread: 0.0,         // No spread — homing handles accuracy
+            adsSpread: 0.0,
+            barrelLengthRatio: 0.55,
+            gripLengthRatio: 0.35,
+            barrelScale: 0.11,
+            iconColor: '#00FFAA',
+            iconOutline: '#00CC88'
+        },
+
+        plasmaRifle: {
+            name: "Plasma Rifle",
+            lengthScale: 0.42,
+            widthScale: 0.035,
+            heightScale: 0.13,
+            hipSpread: 0.05,
+            adsSpread: 0.02,
+            barrelLengthRatio: 0.48,
+            stockLengthRatio: 0.28,
+            barrelScale: 0.20,
+            iconColor: '#FF00FF',
+            iconOutline: '#CC00CC'
+        },
+
+        plasmaPistol: {
+            name: "Plasma Pistol",
+            lengthScale: 0.16,
+            widthScale: 0.025,
+            heightScale: 0.09,
+            hipSpread: 0.04,
+            adsSpread: 0.015,
+            barrelLengthRatio: 0.52,
+            gripLengthRatio: 0.35,
+            barrelScale: 0.083,
+            iconColor: '#CC00FF',
+            iconOutline: '#AA00DD'
         }
     },
 
