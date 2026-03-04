@@ -883,7 +883,7 @@
 
 <div id="controls" style="display: none; position: absolute; top: 50px; left: 10px; background: rgba(8,15,22,0.95); color: #8ab0c8; padding: 0; width: 360px; border-radius: 4px; overflow: hidden; z-index: 100; border: 1px solid rgba(80,160,220,0.15); font-family: 'Segoe UI', system-ui, sans-serif;">
   <!-- Panel Title -->
-  <div style="background: rgba(80,160,220,0.06); padding: 8px 12px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #5a90b0; border-bottom: 1px solid rgba(80,160,220,0.12);">Settings <span style="float:right; font-size:10px; color: rgba(138,176,200,0.35); letter-spacing:1px;">[ESC] toggle</span></div>
+  <div id="settings-drag-handle" style="background: rgba(80,160,220,0.06); padding: 8px 12px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #5a90b0; border-bottom: 1px solid rgba(80,160,220,0.12); cursor: move; user-select: none;">Settings <span style="float:right; font-size:10px; color: rgba(138,176,200,0.35); letter-spacing:1px;">[ESC] toggle</span></div>
   <!-- Tab buttons -->
   <div style="display: flex; background: rgba(80,160,220,0.03); border-bottom: 1px solid rgba(80,160,220,0.1);">
     <button class="tab-btn active" data-tab="camera" style="flex:1;padding:7px 2px;border:none;background:rgba(80,160,220,0.15);color:#8ab0c8;cursor:pointer;font-size:10px;font-family:inherit;letter-spacing:0.5px;">Camera</button>
@@ -1018,14 +1018,14 @@
 
     <hr style="border-color:#555;margin:8px 0;">
     <b style="font-size:10px;">Gun World Offset:</b><br>
-    <label for="gunWorldFwd">Forward: <span id="gunWorldFwd-value">10</span></label><br>
-    <input type="range" id="gunWorldFwd" min="0" max="50" value="10" style="width:100%;"><br>
+    <label for="gunWorldFwd">Forward: <span id="gunWorldFwd-value">2.0</span></label><br>
+    <input type="range" id="gunWorldFwd" min="0" max="10" step="0.1" value="2.0" style="width:100%;"><br>
 
-    <label for="gunWorldRight">Right: <span id="gunWorldRight-value">15</span></label><br>
-    <input type="range" id="gunWorldRight" min="-30" max="30" value="15" style="width:100%;"><br>
+    <label for="gunWorldRight">Right: <span id="gunWorldRight-value">1.5</span></label><br>
+    <input type="range" id="gunWorldRight" min="-5" max="5" step="0.1" value="1.5" style="width:100%;"><br>
 
-    <label for="gunWorldDown">Down: <span id="gunWorldDown-value">8</span></label><br>
-    <input type="range" id="gunWorldDown" min="-20" max="30" value="8" style="width:100%;">
+    <label for="gunWorldDown">Down: <span id="gunWorldDown-value">0.5</span></label><br>
+    <input type="range" id="gunWorldDown" min="-3" max="5" step="0.1" value="0.5" style="width:100%;">
   </div>
 
   <!-- UI Tab -->

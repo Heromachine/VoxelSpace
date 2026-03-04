@@ -285,8 +285,8 @@ var gunModel = {
     rotationZ: 0,      // Z-axis rotation in degrees
 
     // ADS (Aim Down Sights) position - gun raised to eye level
-    adsOffsetX: 0,     // centered for iron sights
-    adsOffsetY: 100,   // raised up
+    adsOffsetX: 0,     // unused — ADS barrel always locks to screen center
+    adsOffsetY: 0,     // unused — ADS barrel always locks to screen center
     adsOffsetZ: 0,
     adsScale: 350,
     adsRotationX: 0,
@@ -314,37 +314,76 @@ var gunModel = {
     barrelYaw: 0,      // horizontal aim offset in degrees (left/right)
 
     // ADS barrel settings
-    adsBarrelX: 0.26,
-    adsBarrelY: 0.08,
-    adsBarrelZ: 0.0,
+    adsBarrelX: 0.04,
+    adsBarrelY: 0,
+    adsBarrelZ: 0,
     adsBarrelYaw: 0,
 
     // Hip barrel settings
-    hipBarrelX: 0.26,
-    hipBarrelY: 0.08,
-    hipBarrelZ: 0.0,
-    hipBarrelYaw: 0,
+    hipBarrelX: -0.5,
+    hipBarrelY: -0.3,
+    hipBarrelZ: -0.3,
+    hipBarrelYaw: 15,
 
-    barrelDistance: 5, // world units in front of barrel to spawn bullet
+    barrelDistance: 1, // world units in front of barrel to spawn bullet
 
-    // World-space offset from camera (where gun is held)
+    // World-space offset from camera (where the gun pivot is held, in world units)
+    // 1 WU = 30 cm. These are realistic viewmodel distances.
     // Current/interpolated values (updated each frame based on adsLerp)
-    worldForward: 10,  // how far forward from camera
-    worldRight: 15,    // how far right from camera
-    worldDown: 8,      // how far down from camera eye level
+    worldForward: 2.2,
+    worldRight: 5,
+    worldDown: 5,
 
-    // ADS world offset settings
-    adsWorldForward: 10,
-    adsWorldRight: 15,
-    adsWorldDown: 8,
+    // ADS world offset — gun centered, pulled forward for iron sights
+    adsWorldForward: 1,
+    adsWorldRight: 0,
+    adsWorldDown: 1,
 
-    // Hip world offset settings
-    hipWorldForward: 10,
-    hipWorldRight: 15,
-    hipWorldDown: 8,
+    // Hip fire world offset — gun held to the right side
+    hipWorldForward: 2.2,
+    hipWorldRight: 5,
+    hipWorldDown: 5,
 
     // Pivot mode: 'barrel' for ADS (pivot at bullet spawn), 'grip' for hip fire
     pivotMode: 'grip'  // current pivot mode
+};
+
+// ===============================
+// Gun Viewmodel - Visual-only settings for the on-screen 3D gun model.
+// These are completely independent from gun mechanics (bullet direction,
+// barrel world position, minimap). Gun mechanics stay in gunModel above.
+var gunViewModel = {
+    // Current interpolated visual values (updated each frame)
+    offsetX: 223,      // pixels from screen center (right = positive)
+    offsetY: 290,      // pixels from screen center (down = positive)
+    offsetZ: -100,     // depth scale offset
+    scale: 762,        // rendering scale
+    rotationX: 23,
+    rotationY: -81,
+    rotationZ: -28,
+
+    // Hip fire visual settings
+    hipOffsetX: 223,
+    hipOffsetY: 290,
+    hipOffsetZ: -100,
+    hipScale: 762,
+    hipRotationX: 23,
+    hipRotationY: -81,
+    hipRotationZ: -28,
+
+    // ADS visual settings
+    adsOffsetX: 0,
+    adsOffsetY: 165,
+    adsOffsetZ: -100,
+    adsScale: 1000,
+    adsRotationX: 0,
+    adsRotationY: -90,
+    adsRotationZ: 0,
+
+    // Pitch parallax: how much the gun shifts vertically when looking up/down in hip fire.
+    // 0 = no parallax (gun stays fixed to screen), 1 = full world-locked feel.
+    // Fades to 0 in ADS automatically.
+    hipPitchParallax: 0.4
 };
 
 // ===============================

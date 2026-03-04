@@ -14,23 +14,23 @@ function wuLabelCm(wu) {
 var savedSettings = null;
 var editMode = 'hip';  // 'ads' or 'hip' - which mode we're editing (mirrors input.aimToggled)
 
-// Function to update gun sliders to show current mode's values
+// Function to update gun sliders to show current mode's values (visual gunViewModel only)
 function updateGunSliders() {
     var prefix = editMode === 'ads' ? 'ads' : 'hip';
-    document.getElementById('gunX').value = gunModel[prefix + 'OffsetX'];
-    document.getElementById('gunX-value').innerText = gunModel[prefix + 'OffsetX'];
-    document.getElementById('gunY').value = gunModel[prefix + 'OffsetY'];
-    document.getElementById('gunY-value').innerText = gunModel[prefix + 'OffsetY'];
-    document.getElementById('gunZ').value = gunModel[prefix + 'OffsetZ'];
-    document.getElementById('gunZ-value').innerText = gunModel[prefix + 'OffsetZ'];
-    document.getElementById('gunScale').value = gunModel[prefix + 'Scale'];
-    document.getElementById('gunScale-value').innerText = gunModel[prefix + 'Scale'];
-    document.getElementById('gunRotX').value = gunModel[prefix + 'RotationX'];
-    document.getElementById('gunRotX-value').innerText = gunModel[prefix + 'RotationX'];
-    document.getElementById('gunRotY').value = gunModel[prefix + 'RotationY'];
-    document.getElementById('gunRotY-value').innerText = gunModel[prefix + 'RotationY'];
-    document.getElementById('gunRotZ').value = gunModel[prefix + 'RotationZ'];
-    document.getElementById('gunRotZ-value').innerText = gunModel[prefix + 'RotationZ'];
+    document.getElementById('gunX').value = gunViewModel[prefix + 'OffsetX'];
+    document.getElementById('gunX-value').innerText = gunViewModel[prefix + 'OffsetX'];
+    document.getElementById('gunY').value = gunViewModel[prefix + 'OffsetY'];
+    document.getElementById('gunY-value').innerText = gunViewModel[prefix + 'OffsetY'];
+    document.getElementById('gunZ').value = gunViewModel[prefix + 'OffsetZ'];
+    document.getElementById('gunZ-value').innerText = gunViewModel[prefix + 'OffsetZ'];
+    document.getElementById('gunScale').value = gunViewModel[prefix + 'Scale'];
+    document.getElementById('gunScale-value').innerText = gunViewModel[prefix + 'Scale'];
+    document.getElementById('gunRotX').value = gunViewModel[prefix + 'RotationX'];
+    document.getElementById('gunRotX-value').innerText = gunViewModel[prefix + 'RotationX'];
+    document.getElementById('gunRotY').value = gunViewModel[prefix + 'RotationY'];
+    document.getElementById('gunRotY-value').innerText = gunViewModel[prefix + 'RotationY'];
+    document.getElementById('gunRotZ').value = gunViewModel[prefix + 'RotationZ'];
+    document.getElementById('gunRotZ-value').innerText = gunViewModel[prefix + 'RotationZ'];
 }
 
 // Function to update barrel sliders to show current mode's values
@@ -50,11 +50,11 @@ function updateBarrelSliders() {
 function updateWorldOffsetSliders() {
     var prefix = editMode === 'ads' ? 'ads' : 'hip';
     document.getElementById('gunWorldFwd').value = gunModel[prefix + 'WorldForward'];
-    document.getElementById('gunWorldFwd-value').innerText = wuLabelCm(gunModel[prefix + 'WorldForward']);
+    document.getElementById('gunWorldFwd-value').innerText = gunModel[prefix + 'WorldForward'].toFixed(1);
     document.getElementById('gunWorldRight').value = gunModel[prefix + 'WorldRight'];
-    document.getElementById('gunWorldRight-value').innerText = wuLabelCm(gunModel[prefix + 'WorldRight']);
+    document.getElementById('gunWorldRight-value').innerText = gunModel[prefix + 'WorldRight'].toFixed(1);
     document.getElementById('gunWorldDown').value = gunModel[prefix + 'WorldDown'];
-    document.getElementById('gunWorldDown-value').innerText = wuLabelCm(gunModel[prefix + 'WorldDown']);
+    document.getElementById('gunWorldDown-value').innerText = gunModel[prefix + 'WorldDown'].toFixed(1);
 }
 
 // Unified function to set edit mode for both Gun and Barrel tabs
@@ -244,47 +244,47 @@ function setupSliders() {
         setEditMode('hip');
     });
 
-    // Gun viewmodel sliders - update based on current edit mode
+    // Gun viewmodel sliders - visual only, writes to gunViewModel (not gunModel mechanics)
     document.getElementById('gunX').addEventListener('input', function(e){
         var val = parseInt(e.target.value);
-        if (editMode === 'ads') gunModel.adsOffsetX = val;
-        else gunModel.hipOffsetX = val;
+        if (editMode === 'ads') gunViewModel.adsOffsetX = val;
+        else gunViewModel.hipOffsetX = val;
         document.getElementById('gunX-value').innerText = val;
     });
     document.getElementById('gunY').addEventListener('input', function(e){
         var val = parseInt(e.target.value);
-        if (editMode === 'ads') gunModel.adsOffsetY = val;
-        else gunModel.hipOffsetY = val;
+        if (editMode === 'ads') gunViewModel.adsOffsetY = val;
+        else gunViewModel.hipOffsetY = val;
         document.getElementById('gunY-value').innerText = val;
     });
     document.getElementById('gunZ').addEventListener('input', function(e){
         var val = parseInt(e.target.value);
-        if (editMode === 'ads') gunModel.adsOffsetZ = val;
-        else gunModel.hipOffsetZ = val;
+        if (editMode === 'ads') gunViewModel.adsOffsetZ = val;
+        else gunViewModel.hipOffsetZ = val;
         document.getElementById('gunZ-value').innerText = val;
     });
     document.getElementById('gunScale').addEventListener('input', function(e){
         var val = parseInt(e.target.value);
-        if (editMode === 'ads') gunModel.adsScale = val;
-        else gunModel.hipScale = val;
+        if (editMode === 'ads') gunViewModel.adsScale = val;
+        else gunViewModel.hipScale = val;
         document.getElementById('gunScale-value').innerText = val;
     });
     document.getElementById('gunRotX').addEventListener('input', function(e){
         var val = parseInt(e.target.value);
-        if (editMode === 'ads') gunModel.adsRotationX = val;
-        else gunModel.hipRotationX = val;
+        if (editMode === 'ads') gunViewModel.adsRotationX = val;
+        else gunViewModel.hipRotationX = val;
         document.getElementById('gunRotX-value').innerText = val;
     });
     document.getElementById('gunRotY').addEventListener('input', function(e){
         var val = parseInt(e.target.value);
-        if (editMode === 'ads') gunModel.adsRotationY = val;
-        else gunModel.hipRotationY = val;
+        if (editMode === 'ads') gunViewModel.adsRotationY = val;
+        else gunViewModel.hipRotationY = val;
         document.getElementById('gunRotY-value').innerText = val;
     });
     document.getElementById('gunRotZ').addEventListener('input', function(e){
         var val = parseInt(e.target.value);
-        if (editMode === 'ads') gunModel.adsRotationZ = val;
-        else gunModel.hipRotationZ = val;
+        if (editMode === 'ads') gunViewModel.adsRotationZ = val;
+        else gunViewModel.hipRotationZ = val;
         document.getElementById('gunRotZ-value').innerText = val;
     });
 
@@ -326,24 +326,24 @@ function setupSliders() {
         document.getElementById('barrelZ-value').innerText = val.toFixed(2);
     });
 
-    // Gun world offset sliders - update based on current edit mode
+    // Gun world offset sliders - float values (0.1 step), update based on current edit mode
     document.getElementById('gunWorldFwd').addEventListener('input', function(e){
-        var val = parseInt(e.target.value);
+        var val = parseFloat(e.target.value);
         if (editMode === 'ads') gunModel.adsWorldForward = val;
         else gunModel.hipWorldForward = val;
-        document.getElementById('gunWorldFwd-value').innerText = wuLabelCm(val);
+        document.getElementById('gunWorldFwd-value').innerText = val.toFixed(1);
     });
     document.getElementById('gunWorldRight').addEventListener('input', function(e){
-        var val = parseInt(e.target.value);
+        var val = parseFloat(e.target.value);
         if (editMode === 'ads') gunModel.adsWorldRight = val;
         else gunModel.hipWorldRight = val;
-        document.getElementById('gunWorldRight-value').innerText = wuLabelCm(val);
+        document.getElementById('gunWorldRight-value').innerText = val.toFixed(1);
     });
     document.getElementById('gunWorldDown').addEventListener('input', function(e){
-        var val = parseInt(e.target.value);
+        var val = parseFloat(e.target.value);
         if (editMode === 'ads') gunModel.adsWorldDown = val;
         else gunModel.hipWorldDown = val;
-        document.getElementById('gunWorldDown-value').innerText = wuLabelCm(val);
+        document.getElementById('gunWorldDown-value').innerText = val.toFixed(1);
     });
 
     // UI Scale sliders
@@ -434,6 +434,29 @@ function setupSliders() {
             setTimeout(() => this.textContent = 'Reset', 1000);
         }
     });
+
+    // Drag-to-move settings panel
+    var dragHandle = document.getElementById('settings-drag-handle');
+    var panel = document.getElementById('controls');
+    if (dragHandle && panel) {
+        var dragOffsetX = 0, dragOffsetY = 0, isDragging = false;
+        dragHandle.addEventListener('mousedown', function(e) {
+            isDragging = true;
+            dragOffsetX = e.clientX - panel.offsetLeft;
+            dragOffsetY = e.clientY - panel.offsetTop;
+            dragHandle.style.cursor = 'grabbing';
+            e.preventDefault();
+        });
+        document.addEventListener('mousemove', function(e) {
+            if (!isDragging) return;
+            panel.style.left = (e.clientX - dragOffsetX) + 'px';
+            panel.style.top  = (e.clientY - dragOffsetY) + 'px';
+        });
+        document.addEventListener('mouseup', function() {
+            isDragging = false;
+            dragHandle.style.cursor = 'move';
+        });
+    }
 }
 
 // Get all current settings for saving
@@ -452,21 +475,21 @@ function getAllSettings() {
         sprintMultiplier: player.sprintMultiplier,
         bulletSize: bulletSize,
         barrelDistance: gunModel.barrelDistance,
-        // Gun position
-        adsOffsetX: gunModel.adsOffsetX,
-        adsOffsetY: gunModel.adsOffsetY,
-        adsOffsetZ: gunModel.adsOffsetZ,
-        adsScale: gunModel.adsScale,
-        adsRotationX: gunModel.adsRotationX,
-        adsRotationY: gunModel.adsRotationY,
-        adsRotationZ: gunModel.adsRotationZ,
-        hipOffsetX: gunModel.hipOffsetX,
-        hipOffsetY: gunModel.hipOffsetY,
-        hipOffsetZ: gunModel.hipOffsetZ,
-        hipScale: gunModel.hipScale,
-        hipRotationX: gunModel.hipRotationX,
-        hipRotationY: gunModel.hipRotationY,
-        hipRotationZ: gunModel.hipRotationZ,
+        // Gun visual position (gunViewModel — independent from gun mechanics)
+        adsOffsetX: gunViewModel.adsOffsetX,
+        adsOffsetY: gunViewModel.adsOffsetY,
+        adsOffsetZ: gunViewModel.adsOffsetZ,
+        adsScale: gunViewModel.adsScale,
+        adsRotationX: gunViewModel.adsRotationX,
+        adsRotationY: gunViewModel.adsRotationY,
+        adsRotationZ: gunViewModel.adsRotationZ,
+        hipOffsetX: gunViewModel.hipOffsetX,
+        hipOffsetY: gunViewModel.hipOffsetY,
+        hipOffsetZ: gunViewModel.hipOffsetZ,
+        hipScale: gunViewModel.hipScale,
+        hipRotationX: gunViewModel.hipRotationX,
+        hipRotationY: gunViewModel.hipRotationY,
+        hipRotationZ: gunViewModel.hipRotationZ,
         // Barrel
         adsBarrelX: gunModel.adsBarrelX,
         adsBarrelY: gunModel.adsBarrelY,
@@ -572,25 +595,25 @@ function applySettings(s) {
         document.getElementById('barrelDistance').value = s.barrelDistance;
         document.getElementById('barrelDistance-value').innerText = wuLabelCm(s.barrelDistance);
     }
-    // Gun position - ADS
+    // Gun visual position - ADS (gunViewModel)
     if (s.adsOffsetX !== undefined) {
-        gunModel.adsOffsetX = s.adsOffsetX;
-        gunModel.adsOffsetY = s.adsOffsetY;
-        gunModel.adsOffsetZ = s.adsOffsetZ;
-        gunModel.adsScale = s.adsScale;
-        gunModel.adsRotationX = s.adsRotationX;
-        gunModel.adsRotationY = s.adsRotationY;
-        gunModel.adsRotationZ = s.adsRotationZ;
+        gunViewModel.adsOffsetX = s.adsOffsetX;
+        gunViewModel.adsOffsetY = s.adsOffsetY;
+        gunViewModel.adsOffsetZ = s.adsOffsetZ;
+        gunViewModel.adsScale = s.adsScale;
+        gunViewModel.adsRotationX = s.adsRotationX;
+        gunViewModel.adsRotationY = s.adsRotationY;
+        gunViewModel.adsRotationZ = s.adsRotationZ;
     }
-    // Gun position - Hip
+    // Gun visual position - Hip (gunViewModel)
     if (s.hipOffsetX !== undefined) {
-        gunModel.hipOffsetX = s.hipOffsetX;
-        gunModel.hipOffsetY = s.hipOffsetY;
-        gunModel.hipOffsetZ = s.hipOffsetZ;
-        gunModel.hipScale = s.hipScale;
-        gunModel.hipRotationX = s.hipRotationX;
-        gunModel.hipRotationY = s.hipRotationY;
-        gunModel.hipRotationZ = s.hipRotationZ;
+        gunViewModel.hipOffsetX = s.hipOffsetX;
+        gunViewModel.hipOffsetY = s.hipOffsetY;
+        gunViewModel.hipOffsetZ = s.hipOffsetZ;
+        gunViewModel.hipScale = s.hipScale;
+        gunViewModel.hipRotationX = s.hipRotationX;
+        gunViewModel.hipRotationY = s.hipRotationY;
+        gunViewModel.hipRotationZ = s.hipRotationZ;
     }
     // Barrel - ADS
     if (s.adsBarrelX !== undefined) {

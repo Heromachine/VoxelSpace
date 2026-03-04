@@ -376,22 +376,26 @@ function DrawDebugMinimap() {
     ctx.stroke();
     ctx.restore();
 
-    var gunDir = getGunWorldDirection();
+    var barrelPos = getBarrelWorldPos();
+
+    // Both ADS and hip use barrelPos.dirX/Y — consistent with actual bullet direction.
+    // With hipOffsetX/Y = 0, hip matches ADS exactly (both aim toward screen center).
+    var displayDir = { x: barrelPos.dirX, y: barrelPos.dirY };
+
     var barrelLineLen = 20 * scale;
     ctx.beginPath();
     ctx.moveTo(pcx, pcy);
-    ctx.lineTo(pcx + gunDir.x * barrelLineLen, pcy + gunDir.y * barrelLineLen);
+    ctx.lineTo(pcx + displayDir.x * barrelLineLen, pcy + displayDir.y * barrelLineLen);
     ctx.strokeStyle = 'orange';
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    var barrelPos = getBarrelWorldPos();
     var bpx = (barrelPos.x - camera.x) * scale;
     var bpy = (barrelPos.y - camera.y) * scale;
     if (Math.abs(bpx) < size / 2 && Math.abs(bpy) < size / 2) {
         ctx.save();
         ctx.translate(pcx + bpx, pcy + bpy);
-        var gunAngle = Math.atan2(gunDir.y, gunDir.x);
+        var gunAngle = Math.atan2(displayDir.y, displayDir.x);
         ctx.rotate(gunAngle);
         var currentSlot = playerWeapons[currentWeaponIndex];
         var totalPlayerHeight = playerHeightOffset / 0.93;
@@ -428,8 +432,8 @@ function DrawDebugMinimap() {
     }
 
     // Bullet spawn (grey dot)
-    var spawnX = barrelPos.x + gunDir.x * gunModel.barrelDistance;
-    var spawnY = barrelPos.y + gunDir.y * gunModel.barrelDistance;
+    var spawnX = barrelPos.x + displayDir.x * gunModel.barrelDistance;
+    var spawnY = barrelPos.y + displayDir.y * gunModel.barrelDistance;
     var spx = (spawnX - camera.x) * scale;
     var spy = (spawnY - camera.y) * scale;
     if (Math.abs(spx) < size / 2 && Math.abs(spy) < size / 2) {
@@ -705,32 +709,28 @@ function DrawSideView(ctx){
     ctx.stroke();
 
     // Get gun barrel position in world space
+    // barrelPos.dirX/Y/Z is the actual aim direction (same formula for both ADS and hip)
     var barrelPos = getBarrelWorldPos();
-    var gunDir = getGunWorldDirection();
 
     // Calculate gun distance along look direction
     var gunDx = barrelPos.x - camera.x;
     var gunDy = barrelPos.y - camera.y;
     var gunDist = gunDx * fx + gunDy * fy;
 
-    // Calculate gun pitch based on pivot mode
-    var gunPitch;
+    // Gun pitch from barrelPos.dir — works for both ADS and hip
+    var horizontalDist = Math.sqrt(barrelPos.dirX * barrelPos.dirX + barrelPos.dirY * barrelPos.dirY);
+    var gunPitch = Math.atan2(-barrelPos.dirZ, horizontalDist);
     var pivotScreenPos;
     var gunWorldLength = WeaponConfig.getWeaponLength(playerWeapons[currentWeaponIndex].type, totalPlayerHeight);
 
     if (gunModel.pivotMode === 'barrel') {
-        // ADS mode: gun follows view direction, pivot at barrel/spawn point
-        gunPitch = -viewPitch;  // Gun matches camera pitch
-        // Pivot point is at barrel position (forward from player)
+        // ADS: pivot at barrel position (forward from player)
         var pivotDist = gunModel.worldForward;
-        var pivotZ = camera.height - gunModel.worldDown + Math.tan(viewPitch) * pivotDist;
+        var pivotZ = camera.height - gunModel.worldDown + Math.tan(-gunPitch) * pivotDist;
         pivotScreenPos = toScreen(pivotDist, pivotZ);
     } else {
-        // Hip fire mode: gun uses its own rotation, pivot at grip
-        var horizontalDist = Math.sqrt(gunDir.x * gunDir.x + gunDir.y * gunDir.y);
-        gunPitch = Math.atan2(-gunDir.z, horizontalDist);
-        // Pivot point is at grip (back of gun, close to player)
-        var gripDist = gunModel.worldForward - gunWorldLength * 0.4;  // grip is back from barrel
+        // Hip: pivot at grip (back of gun, close to player)
+        var gripDist = gunModel.worldForward - gunWorldLength * 0.4;
         var gripZ = camera.height - gunModel.worldDown;
         pivotScreenPos = toScreen(gripDist, gripZ);
     }
@@ -791,16 +791,9 @@ function DrawSideView(ctx){
     // Bullet spawn dot: project barrelPos into side-view space then add barrelDistance
     // (mirrors overhead logic exactly: spawnX = barrelPos + gunDir * barrelDistance)
     var barrelFwdDist = (barrelPos.x - camera.x) * fx + (barrelPos.y - camera.y) * fy;
-    var svGunFwdComp, svGunZComp;
-    if (gunModel.pivotMode === 'barrel') {
-        // ADS: gun aims at screen center
-        svGunFwdComp = Math.cos(viewPitch);
-        svGunZComp = Math.sin(viewPitch);
-    } else {
-        // Hip: use actual gun direction
-        svGunFwdComp = gunDir.x * fx + gunDir.y * fy;
-        svGunZComp = gunDir.z;
-    }
+    // Use barrelPos.dir for both ADS and hip — same formula now
+    var svGunFwdComp = barrelPos.dirX * fx + barrelPos.dirY * fy;
+    var svGunZComp = barrelPos.dirZ;
     var svSpawnFwdDist = barrelFwdDist + gunModel.barrelDistance * svGunFwdComp;
     var svSpawnZ = barrelPos.z + gunModel.barrelDistance * svGunZComp;
     var svSpawnPos = toScreen(svSpawnFwdDist, svSpawnZ);
@@ -827,16 +820,9 @@ function DrawSideView(ctx){
     var barrelEndDist = 200;  // world units ahead
     var barrelEndZ;
 
-    if (gunModel.pivotMode === 'barrel') {
-        // ADS mode: use ACTUAL shooting pitch (same formula as bullet spawn)
-        // Bullets go toward screen center, not horizon-based pitch
-        var aimPitch = Math.atan((camera.horizon - screenCenterY) / camera.focalLength);
-        barrelEndZ = barrelPos.z + Math.tan(aimPitch) * barrelEndDist;
-    } else {
-        // Hip fire mode: barrel follows gun's own direction
-        var barrelFwdComponent = gunDir.x * fx + gunDir.y * fy;
-        barrelEndZ = barrelPos.z + (-gunDir.z / Math.abs(barrelFwdComponent || 0.01)) * barrelEndDist;
-    }
+    // Use barrelPos.dir for both ADS and hip — same formula, consistent with bullet direction
+    var barrelFwdComp = barrelPos.dirX * fx + barrelPos.dirY * fy;
+    barrelEndZ = barrelPos.z + (barrelPos.dirZ / Math.abs(barrelFwdComp || 0.01)) * barrelEndDist;
     var barrelStart = toScreen(gunDist, barrelPos.z);
     var barrelEnd = toScreen(gunDist + barrelEndDist, barrelEndZ);
     ctx.beginPath();

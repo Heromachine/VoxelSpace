@@ -73,27 +73,27 @@ function loadGunModel() {
 }
 
 // Render gun viewmodel (first-person weapon overlay)
+// Visual position, rotation, and scale come from gunViewModel (independent from gun mechanics).
+// Geometry (vertices, faces, uvs, texture) still read from gunModel.
+// The cyan barrel dot shows the mechanics barrel position (where bullets actually fire from).
 function RenderGunViewmodel(ctx) {
     var sw = screendata.canvas.width;
     var sh = screendata.canvas.height;
 
-    // Scale gun position and size based on screen size
-    // Use 800x600 as reference resolution
     var refWidth = 800;
     var refHeight = 600;
-
-    // Use separate scale factors for X and Y positioning to handle aspect ratio changes
     var scaleX = Math.max(0.3, sw / refWidth);
     var scaleY = Math.max(0.3, sh / refHeight);
-    // Use min for gun size so it doesn't get too large
     var sizeScale = Math.max(0.3, Math.min(scaleX, scaleY));
 
-    // Apply separate scales to offsets for correct positioning
-    var scaledOffsetX = gunModel.offsetX * scaleX;
-    var scaledOffsetY = gunModel.offsetY * scaleY;
+    // Pitch parallax: shift gun Y with horizon deviation in hip fire, fade out in ADS.
+    // This keeps the gun from looking disconnected when looking up or down.
+    var horizonDeviation = camera.horizon - sh / 2;
+    var pitchParallax = horizonDeviation * gunViewModel.hipPitchParallax * (1 - gunModel.adsLerp);
 
-    var centerX = sw - scaledOffsetX;
-    var centerY = sh - scaledOffsetY;
+    // Visual gun center — driven purely by gunViewModel offsets from screen center
+    var centerX = sw / 2 + gunViewModel.offsetX;
+    var centerY = sh / 2 + gunViewModel.offsetY + pitchParallax;
 
     if (!gunModel.loaded) {
         ctx.fillStyle = 'rgba(100,100,100,0.5)';
@@ -103,9 +103,8 @@ function RenderGunViewmodel(ctx) {
         ctx.fillStyle = 'yellow';
         ctx.font = '12px Arial';
         ctx.fillText('Gun loading...', centerX - 35, centerY + 5);
-        var barrel = getBarrelScreenPos();
         ctx.beginPath();
-        ctx.arc(barrel.x, barrel.y, 6, 0, Math.PI * 2);
+        ctx.arc(centerX, centerY, 6, 0, Math.PI * 2);
         ctx.fillStyle = 'cyan';
         ctx.fill();
         ctx.strokeStyle = 'white';
@@ -114,16 +113,16 @@ function RenderGunViewmodel(ctx) {
         return;
     }
 
-    var rotX = gunModel.rotationX * Math.PI / 180;
-    var rotY = gunModel.rotationY * Math.PI / 180;
-    var rotZ = gunModel.rotationZ * Math.PI / 180;
+    var rotX = gunViewModel.rotationX * Math.PI / 180;
+    var rotY = gunViewModel.rotationY * Math.PI / 180;
+    var rotZ = gunViewModel.rotationZ * Math.PI / 180;
 
     var cosX = Math.cos(rotX), sinX = Math.sin(rotX);
     var cosY = Math.cos(rotY), sinY = Math.sin(rotY);
     var cosZ = Math.cos(rotZ), sinZ = Math.sin(rotZ);
 
-    var depthScale = 1 - gunModel.offsetZ / 200;
-    var scale = gunModel.scale * depthScale * sizeScale;
+    var depthScale = 1 - gunViewModel.offsetZ / 200;
+    var scale = gunViewModel.scale * depthScale * sizeScale;
 
     var projected = gunModel.vertices.map(v => {
         var x = v.x, y = v.y, z = v.z;
@@ -136,7 +135,7 @@ function RenderGunViewmodel(ctx) {
         return {
             x: centerX + x3 * scale,
             y: centerY - y3 * scale,
-            z: z2 + gunModel.offsetZ / 100
+            z: z2 + gunViewModel.offsetZ / 100
         };
     });
 
@@ -206,9 +205,10 @@ function RenderGunViewmodel(ctx) {
         ctx.stroke();
     });
 
-    var barrel = getBarrelScreenPos();
+    // Mechanics barrel dot — shows where bullets actually come from (independent from visual model)
+    var barrelScreen = getBarrelScreenPos();
     ctx.beginPath();
-    ctx.arc(barrel.x, barrel.y, 4, 0, Math.PI * 2);
+    ctx.arc(barrelScreen.x, barrelScreen.y, 4, 0, Math.PI * 2);
     ctx.fillStyle = 'cyan';
     ctx.fill();
     ctx.strokeStyle = 'white';

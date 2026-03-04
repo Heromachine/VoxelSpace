@@ -352,14 +352,21 @@ function UpdateCamera(){
     // Lerp helper function
     function lerp(a, b, t) { return a + (b - a) * t; }
 
-    // Update current gun position/rotation based on interpolation
-    gunModel.offsetX = lerp(gunModel.hipOffsetX, gunModel.adsOffsetX, gunModel.adsLerp);
-    gunModel.offsetY = lerp(gunModel.hipOffsetY, gunModel.adsOffsetY, gunModel.adsLerp);
+    // Update gun mechanics rotation/scale (used by getGunWorldDirection for barrel world pos)
     gunModel.offsetZ = lerp(gunModel.hipOffsetZ, gunModel.adsOffsetZ, gunModel.adsLerp);
     gunModel.scale = lerp(gunModel.hipScale, gunModel.adsScale, gunModel.adsLerp);
     gunModel.rotationX = lerp(gunModel.hipRotationX, gunModel.adsRotationX, gunModel.adsLerp);
     gunModel.rotationY = lerp(gunModel.hipRotationY, gunModel.adsRotationY, gunModel.adsLerp);
     gunModel.rotationZ = lerp(gunModel.hipRotationZ, gunModel.adsRotationZ, gunModel.adsLerp);
+
+    // Update visual gun model (independent from gun mechanics)
+    gunViewModel.offsetX = lerp(gunViewModel.hipOffsetX, gunViewModel.adsOffsetX, gunModel.adsLerp);
+    gunViewModel.offsetY = lerp(gunViewModel.hipOffsetY, gunViewModel.adsOffsetY, gunModel.adsLerp);
+    gunViewModel.offsetZ = lerp(gunViewModel.hipOffsetZ, gunViewModel.adsOffsetZ, gunModel.adsLerp);
+    gunViewModel.scale = lerp(gunViewModel.hipScale, gunViewModel.adsScale, gunModel.adsLerp);
+    gunViewModel.rotationX = lerp(gunViewModel.hipRotationX, gunViewModel.adsRotationX, gunModel.adsLerp);
+    gunViewModel.rotationY = lerp(gunViewModel.hipRotationY, gunViewModel.adsRotationY, gunModel.adsLerp);
+    gunViewModel.rotationZ = lerp(gunViewModel.hipRotationZ, gunViewModel.adsRotationZ, gunModel.adsLerp);
 
     // Update current barrel settings based on interpolation
     gunModel.barrelX = lerp(gunModel.hipBarrelX, gunModel.adsBarrelX, gunModel.adsLerp);
@@ -372,11 +379,8 @@ function UpdateCamera(){
     gunModel.worldRight = lerp(gunModel.hipWorldRight, gunModel.adsWorldRight, gunModel.adsLerp);
     gunModel.worldDown = lerp(gunModel.hipWorldDown, gunModel.adsWorldDown, gunModel.adsLerp);
 
-    // Update pivot mode — always use barrel-pivot (screen-center aim) for both hip and ADS.
-    // Hip fire visuals still use hipOffset/hipBarrel/hipWorld positions (tuned via admin settings).
-    // Old grip-pivot mechanic preserved below for reference:
-    // gunModel.pivotMode = isAiming ? 'barrel' : 'grip';
-    gunModel.pivotMode = 'barrel';
+    // Pivot mode: ADS aims at screen center, hip fire uses gun's own rotation
+    gunModel.pivotMode = isAiming ? 'barrel' : 'grip';
 
     // Update crosshair style based on ADS and current weapon
     var crosshair = document.getElementById('crosshair');
@@ -415,21 +419,29 @@ function UpdateCamera(){
 
         // Get bullet direction based on ADS mode
         var aimDirX, aimDirY, aimDirZ;
+        var barrelYawRad = (gunModel.barrelYaw || 0) * Math.PI / 180;
         if (gunModel.pivotMode === 'barrel') {
-            // ADS mode: bullet goes toward SCREEN CENTER (where crosshair is)
+            // ADS mode: bullet goes toward SCREEN CENTER (where crosshair is), plus barrelYaw offset
             var screenCenterY = screendata.canvas.height / 2;
             var screenCenterPitch = Math.atan((camera.horizon - screenCenterY) / camera.focalLength);
             var cosPitch = Math.cos(screenCenterPitch);
             var sinPitch = Math.sin(screenCenterPitch);
-            aimDirX = fx * cosPitch;
-            aimDirY = fy * cosPitch;
+            var aimAngle = camera.angle + barrelYawRad;
+            aimDirX = -Math.sin(aimAngle) * cosPitch;
+            aimDirY = -Math.cos(aimAngle) * cosPitch;
             aimDirZ = sinPitch;
         } else {
-            // Hip fire mode: use gun's own rotation
-            var gunDir = getGunWorldDirection();
-            aimDirX = gunDir.x;
-            aimDirY = gunDir.y;
-            aimDirZ = gunDir.z;
+            // Hip fire: bullet goes toward the hip screen anchor, plus barrelYaw offset
+            var sw = screendata.canvas.width, sh = screendata.canvas.height;
+            var hipX = sw / 2 + gunModel.hipOffsetX, hipY = sh / 2 + gunModel.hipOffsetY;
+            var hAngle = Math.atan((hipX - sw / 2) / (sw / 2));
+            var hipAimAngle = camera.angle - hAngle + barrelYawRad;
+            var hipPitch = Math.atan((camera.horizon - hipY) / camera.focalLength);
+            var cosPitch = Math.cos(hipPitch);
+            var sinPitch = Math.sin(hipPitch);
+            aimDirX = -Math.sin(hipAimAngle) * cosPitch;
+            aimDirY = -Math.cos(hipAimAngle) * cosPitch;
+            aimDirZ = sinPitch;
         }
 
         // Apply spread based on hip fire vs ADS (from WeaponConfig)

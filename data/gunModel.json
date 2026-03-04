@@ -1,33 +1,48 @@
 {
   "ads": {
-    "offsetX": 400,
-    "offsetY": 154,
-    "offsetZ": -97,
-    "scale": 325,
+    "offsetX": 0,
+    "offsetY": 165,
+    "offsetZ": -100,
+    "scale": 1000,
     "rotationX": 0,
     "rotationY": -90,
     "rotationZ": 0
   },
   "hip": {
-    "offsetX": 400,
-    "offsetY": 154,
-    "offsetZ": -97,
-    "scale": 325,
-    "rotationX": 0,
-    "rotationY": -90,
-    "rotationZ": 0
+    "offsetX": 223,
+    "offsetY": 290,
+    "offsetZ": -100,
+    "scale": 762,
+    "rotationX": 23,
+    "rotationY": -81,
+    "rotationZ": -28
   },
   "barrel": {
-    "x": 0.04,
-    "y": 0,
-    "z": 0,
-    "distance": 1,
-    "yaw": 0
+    "ads": {
+      "x": 0.04,
+      "y": 0,
+      "z": 0,
+      "yaw": 0
+    },
+    "hip": {
+      "x": -0.5,
+      "y": -0.3,
+      "z": -0.3,
+      "yaw": 15
+    },
+    "distance": 1
   },
   "world": {
-    "forward": 1,
-    "right": 0,
-    "down": 1
+    "ads": {
+      "forward": 1,
+      "right": 0,
+      "down": 1
+    },
+    "hip": {
+      "forward": 2.2,
+      "right": 5,
+      "down": 5
+    }
   },
   "adsLerpSpeed": 0.15
 }

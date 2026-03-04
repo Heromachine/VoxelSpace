@@ -42,26 +42,26 @@ var ConfigLoader = {
         if (!this.gunModel || !gm) return;
         var data = this.gunModel;
 
-        // ADS settings
+        // ADS visual settings → gunViewModel (independent from mechanics)
         if (data.ads) {
-            gm.adsOffsetX = data.ads.offsetX;
-            gm.adsOffsetY = data.ads.offsetY;
-            gm.adsOffsetZ = data.ads.offsetZ;
-            gm.adsScale = data.ads.scale;
-            gm.adsRotationX = data.ads.rotationX;
-            gm.adsRotationY = data.ads.rotationY;
-            gm.adsRotationZ = data.ads.rotationZ;
+            gunViewModel.adsOffsetX = data.ads.offsetX;
+            gunViewModel.adsOffsetY = data.ads.offsetY;
+            gunViewModel.adsOffsetZ = data.ads.offsetZ;
+            gunViewModel.adsScale = data.ads.scale;
+            gunViewModel.adsRotationX = data.ads.rotationX;
+            gunViewModel.adsRotationY = data.ads.rotationY;
+            gunViewModel.adsRotationZ = data.ads.rotationZ;
         }
 
-        // Hip settings
+        // Hip visual settings → gunViewModel (independent from mechanics)
         if (data.hip) {
-            gm.hipOffsetX = data.hip.offsetX;
-            gm.hipOffsetY = data.hip.offsetY;
-            gm.hipOffsetZ = data.hip.offsetZ;
-            gm.hipScale = data.hip.scale;
-            gm.hipRotationX = data.hip.rotationX;
-            gm.hipRotationY = data.hip.rotationY;
-            gm.hipRotationZ = data.hip.rotationZ;
+            gunViewModel.hipOffsetX = data.hip.offsetX;
+            gunViewModel.hipOffsetY = data.hip.offsetY;
+            gunViewModel.hipOffsetZ = data.hip.offsetZ;
+            gunViewModel.hipScale = data.hip.scale;
+            gunViewModel.hipRotationX = data.hip.rotationX;
+            gunViewModel.hipRotationY = data.hip.rotationY;
+            gunViewModel.hipRotationZ = data.hip.rotationZ;
         }
 
         // Barrel settings (support both old single format and new ads/hip format)
@@ -201,22 +201,22 @@ var ConfigLoader = {
             },
             gunModel: {
                 ads: {
-                    offsetX: gm.adsOffsetX,
-                    offsetY: gm.adsOffsetY,
-                    offsetZ: gm.adsOffsetZ,
-                    scale: gm.adsScale,
-                    rotationX: gm.adsRotationX,
-                    rotationY: gm.adsRotationY,
-                    rotationZ: gm.adsRotationZ
+                    offsetX: gunViewModel.adsOffsetX,
+                    offsetY: gunViewModel.adsOffsetY,
+                    offsetZ: gunViewModel.adsOffsetZ,
+                    scale: gunViewModel.adsScale,
+                    rotationX: gunViewModel.adsRotationX,
+                    rotationY: gunViewModel.adsRotationY,
+                    rotationZ: gunViewModel.adsRotationZ
                 },
                 hip: {
-                    offsetX: gm.hipOffsetX,
-                    offsetY: gm.hipOffsetY,
-                    offsetZ: gm.hipOffsetZ,
-                    scale: gm.hipScale,
-                    rotationX: gm.hipRotationX,
-                    rotationY: gm.hipRotationY,
-                    rotationZ: gm.hipRotationZ
+                    offsetX: gunViewModel.hipOffsetX,
+                    offsetY: gunViewModel.hipOffsetY,
+                    offsetZ: gunViewModel.hipOffsetZ,
+                    scale: gunViewModel.hipScale,
+                    rotationX: gunViewModel.hipRotationX,
+                    rotationY: gunViewModel.hipRotationY,
+                    rotationZ: gunViewModel.hipRotationZ
                 },
                 barrel: {
                     ads: {
