@@ -214,6 +214,8 @@ var touchControls = {
 
 var debugUIVisible=true;  // Toggle with Start button
 var playerHeightOffset=70; // Player eye height above terrain
+var mouseSensitivity    = 0.002;  // Mouse hip look speed
+var mouseAdsSensitivity = 0.001;  // Mouse ADS look speed
 var bulletVertOffset=0;    // Vertical offset for bullet spawn (negative = below eye level)
 var bulletFwdOffset=0;     // Forward offset for bullet spawn (weapon distance from camera)
 var bulletHorizOffset=0;   // Horizontal offset for bullet spawn (left/right)
@@ -247,6 +249,7 @@ var gamepad={
     connected:false,
     deadzone:0.15,
     lookSensitivity:0.05,
+    adsLookSensitivity:0.03,
     // Previous button states for edge detection
     prevJump:false,
     prevStart:false,

@@ -404,6 +404,53 @@ function setupSliders() {
         applyUIScales();
     });
 
+    // Controls tab — Mouse look sensitivity
+    document.getElementById('mouseHipSens').addEventListener('input', function(e){
+        mouseSensitivity = parseFloat(e.target.value);
+        document.getElementById('mouseHipSens-value').innerText = mouseSensitivity.toFixed(4);
+    });
+    document.getElementById('mouseAdsSens').addEventListener('input', function(e){
+        mouseAdsSensitivity = parseFloat(e.target.value);
+        document.getElementById('mouseAdsSens-value').innerText = mouseAdsSensitivity.toFixed(4);
+    });
+
+    // Controls tab — Gamepad look sensitivity
+    document.getElementById('gpHipSens').addEventListener('input', function(e){
+        gamepad.lookSensitivity = parseFloat(e.target.value);
+        document.getElementById('gpHipSens-value').innerText = gamepad.lookSensitivity.toFixed(3);
+    });
+    document.getElementById('gpAdsSens').addEventListener('input', function(e){
+        gamepad.adsLookSensitivity = parseFloat(e.target.value);
+        document.getElementById('gpAdsSens-value').innerText = gamepad.adsLookSensitivity.toFixed(3);
+    });
+
+    // Controls tab — HUD size buttons
+    function setHudSize(size) {
+        var scale = size === 'small' ? 0.75 : size === 'large' ? 1.35 : 1.0;
+        uiScale.all = uiScale.crosshair = uiScale.healthbar = uiScale.jumpbar = uiScale.minimap = uiScale.weaponUI = scale;
+        document.getElementById('uiScaleAll').value = scale;
+        document.getElementById('uiScaleAll-value').innerText = scale.toFixed(1);
+        document.getElementById('uiScaleCrosshair').value = scale;
+        document.getElementById('uiScaleCrosshair-value').innerText = scale.toFixed(1);
+        document.getElementById('uiScaleHealthbar').value = scale;
+        document.getElementById('uiScaleHealthbar-value').innerText = scale.toFixed(1);
+        document.getElementById('uiScaleJumpbar').value = scale;
+        document.getElementById('uiScaleJumpbar-value').innerText = scale.toFixed(1);
+        document.getElementById('uiScaleMinimap').value = scale;
+        document.getElementById('uiScaleMinimap-value').innerText = scale.toFixed(1);
+        document.getElementById('uiScaleWeaponUI').value = scale;
+        document.getElementById('uiScaleWeaponUI-value').innerText = scale.toFixed(1);
+        applyUIScales();
+        ['hudSmall','hudMedium','hudLarge'].forEach(function(id) {
+            var active = (id === 'hud' + size.charAt(0).toUpperCase() + size.slice(1));
+            document.getElementById(id).style.background = active ? '#4CAF50' : '#555';
+            document.getElementById(id).style.color = active ? '#fff' : '#aaa';
+        });
+    }
+    document.getElementById('hudSmall').addEventListener('click', function(){ setHudSize('small'); });
+    document.getElementById('hudMedium').addEventListener('click', function(){ setHudSize('medium'); });
+    document.getElementById('hudLarge').addEventListener('click', function(){ setHudSize('large'); });
+
     // Initialize sliders in hip fire mode (player starts in hip fire)
     setEditMode('hip');
 
@@ -515,6 +562,11 @@ function getAllSettings() {
         uiScaleWeaponUI: uiScale.weaponUI,
         minimapZoomRange: minimapZoomRange,
         sideViewZoomRange: sideViewZoomRange,
+        // Look sensitivity
+        mouseSensitivity:    mouseSensitivity,
+        mouseAdsSensitivity: mouseAdsSensitivity,
+        gpHipSensitivity:    gamepad.lookSensitivity,
+        gpAdsSensitivity:    gamepad.adsLookSensitivity,
         // Scope and debug
         scopeMode: scopeMode,
         showHitRanges: showHitRanges,
@@ -681,6 +733,26 @@ function applySettings(s) {
         sideViewZoomRange = s.sideViewZoomRange;
         document.getElementById('sideViewZoomRange').value = s.sideViewZoomRange;
         document.getElementById('sideViewZoomRange-value').innerText = wuLabelM(s.sideViewZoomRange);
+    }
+    if (s.mouseSensitivity !== undefined) {
+        mouseSensitivity = s.mouseSensitivity;
+        document.getElementById('mouseHipSens').value = s.mouseSensitivity;
+        document.getElementById('mouseHipSens-value').innerText = s.mouseSensitivity.toFixed(4);
+    }
+    if (s.mouseAdsSensitivity !== undefined) {
+        mouseAdsSensitivity = s.mouseAdsSensitivity;
+        document.getElementById('mouseAdsSens').value = s.mouseAdsSensitivity;
+        document.getElementById('mouseAdsSens-value').innerText = s.mouseAdsSensitivity.toFixed(4);
+    }
+    if (s.gpHipSensitivity !== undefined) {
+        gamepad.lookSensitivity = s.gpHipSensitivity;
+        document.getElementById('gpHipSens').value = s.gpHipSensitivity;
+        document.getElementById('gpHipSens-value').innerText = s.gpHipSensitivity.toFixed(3);
+    }
+    if (s.gpAdsSensitivity !== undefined) {
+        gamepad.adsLookSensitivity = s.gpAdsSensitivity;
+        document.getElementById('gpAdsSens').value = s.gpAdsSensitivity;
+        document.getElementById('gpAdsSens-value').innerText = s.gpAdsSensitivity.toFixed(3);
     }
     if (s.scopeMode !== undefined) {
         setScopeMode(s.scopeMode);

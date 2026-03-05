@@ -163,15 +163,22 @@ var canMoveTo=(nx,ny)=>{
 
 // Main camera update function - handles movement, jumping, shooting
 function UpdateCamera(){
+    // Freeze all player actions when dead — wait for server respawn
+    if (player.health <= 0) {
+        time = Date.now(); // prevent deltaTime spike on respawn
+        return;
+    }
+
     var current=Date.now(),deltaTime=(current-time)*0.03,
         isSprinting = input.sprint || input.gpSprint,
         baseSpeed=player.moveSpeed*(isSprinting?player.sprintMultiplier:1)*deltaTime,nx,ny,slopeMult;
 
     // Gamepad look (Right Stick)
     if(input.lookX !== 0 || input.lookY !== 0){
-        camera.angle = (camera.angle - input.lookX * gamepad.lookSensitivity) % (2 * Math.PI);
+        var gpSens = input.aimToggled ? gamepad.adsLookSensitivity : gamepad.lookSensitivity;
+        camera.angle = (camera.angle - input.lookX * gpSens) % (2 * Math.PI);
         if(camera.angle < 0) camera.angle += 2 * Math.PI;
-        camera.horizon = Math.max(-400, Math.min(600, camera.horizon - input.lookY * gamepad.lookSensitivity * 100));
+        camera.horizon = Math.max(-400, Math.min(600, camera.horizon - input.lookY * gpSens * 100));
     }
 
     // Push player away from cube if too close (prevents camera clipping on rotation)

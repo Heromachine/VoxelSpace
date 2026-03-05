@@ -17,9 +17,10 @@ function DetectMouseUp(e){
 }
 
 function DetectMouseMove(e){
-    camera.angle=(camera.angle-e.movementX*0.002)%(2*Math.PI);
+    var sens = input.aimToggled ? mouseAdsSensitivity : mouseSensitivity;
+    camera.angle=(camera.angle-e.movementX*sens)%(2*Math.PI);
     if(camera.angle<0)camera.angle+=2*Math.PI;
-    camera.horizon=Math.max(-400,Math.min(600,camera.horizon-e.movementY*0.2));
+    camera.horizon=Math.max(-400,Math.min(600,camera.horizon-e.movementY*(sens*100)));
 }
 
 function DetectMouseWheel(e){

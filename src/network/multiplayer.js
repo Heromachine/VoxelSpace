@@ -24,6 +24,7 @@ var Multiplayer = (function () {
     var _matchId     = null;
     var _connected   = false;
     var _isAnonymous = false;
+    var _respawnInterval = null;
 
     // Position broadcast throttle
     var POSITION_INTERVAL_MS = 100;  // 10 Hz
@@ -176,6 +177,7 @@ var Multiplayer = (function () {
                 camera.y      = data.y;
                 player.health = data.health || 100;
                 player.shield = player.maxShield;
+                hideDeathScreen();
                 return;
             }
             nakamaState.remotePlayers[data.userId] = {
@@ -258,6 +260,7 @@ var Multiplayer = (function () {
             } else {
                 player.health = newHealth; // healing or no change
             }
+            if (player.health <= 0) showDeathScreen();
 
         } else if (opCode === OP_RADAR_REVEAL) {
             // A player shouted — reveal on radar for 5 seconds
@@ -337,6 +340,29 @@ var Multiplayer = (function () {
         var msg = el.querySelector(".kick-reason");
         if (msg) msg.textContent = reason;
         el.style.display = "flex";
+    }
+
+    // ── Death screen ──────────────────────────────────────────
+
+    function showDeathScreen() {
+        var el = document.getElementById('death-screen');
+        if (!el) return;
+        el.style.display = 'flex';
+        var secs = 5;
+        var countEl = document.getElementById('respawn-countdown');
+        if (countEl) countEl.textContent = secs;
+        clearInterval(_respawnInterval);
+        _respawnInterval = setInterval(function () {
+            secs--;
+            if (countEl) countEl.textContent = Math.max(0, secs);
+            if (secs <= 0) clearInterval(_respawnInterval);
+        }, 1000);
+    }
+
+    function hideDeathScreen() {
+        clearInterval(_respawnInterval);
+        var el = document.getElementById('death-screen');
+        if (el) el.style.display = 'none';
     }
 
     // ── Public API ─────────────────────────────────────────────
