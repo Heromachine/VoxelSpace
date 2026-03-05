@@ -698,8 +698,8 @@ function UpdateCamera(){
                 }
             }
 
-            // Enemy collision (sphere check)
-            if (!it.remote) {
+            // Enemy collision (sphere check) — single-player only
+            if (!it.remote && !Multiplayer.isConnected()) {
                 for (var ei = 0; ei < enemies.length; ei++) {
                     var e = enemies[ei];
                     if (e.health <= 0) continue;
@@ -710,6 +710,23 @@ function UpdateCamera(){
                         e.shield = Math.max(0, e.shield - absorbed);
                         e.health = Math.max(0, e.health - (dmg - absorbed));
                         e.lastDamageTime = current;
+                        if (it === lastBullet) { lastBullet = null; }
+                        return false; // destroy bullet
+                    }
+                }
+            }
+
+            // Remote player collision (sphere check) — multiplayer only
+            if (!it.remote && Multiplayer.isConnected()) {
+                var myId = NakamaClient.getUserId();
+                var rpIds = Object.keys(nakamaState.remotePlayers);
+                for (var rpi = 0; rpi < rpIds.length; rpi++) {
+                    var rp = nakamaState.remotePlayers[rpIds[rpi]];
+                    if (!rp || rp.userId === myId || rp.health <= 0) continue;
+                    var PLAYER_RADIUS = 10;
+                    var rpdx = it.x - rp.x, rpdy = it.y - rp.y, rpdz = it.z - (rp.height - PLAYER_RADIUS);
+                    if (Math.sqrt(rpdx*rpdx + rpdy*rpdy + rpdz*rpdz) < PLAYER_RADIUS) {
+                        Multiplayer.reportHit(rp.userId, it.damage || 10);
                         if (it === lastBullet) { lastBullet = null; }
                         return false; // destroy bullet
                     }

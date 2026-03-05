@@ -101,20 +101,22 @@ function DrawMinimap() {
         }
     }
 
-    // ---- Enemy dots (red, brighter when chasing/attacking) ----
-    for (var eni = 0; eni < enemies.length; eni++) {
-        var en = enemies[eni];
-        if (en.state === 'dead') continue;
-        var enx = (en.x - camera.x) * scale;
-        var eny = (en.y - camera.y) * scale;
-        var isAggro = en.state === 'chase' || en.state === 'attack';
-        ctx.beginPath();
-        ctx.arc(enx, eny, 4, 0, Math.PI * 2);
-        ctx.fillStyle = isAggro ? '#ff4400' : '#882200';
-        ctx.fill();
-        ctx.strokeStyle = isAggro ? '#ffaa88' : '#cc6655';
-        ctx.lineWidth = 1;
-        ctx.stroke();
+    // ---- Enemy dots (single-player only) ----
+    if (!Multiplayer.isConnected()) {
+        for (var eni = 0; eni < enemies.length; eni++) {
+            var en = enemies[eni];
+            if (en.state === 'dead') continue;
+            var enx = (en.x - camera.x) * scale;
+            var eny = (en.y - camera.y) * scale;
+            var isAggro = en.state === 'chase' || en.state === 'attack';
+            ctx.beginPath();
+            ctx.arc(enx, eny, 4, 0, Math.PI * 2);
+            ctx.fillStyle = isAggro ? '#ff4400' : '#882200';
+            ctx.fill();
+            ctx.strokeStyle = isAggro ? '#ffaa88' : '#cc6655';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
     }
 
     ctx.restore();  // removes clip + undoes translate/rotate
@@ -763,34 +765,34 @@ function DrawSideView(ctx){
         }
     });
 
-    // Draw enemies in side view
-    for (var svEi = 0; svEi < enemies.length; svEi++) {
-        var svE = enemies[svEi];
-        if (svE.state === 'dead') continue;
-        var svEdx = svE.x - camera.x;
-        var svEdy = svE.y - camera.y;
-        var svEDist = svEdx * fx + svEdy * fy;
-        if (svEDist > -rangeBack && svEDist < rangeForward) {
-            // Render enemy as a circle centered at mid-body height
-            var svEZ = svE.z + svE.hitRadius;
-            var svEScreen = toScreen(svEDist, svEZ);
-            var svER = Math.max(3, svE.hitRadius * Math.min(scaleX, scaleY));
-            var svIsAggro = svE.state === 'chase' || svE.state === 'attack';
-            ctx.beginPath();
-            ctx.arc(svEScreen.x, svEScreen.y, svER, 0, Math.PI * 2);
-            ctx.fillStyle = svIsAggro ? 'rgba(255,60,30,0.85)' : 'rgba(160,40,20,0.75)';
-            ctx.fill();
-            ctx.strokeStyle = svIsAggro ? '#ffaa88' : '#cc6655';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-            // Shield / health arc indicator on enemy dot
-            if (svE.shield > 0) {
+    // Draw enemies in side view (single-player only)
+    if (!Multiplayer.isConnected()) {
+        for (var svEi = 0; svEi < enemies.length; svEi++) {
+            var svE = enemies[svEi];
+            if (svE.state === 'dead') continue;
+            var svEdx = svE.x - camera.x;
+            var svEdy = svE.y - camera.y;
+            var svEDist = svEdx * fx + svEdy * fy;
+            if (svEDist > -rangeBack && svEDist < rangeForward) {
+                var svEZ = svE.z + svE.hitRadius;
+                var svEScreen = toScreen(svEDist, svEZ);
+                var svER = Math.max(3, svE.hitRadius * Math.min(scaleX, scaleY));
+                var svIsAggro = svE.state === 'chase' || svE.state === 'attack';
                 ctx.beginPath();
-                ctx.arc(svEScreen.x, svEScreen.y, svER + 2,
-                    -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (svE.shield / svE.maxShield));
-                ctx.strokeStyle = 'rgba(60,160,220,0.9)';
-                ctx.lineWidth = 2;
+                ctx.arc(svEScreen.x, svEScreen.y, svER, 0, Math.PI * 2);
+                ctx.fillStyle = svIsAggro ? 'rgba(255,60,30,0.85)' : 'rgba(160,40,20,0.75)';
+                ctx.fill();
+                ctx.strokeStyle = svIsAggro ? '#ffaa88' : '#cc6655';
+                ctx.lineWidth = 1;
                 ctx.stroke();
+                if (svE.shield > 0) {
+                    ctx.beginPath();
+                    ctx.arc(svEScreen.x, svEScreen.y, svER + 2,
+                        -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (svE.shield / svE.maxShield));
+                    ctx.strokeStyle = 'rgba(60,160,220,0.9)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
             }
         }
     }

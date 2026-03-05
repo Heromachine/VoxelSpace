@@ -18,13 +18,28 @@ function RenderSniperScope() {
         RenderShadowCube: RenderShadowCube,
         Render: Render,
         RenderItems: function() {
-            // Include live enemy sprites so they appear in scope view
-            var enemySprites = enemies
-                .filter(function(e) { return e.state !== 'dead'; })
-                .map(function(e) {
-                    return { type: 'enemy', x: e.x, y: e.y, z: e.z + e.hitRadius, image: e.texture };
-                });
-            RenderItems(enemySprites);
+            var sprites = [];
+
+            // Remote players in multiplayer
+            if (Multiplayer.isConnected()) {
+                var _now = Date.now();
+                var _myId = NakamaClient.getUserId();
+                for (var _uid in nakamaState.remotePlayers) {
+                    if (_uid === _myId) continue;
+                    var _rp = nakamaState.remotePlayers[_uid];
+                    if (_now - _rp.lastSeen > 10000) continue;
+                    sprites.push({ x: _rp.x, y: _rp.y, z: _rp.height - 30, type: 'player', image: textures.player, spriteFrame: _rp.spriteFrame || 0, spriteRow: _rp.spriteRow || 0 });
+                }
+            } else {
+                // Enemies in single-player
+                enemies
+                    .filter(function(e) { return e.state !== 'dead'; })
+                    .forEach(function(e) {
+                        sprites.push({ type: 'enemy', x: e.x, y: e.y, z: e.z + e.hitRadius, image: e.texture });
+                    });
+            }
+
+            RenderItems(sprites);
         },
         RenderGroundWeapons: RenderGroundWeapons,
         RenderTestTarget: RenderTestTarget
