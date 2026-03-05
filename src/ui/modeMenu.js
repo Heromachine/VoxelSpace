@@ -36,8 +36,20 @@ var ModeMenu = (function () {
         if (mpBtn) {
             mpBtn.addEventListener('click', function () {
                 hide();
-                // Multiplayer: go through login → clan → game
+                // Multiplayer: login → clan → game
+                // Future: insert game mode selection screen after clan selection
                 StartMultiplayer();
+            });
+        }
+
+        var adminBtn = document.getElementById('mode-admin');
+        if (adminBtn) {
+            adminBtn.addEventListener('click', function () {
+                hide();
+                // Admin: login to verify identity, then start single-player with dev tools
+                LoginScreen.show(function () {
+                    beginAdminGame();
+                });
             });
         }
     }

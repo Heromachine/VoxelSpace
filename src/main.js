@@ -171,15 +171,18 @@ function Draw(timestamp){
             playerSprites.push({ x: _rp.x, y: _rp.y, z: _rp.height - 30, type: "player", image: textures.player, spriteFrame: _rp.spriteFrame || 0, spriteRow: _rp.spriteRow || 0 });
         }
         // Add enemy sprites — skip dead enemies
-        var enemySprites = enemies
-            .filter(function(e) { return e.state !== 'dead'; })
-            .map(function(e) {
-                return { type: 'enemy', x: e.x, y: e.y, z: e.z + e.hitRadius, image: e.texture };
-            });
+        var enemySprites = [];
+        if (!Multiplayer.isConnected()) {
+            enemySprites = enemies
+                .filter(function(e) { return e.state !== 'dead'; })
+                .map(function(e) {
+                    return { type: 'enemy', x: e.x, y: e.y, z: e.z + e.hitRadius, image: e.texture };
+                });
+        }
         RenderItems(playerSprites.concat(enemySprites));
         Flip();
         RenderTestTarget();
-        DrawEnemyBars(screendata.context);
+        if (!Multiplayer.isConnected()) DrawEnemyBars(screendata.context);
         RenderGroundWeapons();
         RenderGunViewmodel(screendata.context);
         RenderSniperScope();
@@ -337,6 +340,21 @@ async function beginGame(isAnonymous) {
     }
 
     // Start the game loop
+    Init();
+    requestAnimationFrame(Draw);
+}
+
+async function beginAdminGame() {
+    // Login verified identity — grant admin tools if heromachine
+    isAdmin = (NakamaClient.getUsername() === "heromachine");
+    if (isAdmin) {
+        DisplayConfig.load();
+    } else {
+        showGMD        = false;
+        showHitRanges  = false;
+        testTarget.enabled = false;
+    }
+    // No multiplayer connection — single-player with dev tools
     Init();
     requestAnimationFrame(Draw);
 }

@@ -751,8 +751,8 @@ function UpdateCamera(){
         return true;
     });
 
-    // Enemy AI update
-    if (typeof updateEnemies === 'function') updateEnemies(current, deltaTime);
+    // Enemy AI update — single-player only
+    if (!Multiplayer.isConnected() && typeof updateEnemies === 'function') updateEnemies(current, deltaTime);
 
     // Shield regen (5 HP/sec, delayed 4s after last damage)
     if (player.shield < player.maxShield && (current - player.lastDamageTime) >= player.shieldRegenDelay) {
