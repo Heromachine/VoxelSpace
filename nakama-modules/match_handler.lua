@@ -196,6 +196,7 @@ local function handle_message(dispatcher, state, tick, msg)
         local damage    = math.max(0, math.min(100, tonumber(data.damage) or 0))
         local target    = state.players[target_id]
         if not target then return end
+        if target.isDead then return end  -- already dead, waiting for respawn
         if dist2d(record.x, record.y, target.x, target.y) > 1000 then return end
 
         -- Friendly fire check
@@ -263,7 +264,7 @@ function M.match_loop(context, dispatcher, tick, state, messages)
 
     -- Respawn dead players after RESPAWN_TICKS
     for uid, p in pairs(state.players) do
-        if p.isDead and (tick - p.deathTick) >= RESPAWN_TICKS then
+        if p.isDead and p.deathTick and (tick - p.deathTick) >= RESPAWN_TICKS then
             local rx = math.random(-300, 300)
             local ry = math.random(-300, 300)
             p.x      = rx

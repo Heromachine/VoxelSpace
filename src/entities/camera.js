@@ -723,9 +723,9 @@ function UpdateCamera(){
                 for (var rpi = 0; rpi < rpIds.length; rpi++) {
                     var rp = nakamaState.remotePlayers[rpIds[rpi]];
                     if (!rp || rp.userId === myId || rp.health <= 0) continue;
-                    // Sphere centered on mid-body (PLAYER_HEIGHT_WORLD/2 above feet = 39, eye at 70)
-                    var rpHitRadius = 20;
-                    var rpMidZ = rp.height - 31; // rp.height - (PLAYER_EYE_HEIGHT - PLAYER_HEIGHT_WORLD/2)
+                    // Sphere centered on upper torso (eye at 70, cover terrain+35 to terrain+85)
+                    var rpHitRadius = 25;
+                    var rpMidZ = rp.height - 10; // terrain + 60 with PLAYER_EYE_HEIGHT=70
                     var rpdx = it.x - rp.x, rpdy = it.y - rp.y, rpdz = it.z - rpMidZ;
                     if (Math.sqrt(rpdx*rpdx + rpdy*rpdy + rpdz*rpdz) < rpHitRadius) {
                         Multiplayer.reportHit(rp.userId, it.damage || 10);
@@ -773,8 +773,8 @@ function UpdateCamera(){
     // Enemy AI update — single-player only
     if (!Multiplayer.isConnected() && typeof updateEnemies === 'function') updateEnemies(current, deltaTime);
 
-    // Shield regen (5 HP/sec, delayed 4s after last damage)
-    if (player.shield < player.maxShield && (current - player.lastDamageTime) >= player.shieldRegenDelay) {
+    // Shield regen (5 HP/sec, delayed 4s after last damage) — blocked when dead
+    if (player.health > 0 && player.shield < player.maxShield && (current - player.lastDamageTime) >= player.shieldRegenDelay) {
         player.shield = Math.min(player.maxShield, player.shield + player.shieldRegenRate * (deltaTime / 30));
     }
 
