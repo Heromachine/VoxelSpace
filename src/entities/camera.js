@@ -549,6 +549,7 @@ function UpdateCamera(){
 
         // Pellet loop: shotgun fires multiple, all others fire 1
         var pellets = currentWeapon.pellets || 1;
+        lastHitscanRays = []; // clear previous burst
         for (var p = 0; p < pellets; p++) {
             var spreadX = (Math.random() - 0.5) * spread;
             var spreadY = (Math.random() - 0.5) * spread;
@@ -567,6 +568,17 @@ function UpdateCamera(){
             var rayDirZ = dirz / bulletSpeed;
 
             var hitscanHitPos = runHitscan(spawnX, spawnY, spawnZ, rayDirX, rayDirY, rayDirZ);
+
+            // Record ray for debug minimap overlay
+            if (isAdmin) {
+                lastHitscanRays.push({
+                    x0: spawnX, y0: spawnY,
+                    x1: hitscanHitPos ? hitscanHitPos.x : spawnX + rayDirX * hitscanDistance,
+                    y1: hitscanHitPos ? hitscanHitPos.y : spawnY + rayDirY * hitscanDistance,
+                    hit: !!hitscanHitPos,
+                    time: current
+                });
+            }
 
             var bullet = {
                 type: "bullet",
@@ -686,6 +698,24 @@ function UpdateCamera(){
                 }
             }
 
+            // Enemy collision (sphere check)
+            if (!it.remote) {
+                for (var ei = 0; ei < enemies.length; ei++) {
+                    var e = enemies[ei];
+                    if (e.health <= 0) continue;
+                    var edx = it.x - e.x, edy = it.y - e.y, edz = it.z - (e.z + e.hitRadius);
+                    if (Math.sqrt(edx*edx + edy*edy + edz*edz) < e.hitRadius) {
+                        var dmg = it.damage || 10;
+                        var absorbed = Math.min(e.shield, dmg);
+                        e.shield = Math.max(0, e.shield - absorbed);
+                        e.health = Math.max(0, e.health - (dmg - absorbed));
+                        e.lastDamageTime = current;
+                        if (it === lastBullet) { lastBullet = null; }
+                        return false; // destroy bullet
+                    }
+                }
+            }
+
             // Cube collision (CCD ray-AABB intersection)
             if (it.remote) {
                 var terrainHeight=getRawTerrainHeight(it.x,it.y);
@@ -721,7 +751,16 @@ function UpdateCamera(){
         return true;
     });
 
+    // Enemy AI update
+    if (typeof updateEnemies === 'function') updateEnemies(current, deltaTime);
+
+    // Shield regen (5 HP/sec, delayed 4s after last damage)
+    if (player.shield < player.maxShield && (current - player.lastDamageTime) >= player.shieldRegenDelay) {
+        player.shield = Math.min(player.maxShield, player.shield + player.shieldRegenRate * (deltaTime / 30));
+    }
+
     // HUD updates
+    document.getElementById('shieldinner').style.width=(player.shield/player.maxShield*100)+'%';
     document.getElementById('health').style.width=player.health+'%';
     var wepSlot = playerWeapons[currentWeaponIndex];
     var wepDef = weapons[wepSlot.type];

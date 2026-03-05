@@ -17,7 +17,15 @@ function RenderSniperScope() {
         RenderGreenCube: RenderGreenCube,
         RenderShadowCube: RenderShadowCube,
         Render: Render,
-        RenderItems: RenderItems,
+        RenderItems: function() {
+            // Include live enemy sprites so they appear in scope view
+            var enemySprites = enemies
+                .filter(function(e) { return e.state !== 'dead'; })
+                .map(function(e) {
+                    return { type: 'enemy', x: e.x, y: e.y, z: e.z + e.hitRadius, image: e.texture };
+                });
+            RenderItems(enemySprites);
+        },
         RenderGroundWeapons: RenderGroundWeapons,
         RenderTestTarget: RenderTestTarget
     };

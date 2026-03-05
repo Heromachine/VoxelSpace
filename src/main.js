@@ -25,6 +25,16 @@ function applyUIScales() {
         healthbar.style.borderWidth = (1 * hs) + 'px';
     }
 
+    var shieldbar = document.getElementById('shieldbar');
+    if (shieldbar) {
+        var hs = uiScale.healthbar;
+        shieldbar.style.width = (180 * hs) + 'px';
+        shieldbar.style.height = (8 * hs) + 'px';
+        shieldbar.style.bottom = (30 * hs) + 'px';
+        shieldbar.style.left = (10 * hs) + 'px';
+        shieldbar.style.borderWidth = (1 * hs) + 'px';
+    }
+
     if (jumpbar) {
         var js = uiScale.jumpbar;
         jumpbar.style.width = (180 * js) + 'px';
@@ -160,9 +170,16 @@ function Draw(timestamp){
             if (_now - _rp.lastSeen > 10000) continue;
             playerSprites.push({ x: _rp.x, y: _rp.y, z: _rp.height - 30, type: "player", image: textures.player, spriteFrame: _rp.spriteFrame || 0, spriteRow: _rp.spriteRow || 0 });
         }
-        RenderItems(playerSprites);
+        // Add enemy sprites — skip dead enemies
+        var enemySprites = enemies
+            .filter(function(e) { return e.state !== 'dead'; })
+            .map(function(e) {
+                return { type: 'enemy', x: e.x, y: e.y, z: e.z + e.hitRadius, image: e.texture };
+            });
+        RenderItems(playerSprites.concat(enemySprites));
         Flip();
         RenderTestTarget();
+        DrawEnemyBars(screendata.context);
         RenderGroundWeapons();
         RenderGunViewmodel(screendata.context);
         RenderSniperScope();

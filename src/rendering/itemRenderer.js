@@ -58,6 +58,7 @@ function RenderItems(extraItems){
     // Filter valid + sort back-to-front (far items first)
     projected = projected
         .filter(obj => obj.groundForward > 0.1 && obj.groundForward < camera.distance)
+        .filter(obj => !(isAdmin && obj.it.type === 'tree'))
         .sort((a,b) => b.groundForward - a.groundForward);
 
     // Draw each item pixel-by-pixel with depth testing
@@ -80,6 +81,14 @@ function RenderItems(extraItems){
         if (it.type === "player") {
             scaleX *= 2;   // ~24 units wide
             scaleY *= 6.5; // ~78 units tall
+        }
+        if (it.type === "enemy") {
+            // Vertical: 6.5 × (20/32.3) ≈ 4.0 → 62% of player height (enemy diameter = 2×hitRadius)
+            scaleY *= 4;
+            // Horizontal: correct for horizontal vs vertical projection mismatch.
+            // Horizontal pixels-per-WU = (sw/2)/gf, vertical = focal/gf.
+            // To appear circular: scaleX = scaleY × (sw/2) / focal
+            scaleX *= 4 * (sw / 2) / focal;
         }
         if (it.type === "bullet") {
             scaleX *= bulletSize;
@@ -132,9 +141,9 @@ function RenderItems(extraItems){
         var destW = Math.max(1, Math.ceil(scaleX));
         var destH = Math.max(1, Math.ceil(scaleY));
         var destX = Math.floor(screenX - destW/2);
-        // Bullets: center-align vertically so they're visible above terrain.
+        // Bullets + enemies: center-align vertically (sphere center at z).
         // Trees/hearts: bottom-align so the base sits on the ground.
-        var destY = it.type === "bullet"
+        var destY = (it.type === "bullet" || it.type === "enemy")
             ? Math.floor(screenY - destH / 2)
             : Math.floor(screenY - destH);
 

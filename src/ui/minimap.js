@@ -101,6 +101,22 @@ function DrawMinimap() {
         }
     }
 
+    // ---- Enemy dots (red, brighter when chasing/attacking) ----
+    for (var eni = 0; eni < enemies.length; eni++) {
+        var en = enemies[eni];
+        if (en.state === 'dead') continue;
+        var enx = (en.x - camera.x) * scale;
+        var eny = (en.y - camera.y) * scale;
+        var isAggro = en.state === 'chase' || en.state === 'attack';
+        ctx.beginPath();
+        ctx.arc(enx, eny, 4, 0, Math.PI * 2);
+        ctx.fillStyle = isAggro ? '#ff4400' : '#882200';
+        ctx.fill();
+        ctx.strokeStyle = isAggro ? '#ffaa88' : '#cc6655';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    }
+
     ctx.restore();  // removes clip + undoes translate/rotate
 
     // ---- Player icon: white triangle always pointing UP ----
@@ -257,6 +273,16 @@ function DrawDebugMinimap() {
     ctx.lineWidth = 1;
     ctx.stroke();
 
+    // Hitscan range circle (always visible — shows max hitscan engagement distance)
+    if (hitscanDistance > 0) {
+        var hsCircleR = hitscanDistance * scale;
+        ctx.beginPath();
+        ctx.arc(pcx, pcy, hsCircleR, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255,80,80,0.55)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+    }
+
     // Remote players and radar reveals
     var myId = (typeof NakamaClient !== 'undefined') ? NakamaClient.getUserId() : null;
     var now = Date.now();
@@ -322,6 +348,37 @@ function DrawDebugMinimap() {
         }
     }
 
+    // Hitscan rays (fade out over 1.5s after each shot)
+    if (lastHitscanRays.length) {
+        var rayNow = Date.now();
+        for (var hri = 0; hri < lastHitscanRays.length; hri++) {
+            var ray = lastHitscanRays[hri];
+            var age = rayNow - ray.time;
+            if (age > 1500) continue;
+            var alpha = (1 - age / 1500).toFixed(2);
+            var rx0 = pcx + (ray.x0 - camera.x) * scale;
+            var ry0 = pcy + (ray.y0 - camera.y) * scale;
+            var rx1 = pcx + (ray.x1 - camera.x) * scale;
+            var ry1 = pcy + (ray.y1 - camera.y) * scale;
+            // Line from barrel to hit/max-range
+            ctx.beginPath();
+            ctx.moveTo(rx0, ry0);
+            ctx.lineTo(rx1, ry1);
+            ctx.strokeStyle = ray.hit
+                ? 'rgba(255,80,80,' + alpha + ')'
+                : 'rgba(255,220,80,' + alpha + ')';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            // Dot at impact point
+            if (ray.hit) {
+                ctx.beginPath();
+                ctx.arc(rx1, ry1, 3, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255,80,80,' + alpha + ')';
+                ctx.fill();
+            }
+        }
+    }
+
     // Bullets (red dots)
     var bulletWorldRadius = bulletSize * 2;
     items.forEach(function(it) {
@@ -361,6 +418,53 @@ function DrawDebugMinimap() {
             ctx.lineWidth = 1;
             ctx.stroke();
         }
+    }
+
+    // Enemies: leash circle, vision cone, dot
+    for (var eni = 0; eni < enemies.length; eni++) {
+        var en = enemies[eni];
+        if (en.state === 'dead') continue;
+
+        var enx = (en.x - camera.x) * scale;
+        var eny = (en.y - camera.y) * scale;
+        var isAggro = en.state === 'chase' || en.state === 'attack';
+
+        // Leash circle around pole (dashed)
+        var poleSx = pcx + (en.poleX - camera.x) * scale;
+        var poleSy = pcy + (en.poleY - camera.y) * scale;
+        ctx.beginPath();
+        ctx.arc(poleSx, poleSy, en.leashRadius * scale, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(180,60,60,0.3)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Vision cone
+        var coneLen   = en.visionRange * scale;
+        var coneLeft  = en.faceAngle - en.visionHalfAngle;
+        var coneRight = en.faceAngle + en.visionHalfAngle;
+        ctx.beginPath();
+        ctx.moveTo(pcx + enx, pcy + eny);
+        ctx.lineTo(pcx + enx + Math.cos(coneLeft)  * coneLen,
+                   pcy + eny + Math.sin(coneLeft)  * coneLen);
+        ctx.lineTo(pcx + enx + Math.cos(coneRight) * coneLen,
+                   pcy + eny + Math.sin(coneRight) * coneLen);
+        ctx.closePath();
+        ctx.fillStyle   = isAggro ? 'rgba(255,100,0,0.22)' : 'rgba(180,60,60,0.13)';
+        ctx.fill();
+        ctx.strokeStyle = isAggro ? 'rgba(255,140,0,0.75)' : 'rgba(180,60,60,0.5)';
+        ctx.lineWidth   = 1;
+        ctx.stroke();
+
+        // Enemy dot (world-scaled to match hit radius)
+        ctx.beginPath();
+        ctx.arc(pcx + enx, pcy + eny, Math.max(2, en.hitRadius * scale), 0, Math.PI * 2);
+        ctx.fillStyle   = isAggro ? '#ff4400' : '#882200';
+        ctx.fill();
+        ctx.strokeStyle = isAggro ? '#ffaa88' : '#cc6655';
+        ctx.lineWidth   = 1;
+        ctx.stroke();
     }
 
     // Dev overlays: view direction, barrel direction, gun shape, bullet spawn
@@ -658,6 +762,38 @@ function DrawSideView(ctx){
             }
         }
     });
+
+    // Draw enemies in side view
+    for (var svEi = 0; svEi < enemies.length; svEi++) {
+        var svE = enemies[svEi];
+        if (svE.state === 'dead') continue;
+        var svEdx = svE.x - camera.x;
+        var svEdy = svE.y - camera.y;
+        var svEDist = svEdx * fx + svEdy * fy;
+        if (svEDist > -rangeBack && svEDist < rangeForward) {
+            // Render enemy as a circle centered at mid-body height
+            var svEZ = svE.z + svE.hitRadius;
+            var svEScreen = toScreen(svEDist, svEZ);
+            var svER = Math.max(3, svE.hitRadius * Math.min(scaleX, scaleY));
+            var svIsAggro = svE.state === 'chase' || svE.state === 'attack';
+            ctx.beginPath();
+            ctx.arc(svEScreen.x, svEScreen.y, svER, 0, Math.PI * 2);
+            ctx.fillStyle = svIsAggro ? 'rgba(255,60,30,0.85)' : 'rgba(160,40,20,0.75)';
+            ctx.fill();
+            ctx.strokeStyle = svIsAggro ? '#ffaa88' : '#cc6655';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            // Shield / health arc indicator on enemy dot
+            if (svE.shield > 0) {
+                ctx.beginPath();
+                ctx.arc(svEScreen.x, svEScreen.y, svER + 2,
+                    -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (svE.shield / svE.maxShield));
+                ctx.strokeStyle = 'rgba(60,160,220,0.9)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        }
+    }
 
     // Draw test target in side view
     if (testTarget.enabled) {

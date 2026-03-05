@@ -244,8 +244,18 @@ var Multiplayer = (function () {
             disconnect();
 
         } else if (opCode === OP_DAMAGE) {
-            // Server confirmed we took damage
-            player.health = Math.max(0, data.health);
+            // Server confirmed we took damage — shield absorbs first
+            var newHealth = Math.max(0, data.health);
+            var dmg = Math.max(0, player.health - newHealth);
+            if (dmg > 0) {
+                var absorbed = Math.min(player.shield, dmg);
+                player.shield = Math.max(0, player.shield - absorbed);
+                var remainder = dmg - absorbed;
+                player.health = Math.max(0, player.health - remainder);
+                player.lastDamageTime = Date.now();
+            } else {
+                player.health = newHealth; // healing or no change
+            }
 
         } else if (opCode === OP_RADAR_REVEAL) {
             // A player shouted — reveal on radar for 5 seconds

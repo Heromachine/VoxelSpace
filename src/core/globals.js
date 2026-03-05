@@ -18,7 +18,10 @@ var camera = {
     baseX: 0, baseY: 0     // actual player position (before ADS offset)
 };
 
-var player={health:100,isCrouching:false,moveSpeed:1.5,sprintMultiplier:2,
+var enemies = [];
+
+var player={health:100,shield:100,maxShield:100,shieldRegenRate:5,shieldRegenDelay:4000,lastDamageTime:0,
+            isCrouching:false,moveSpeed:1.5,sprintMultiplier:2,
             // Charged jump system
             jumpMinStrength:3,      // tap jump
             jumpMaxStrength:12,     // fully charged (basketball player ~1m vertical)
@@ -217,6 +220,7 @@ var bulletHorizOffset=0;   // Horizontal offset for bullet spawn (left/right)
 var bulletSize=0.75;       // Bullet rendering scale
 
 // Hitscan/CCD hybrid system
+var lastHitscanRays = [];  // Stores rays from most recent shot burst for debug overlay
 var hitscanDistance=50;    // Distance for instant hitscan (world units)
 var ccdMaxDistance=500;    // Max distance for CCD bullets before despawn
 var showHitRanges=true;    // Show hitscan/CCD radius circles on minimap

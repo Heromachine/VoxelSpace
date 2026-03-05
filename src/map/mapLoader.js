@@ -98,6 +98,10 @@ function flattenTerrainUnderCube() {
     // Plasma Pistol — right diagonal, past cube
     groundWeapons.push({ type: "plasmaPistol",x:  90, y:-160, z: getRawTerrainHeight( 90, -160) });
 
+    // Spawn test Prowler enemies (outside cube footprint x:-50..50, y:-130..-30)
+    enemies.push(createProwler( 120,  60, { startAngle: 0,    leashRadius: 50 }));
+    enemies.push(createProwler(-110, 120, { startAngle: 2.5,  leashRadius: 60, color: '#AA0044', outlineColor: '#440022' }));
+
     // Spawn random trees on green-ish terrain
     spawnRandomItems("tree", textures.tree, {
         step: 8,
