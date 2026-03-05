@@ -8,7 +8,7 @@
 
 var PLAYER_WIDTH_WORLD  = 20;
 var PLAYER_HEIGHT_WORLD = 78;
-var PLAYER_EYE_HEIGHT   = 30;
+var PLAYER_EYE_HEIGHT   = 70;
 
 // Shared per-frame screen data filled by RenderRemotePlayerBodies
 var _rpScreenData = {};

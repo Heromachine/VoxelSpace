@@ -213,7 +213,7 @@ var touchControls = {
 };
 
 var debugUIVisible=true;  // Toggle with Start button
-var playerHeightOffset=30; // Player eye height above terrain (min 30)
+var playerHeightOffset=70; // Player eye height above terrain
 var bulletVertOffset=0;    // Vertical offset for bullet spawn (negative = below eye level)
 var bulletFwdOffset=0;     // Forward offset for bullet spawn (weapon distance from camera)
 var bulletHorizOffset=0;   // Horizontal offset for bullet spawn (left/right)

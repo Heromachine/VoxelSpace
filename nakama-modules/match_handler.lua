@@ -23,6 +23,7 @@ local TICK_RATE      = 20
 local VICINITY_RANGE = 150
 local SHOUT_RANGE    = 500
 local MAX_HEALTH     = 100
+local RESPAWN_TICKS  = 5 * TICK_RATE  -- 5 seconds until respawn
 
 local M = {}
 
@@ -225,6 +226,8 @@ local function handle_message(dispatcher, state, tick, msg)
                 _nk.json_encode({ killerId = sender_uid, victimId = target_id,
                     kills = record.kills }),
                 nil, nil, true)
+            target.isDead    = true
+            target.deathTick = tick
         end
 
     elseif op == OP_SHOOT then
@@ -257,6 +260,23 @@ function M.match_loop(context, dispatcher, tick, state, messages)
             print("match_loop msg error: " .. tostring(err))
         end
     end
+
+    -- Respawn dead players after RESPAWN_TICKS
+    for uid, p in pairs(state.players) do
+        if p.isDead and (tick - p.deathTick) >= RESPAWN_TICKS then
+            local rx = math.random(-300, 300)
+            local ry = math.random(-300, 300)
+            p.x      = rx
+            p.y      = ry
+            p.health = MAX_HEALTH
+            p.isDead = false
+            dispatcher.broadcast_message(OP_PLAYER_JOIN,
+                _nk.json_encode({ userId = uid, username = p.username,
+                    x = rx, y = ry, height = 78, angle = 0, health = MAX_HEALTH }),
+                nil, nil, true)
+        end
+    end
+
     return state
 end
 
