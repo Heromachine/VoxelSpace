@@ -187,7 +187,7 @@ function Draw(timestamp){
 // Initialize game
 function Init(){
     for(var i=0;i<map.width*map.height;i++){map.color[i]=0xFF007050;map.altitude[i]=0;}
-    LoadMap("C1W;D1");
+    LoadMap(isAdmin ? "CE;DE" : "C1W;D1");
     OnResizeWindow();
     loadGunModel();
     loadCubeTexture();
