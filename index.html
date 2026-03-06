@@ -19,6 +19,12 @@
     <title>Ring — Combat Revolved</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- PWA / fullscreen on mobile -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen">
+    <meta name="apple-mobile-web-app-title" content="Ring">
+    <link rel="manifest" href="manifest.json">
     <style>
         /* ── Halo font ── */
         @font-face {
@@ -1321,8 +1327,23 @@
     var splash = document.getElementById('splash-screen');
     if (!splash) return;
 
+    // Request browser fullscreen on mobile (Android Chrome supports this;
+    // iOS requires PWA / Add to Home Screen for true fullscreen)
+    function tryFullscreen() {
+        var isTouch = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+        if (!isTouch) return;
+        var el = document.documentElement;
+        if (el.requestFullscreen)              el.requestFullscreen().catch(function(){});
+        else if (el.webkitRequestFullscreen)   el.webkitRequestFullscreen();
+    }
+
+    // Relay fullscreen change → resize so the game canvas re-fits
+    document.addEventListener('fullscreenchange',       function () { if (typeof OnResizeWindow === 'function') OnResizeWindow(); });
+    document.addEventListener('webkitfullscreenchange', function () { if (typeof OnResizeWindow === 'function') OnResizeWindow(); });
+
     function dismiss() {
         if (splash.classList.contains('fade-out')) return;
+        tryFullscreen();
         splash.classList.add('fade-out');
         setTimeout(function () {
             splash.style.display = 'none';

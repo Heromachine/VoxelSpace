@@ -43,19 +43,19 @@ function updateTouchControlPositions() {
         touchControls.controlsTop = 0;
 
         touchControls.leftStickPos  = { x: r + 35, y: sh - r - 80 };
-        touchControls.rightStickPos = { x: sw - r - 35, y: sh - r - 80 };
+        touchControls.rightStickPos = { x: sw - r - 35, y: sh - r - 30 };  // moved down
 
         touchControls.shootButton.x = sw - 80;
-        touchControls.shootButton.y = sh - 100;
+        touchControls.shootButton.y = sh - 190;  // moved up
         touchControls.zoomButton.x  = sw - 80;
-        touchControls.zoomButton.y  = sh - 210;
+        touchControls.zoomButton.y  = sh - 270;  // shifted up to stay above fire
         touchControls.jumpButton.x  = sw - 190;
         touchControls.jumpButton.y  = sh - 100;
         touchControls.swapButton.x  = r + 35 + 115;
         touchControls.swapButton.y  = sh - 80;
     }
 
-    touchControls.shootButton.radius = 45;
+    touchControls.shootButton.radius = 32;  // smaller (was 45)
     touchControls.jumpButton.radius  = 32;
     touchControls.zoomButton.radius  = 32;
     touchControls.swapButton.radius  = 28;
