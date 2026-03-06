@@ -46,8 +46,8 @@ var ModeMenu = (function () {
         if (adminBtn) {
             adminBtn.addEventListener('click', function () {
                 hide();
-                // Admin: login to verify identity, then start single-player with dev tools
-                LoginScreen.show(function () {
+                // Dev Admin: simplified login (username + pw only), then start admin game
+                DevAdminLoginScreen.show(function () {
                     beginAdminGame();
                 });
             });

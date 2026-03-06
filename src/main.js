@@ -345,7 +345,7 @@ async function beginGame(isAnonymous) {
 }
 
 async function beginAdminGame() {
-    // Login verified identity — grant admin tools if heromachine
+    // Grant admin tools if heromachine; others get read-only dev access
     isAdmin = (NakamaClient.getUsername() === "heromachine");
     if (isAdmin) {
         DisplayConfig.load();
@@ -354,6 +354,8 @@ async function beginAdminGame() {
         showHitRanges  = false;
         testTarget.enabled = false;
     }
+    // Auto-assign dev clan — no clan selection screen for admins
+    nakamaState.myClan = "iron_ravens";
     // No multiplayer connection — single-player with dev tools
     Init();
     requestAnimationFrame(Draw);

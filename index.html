@@ -896,6 +896,23 @@
 </div>
 
 <!-- ══════════════════════════════════════ -->
+<!-- DEV ADMIN LOGIN SCREEN                -->
+<!-- ══════════════════════════════════════ -->
+<div id="dev-admin-login-screen" class="mp-overlay" style="display:none">
+  <header>
+    <h1>Dev Admin</h1>
+    <p class="tagline">Developer access — authorized personnel only</p>
+  </header>
+
+  <div class="login-box">
+    <input id="dev-admin-username" type="text"     placeholder="Username" autocomplete="username">
+    <input id="dev-admin-password" type="password" placeholder="Password" autocomplete="current-password">
+    <button id="dev-admin-login-btn" class="mp-btn">Enter</button>
+    <div id="dev-admin-status"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
 <!-- KICK SCREEN                           -->
 <!-- ══════════════════════════════════════ -->
 <div id="kick-screen" class="mp-overlay">
@@ -1215,6 +1232,7 @@
 <script src="src/ui/modeMenu.js"></script>
 <script src="src/ui/loginScreen.js"></script>
 <script src="src/ui/clanScreen.js"></script>
+<script src="src/ui/devAdminLoginScreen.js"></script>
 
 <!-- ===================================== -->
 <!-- External Modules (config definitions) -->
