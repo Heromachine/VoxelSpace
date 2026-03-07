@@ -6,15 +6,17 @@
 // ===============================
 "use strict";
 
-var PLAYER_WIDTH_WORLD  = 20;
-var PLAYER_HEIGHT_WORLD = 78;
-var PLAYER_EYE_HEIGHT   = 70;
-
 // Shared per-frame screen data filled by RenderRemotePlayerBodies
 var _rpScreenData = {};
 
 function RenderRemotePlayerBodies() {
     _rpScreenData = {};
+
+    // Derived from playerHeightOffset so they scale automatically.
+    // Computed here (not at module level) because loadSettings() runs after script parse.
+    var PLAYER_EYE_HEIGHT   = playerHeightOffset;
+    var PLAYER_HEIGHT_WORLD = playerHeightOffset * (78 / 70);  // total body height incl. head above eye
+    var PLAYER_WIDTH_WORLD  = playerHeightOffset * (20 / 70);  // shoulder width
 
     var W    = screendata.canvas.width;
     var H    = screendata.canvas.height;
