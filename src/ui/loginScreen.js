@@ -6,12 +6,16 @@
 var LoginScreen = (function () {
 
     var _onComplete = null;  // callback(isAnonymous)
+    var _bound = false;
 
     function show(onComplete) {
         _onComplete = onComplete;
         var el = document.getElementById("login-screen");
         if (el) el.style.display = "flex";
-        bindEvents();
+        if (!_bound) {
+            _bound = true;
+            bindEvents();
+        }
     }
 
     function hide() {
@@ -28,45 +32,30 @@ var LoginScreen = (function () {
 
     function bindEvents() {
         // Back to mode menu
-        var backBtn = document.getElementById("login-back-btn");
-        if (backBtn) {
-            backBtn.addEventListener("click", function () {
-                hide();
-                ModeMenu.show();
-            });
-        }
+        document.getElementById("login-back-btn").addEventListener("click", function () {
+            hide();
+            ModeMenu.show();
+        });
 
         // Anonymous login
-        var anonBtn = document.getElementById("login-anon-btn");
-        if (anonBtn) {
-            anonBtn.addEventListener("click", function () {
-                handleAnon();
-            });
-        }
+        document.getElementById("login-anon-btn").addEventListener("click", function () {
+            handleAnon();
+        });
 
         // Username/password login form
-        var loginBtn = document.getElementById("login-pw-btn");
-        if (loginBtn) {
-            loginBtn.addEventListener("click", function () {
-                handleUsernameLogin();
-            });
-        }
+        document.getElementById("login-pw-btn").addEventListener("click", function () {
+            handleUsernameLogin();
+        });
 
         // Enter key on password field
-        var pwField = document.getElementById("login-password");
-        if (pwField) {
-            pwField.addEventListener("keydown", function (e) {
-                if (e.key === "Enter") handleUsernameLogin();
-            });
-        }
+        document.getElementById("login-password").addEventListener("keydown", function (e) {
+            if (e.key === "Enter") handleUsernameLogin();
+        });
 
         // Steam (placeholder)
-        var steamBtn = document.getElementById("login-steam-btn");
-        if (steamBtn) {
-            steamBtn.addEventListener("click", function () {
-                setStatus("Steam login is not yet available.", true);
-            });
-        }
+        document.getElementById("login-steam-btn").addEventListener("click", function () {
+            setStatus("Steam login is not yet available.", true);
+        });
     }
 
     async function handleAnon() {

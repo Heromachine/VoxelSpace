@@ -29,7 +29,7 @@ var ClanScreen = (function () {
     var _onComplete  = null;  // callback(clanId)
     var _isAnonymous = false;
 
-    var _backBound = false;
+    var _bound = false;
 
     function show(isAnonymous, onComplete) {
         _isAnonymous = isAnonymous;
@@ -38,15 +38,12 @@ var ClanScreen = (function () {
         var el = document.getElementById("clan-screen");
         if (el) el.style.display = "flex";
 
-        if (!_backBound) {
-            _backBound = true;
-            var backBtn = document.getElementById("clan-back-btn");
-            if (backBtn) {
-                backBtn.addEventListener("click", function () {
-                    hide();
-                    LoginScreen.show(onComplete);
-                });
-            }
+        if (!_bound) {
+            _bound = true;
+            document.getElementById("clan-back-btn").addEventListener("click", function () {
+                hide();
+                LoginScreen.show(_onComplete);
+            });
         }
 
         buildCards();
