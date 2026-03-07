@@ -730,9 +730,9 @@ function UpdateCamera(){
                 for (var rpi = 0; rpi < rpIds.length; rpi++) {
                     var rp = nakamaState.remotePlayers[rpIds[rpi]];
                     if (!rp || rp.userId === myId || rp.health <= 0) continue;
-                    // Sphere centered on upper torso (eye at 70, cover terrain+35 to terrain+85)
-                    var rpHitRadius = 25;
-                    var rpMidZ = rp.height - 10; // terrain + 60 with PLAYER_EYE_HEIGHT=70
+                    // Sphere scales with playerHeightOffset (ratios calibrated at 7 WU eye height)
+                    var rpHitRadius = playerHeightOffset * (25 / 70);   // ~35% of eye height
+                    var rpMidZ = rp.height - playerHeightOffset * (10 / 70); // ~14% below eye level
                     var rpdx = it.x - rp.x, rpdy = it.y - rp.y, rpdz = it.z - rpMidZ;
                     if (Math.sqrt(rpdx*rpdx + rpdy*rpdy + rpdz*rpdz) < rpHitRadius) {
                         Multiplayer.reportHit(rp.userId, it.damage || 10);

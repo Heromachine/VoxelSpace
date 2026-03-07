@@ -3,9 +3,9 @@
 // ===============================
 "use strict";
 
-// Scale reference: 1 world unit (WU) ≈ 30 cm
-// Calibrated: playerHeightOffset=7 WU ≈ 7 feet ≈ 210 cm (eye level)
-// For metric: average 175 cm person → eye at ~165 cm ≈ 5.5 WU
+// Scale reference: 1 world unit (WU) ≈ 1 foot ≈ 30 cm
+// Player eye height: 7 WU ≈ 7 feet (eye level of ~6'3" person)
+// globals.js sets the fallback default; actual value is loaded from data/settings.json at startup
 var WU_TO_CM = 30;
 
 var camera = {

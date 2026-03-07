@@ -834,6 +834,29 @@ async function loadSettings() {
         ConfigLoader.applyGunModel(gunModel);
         ConfigLoader.applyWeapons();
         ConfigLoader.applyGamepad();
+
+        // Apply player and camera settings from settings.json.
+        // We do this directly (not via applySettings) to avoid touching admin-only DOM sliders.
+        var s = ConfigLoader.settings;
+        if (s && s.player) {
+            if (s.player.playerHeight !== undefined) playerHeightOffset  = s.player.playerHeight;
+            if (s.player.normalHeight !== undefined) player.normalHeight = s.player.normalHeight;
+            if (s.player.crouchHeight !== undefined) player.crouchHeight = s.player.crouchHeight;
+            if (s.player.jumpMin     !== undefined) player.jumpMinStrength = s.player.jumpMin;
+            if (s.player.jumpMax     !== undefined) player.jumpMaxStrength = s.player.jumpMax;
+        }
+        if (s && s.camera) {
+            if (s.camera.fov !== undefined) {
+                camera.baseFocalLength = s.camera.fov;
+                camera.focalLength     = s.camera.fov;
+            }
+            if (s.camera.pitchOffset !== undefined) pitchOffset = s.camera.pitchOffset;
+            if (s.camera.targetFPS   !== undefined) {
+                targetFPS     = s.camera.targetFPS;
+                frameDuration = 1000 / targetFPS;
+            }
+        }
+
         console.log('Settings loaded from data/*.json files');
     }
 }

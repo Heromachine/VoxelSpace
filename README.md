@@ -244,6 +244,31 @@ VoxelSpace/
 
 ---
 
+## World Scale & Player Height
+
+**1 world unit (WU) ≈ 1 foot ≈ 30 cm**
+
+The player eye height is **7 WU** (≈ 7 feet, eye level of a ~6'3" person). All distances in the codebase use this scale — weapon ranges, proximity chat, NPC interaction radius, etc.
+
+### How player height is applied at startup
+
+`globals.js` sets the **fallback default** (`playerHeightOffset = 70` was a previous miscalibration — now corrected to `7` in `data/settings.json`). At startup, `loadSettings()` in `settingsManager.js` reads `data/settings.json` and applies the correct values directly to the globals without going through the admin settings panel UI.
+
+Values loaded from `data/settings.json → player`:
+| Key | Value | Meaning |
+|---|---|---|
+| `playerHeight` | 7 | Eye height above terrain (WU) |
+| `normalHeight` | 56 | Camera height when standing |
+| `crouchHeight` | 24 | Camera height when crouching |
+| `jumpMin` | 2 | Tap jump strength |
+| `jumpMax` | 7 | Full charge jump strength |
+
+The remote player **hit sphere** in `camera.js` is proportional to `playerHeightOffset` (not hardcoded), so it scales automatically if the value ever changes again.
+
+> **History:** A previous session scaled `playerHeightOffset` from 7 → 70 to fix a gun-shooting-from-the-knee issue. This caused the player to be effectively 70 feet tall. The gun model, barrel distance, and all minimap/side-view rendering already referenced `playerHeightOffset` dynamically and scaled correctly, but the hit sphere in `camera.js` was hardcoded for the 70-unit scale. Both issues are now fixed.
+
+---
+
 ## Credits
 
 - Voxel Space rendering technique reverse-engineered from NovaLogic's *Comanche* (1992)
