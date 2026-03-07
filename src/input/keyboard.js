@@ -38,7 +38,7 @@ function DetectKeysDown(e){
             break;
         case 9: // Tab — toggle in-game menu
             e.preventDefault();
-            if (typeof InGameMenu !== 'undefined') InGameMenu.toggle();
+            if (!e.repeat && typeof InGameMenu !== 'undefined') InGameMenu.toggle();
             break;
     }
     if(!updaterunning){time=Date.now();Draw();}
