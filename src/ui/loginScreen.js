@@ -27,6 +27,15 @@ var LoginScreen = (function () {
     }
 
     function bindEvents() {
+        // Back to mode menu
+        var backBtn = document.getElementById("login-back-btn");
+        if (backBtn) {
+            backBtn.addEventListener("click", function () {
+                hide();
+                ModeMenu.show();
+            });
+        }
+
         // Anonymous login
         var anonBtn = document.getElementById("login-anon-btn");
         if (anonBtn) {
