@@ -168,7 +168,7 @@ function Draw(timestamp){
             if (_uid === _myId) continue;
             var _rp = nakamaState.remotePlayers[_uid];
             if (_now - _rp.lastSeen > 10000) continue;
-            playerSprites.push({ x: _rp.x, y: _rp.y, z: _rp.height - PLAYER_EYE_HEIGHT, type: "player", image: textures.player, spriteFrame: _rp.spriteFrame || 0, spriteRow: _rp.spriteRow || 0 });
+            playerSprites.push({ x: _rp.x, y: _rp.y, z: _rp.height - playerHeightOffset, type: "player", image: textures.player, spriteFrame: _rp.spriteFrame || 0, spriteRow: _rp.spriteRow || 0 });
         }
         // Add enemy sprites — skip dead enemies
         var enemySprites = [];
