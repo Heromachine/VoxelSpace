@@ -206,4 +206,56 @@ function RenderRemotePlayerOverlays() {
             ctx.restore();
         }
     }
+
+    // Debug: draw local player's own collision shapes in 3D view
+    if (showHitRanges) {
+        _drawLocalPlayerCollision(ctx, W, H, fl);
+    }
+}
+
+// Projects a world circle (center = camera pos, given radius and worldZ) onto the screen
+// as a canvas 2D polyline. Only segments with forward > 0 are drawn.
+function _drawLocalPlayerCollision(ctx, W, H, fl) {
+    var sinA = Math.sin(camera.angle);
+    var cosA = Math.cos(camera.angle);
+    var camH = camera.height;
+    var STEPS = 48;
+
+    function projectCirclePoint(radius, angle, worldZ) {
+        var wx = radius * Math.cos(angle);
+        var wy = radius * Math.sin(angle);
+        var fwd   = -wx * sinA - wy * cosA;
+        var right =  wx * cosA - wy * sinA;
+        if (fwd <= 0.1) return null;
+        return {
+            sx: (right / fwd) * fl + W / 2,
+            sy: camera.horizon - (worldZ - camH) / fwd * fl
+        };
+    }
+
+    function drawProjectedCircle(radius, worldZ, color) {
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        var penDown = false;
+        for (var i = 0; i <= STEPS; i++) {
+            var angle = (i / STEPS) * Math.PI * 2;
+            var pt = projectCirclePoint(radius, angle, worldZ);
+            if (!pt) { penDown = false; continue; }
+            if (!penDown) { ctx.moveTo(pt.sx, pt.sy); penDown = true; }
+            else          { ctx.lineTo(pt.sx, pt.sy); }
+        }
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // Movement collision circle at feet level (blue)
+    var feetZ = camH - playerHeightOffset;
+    drawProjectedCircle(10, feetZ, "rgba(80, 160, 255, 0.85)");
+
+    // Hit sphere horizontal cross-section at sphere center (red)
+    var hitRadius  = playerHeightOffset * (25 / 70);
+    var hitCenterZ = camH - playerHeightOffset * (10 / 70);
+    drawProjectedCircle(hitRadius, hitCenterZ, "rgba(255, 80, 80, 0.85)");
 }
