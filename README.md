@@ -202,6 +202,61 @@ For **LAN play** (same network), HTTP/WS works fine without SSL — just open th
 
 ---
 
+## Cloudflare Tunnel Setup (Current)
+
+Nakama is exposed publicly via a **Cloudflare Quick Tunnel** (`trycloudflare.com`). The tunnel runs as a systemd user service on the Nakama VM (`192.168.1.222`).
+
+> **Limitation:** Quick Tunnels generate a new random hostname on every restart. The `SERVER_HOST` in `src/network/nakamaClient.js` must match the active URL or the game cannot connect.
+
+### How Auto-Update Works
+
+A helper script `/home/heromachine/update-tunnel-url.sh` runs automatically on every tunnel start (via `ExecStartPost` in the systemd service). It:
+
+1. Waits for the new tunnel URL to appear in `~/cloudflared.log`
+2. Updates `SERVER_HOST` in `src/network/nakamaClient.js`
+3. Commits and pushes the change to git
+
+After every server reboot or tunnel restart, the repo receives an automatic commit updating the URL within ~15 seconds. No manual action needed.
+
+### Manual Update (if auto-update fails)
+
+```bash
+# SSH into the Nakama VM
+ssh heromachine@192.168.1.222
+
+# Get the current tunnel URL
+grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' ~/cloudflared.log | tail -1
+
+# Run the update script manually
+~/update-tunnel-url.sh
+```
+
+### Tunnel Service Management
+
+```bash
+# Check tunnel status
+systemctl --user status cloudflared-tunnel
+
+# Restart tunnel (triggers auto-update of SERVER_HOST)
+systemctl --user restart cloudflared-tunnel
+
+# View tunnel log
+tail -f ~/cloudflared.log
+```
+
+### Upgrading to a Permanent Tunnel
+
+Quick Tunnels change URL on every restart. For a stable public URL, set up a **named Cloudflare Tunnel** (requires a Cloudflare account with a domain):
+
+```bash
+cloudflared tunnel create nakama
+cloudflared tunnel route dns nakama nakama.yourdomain.com
+```
+
+Update the service `ExecStart` to use the named tunnel config and set `SERVER_HOST` to your permanent subdomain. The auto-update script would no longer be needed.
+
+---
+
 ## Project Structure
 
 ```
