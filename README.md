@@ -252,7 +252,7 @@ The player eye height is **7 WU** (≈ 7 feet, eye level of a ~6'3" person). All
 
 ### How player height is applied at startup
 
-`globals.js` sets the **fallback default** (`playerHeightOffset = 70` was a previous miscalibration — now corrected to `7` in `data/settings.json`). At startup, `loadSettings()` in `settingsManager.js` reads `data/settings.json` and applies the correct values directly to the globals without going through the admin settings panel UI.
+`globals.js` sets the **fallback default**. At startup, `loadSettings()` in `settingsManager.js` reads `data/settings.json` and calls `_applyPlayerHeightFromJson()`, which forces the canonical values onto all globals. This runs for **all users** — including admin — after any saved settings are applied, so localStorage/Nakama-cached values can never restore a stale player height.
 
 Values loaded from `data/settings.json → player`:
 | Key | Value | Meaning |
@@ -263,9 +263,45 @@ Values loaded from `data/settings.json → player`:
 | `jumpMin` | 2 | Tap jump strength |
 | `jumpMax` | 7 | Full charge jump strength |
 
-The remote player **hit sphere** in `camera.js` is proportional to `playerHeightOffset` (not hardcoded), so it scales automatically if the value ever changes again.
+All systems that depend on player size reference `playerHeightOffset` proportionally:
 
-> **History:** A previous session scaled `playerHeightOffset` from 7 → 70 to fix a gun-shooting-from-the-knee issue. This caused the player to be effectively 70 feet tall. The gun model, barrel distance, and all minimap/side-view rendering already referenced `playerHeightOffset` dynamically and scaled correctly, but the hit sphere in `camera.js` was hardcoded for the 70-unit scale. Both issues are now fixed.
+| System | File | Formula |
+|---|---|---|
+| Remote player hit sphere radius | `camera.js` | `playerHeightOffset * (25/70)` |
+| Remote player hit sphere center | `camera.js` | `rp.height - playerHeightOffset * (10/70)` |
+| Remote player body rect (height/width) | `remotePlayerRenderer.js` | `playerHeightOffset * (78/70)` / `(20/70)` |
+| Player sprite scale | `itemRenderer.js` | `playerHeightOffset * (2/70)` / `(6.5/70)` |
+
+> **History:** A previous session scaled `playerHeightOffset` from 7 → 70 to fix a gun-shooting-from-the-knee issue. This caused the player to be effectively 70 feet tall. The fix restored 7 WU as the canonical value and made all dependent systems proportional. Admin users were initially missed because their saved settings in localStorage/Nakama stored the old 70-unit value — fixed by always running `_applyPlayerHeightFromJson()` after `applySettings()`.
+
+> **Gun world offsets** (barrel position sliders in the admin settings panel) were calibrated for the 70-unit scale and will need to be re-tuned against the 7-unit player. The correct values will be saved to `data/settings.json` once tested.
+
+---
+
+## Menu Navigation
+
+All multiplayer screens support back-button navigation:
+
+- **Login screen** → back button (←) returns to the Mode Menu
+- **Clan screen** → back button (←) returns to the Login screen
+
+Back buttons are positioned top-left and use a `_bound` guard to prevent duplicate event listeners on repeated `show()` calls.
+
+---
+
+## Known Behaviours & Debug Flags
+
+| Flag | Default (non-admin) | Meaning |
+|---|---|---|
+| `isAdmin` | `false` | Set to `true` for the `heromachine` account only |
+| `showGMD` | `false` | Gun mechanics debug overlay |
+| `showHitRanges` | `false` | Hit sphere circles on remote players (3D + minimap) |
+| `showMinimaps` | `false` | Admin debug minimap (overhead + side view) |
+| `testTarget.enabled` | `false` | Floating test target |
+
+When `showHitRanges` is on:
+- A red circle is drawn over each remote player in the 3D viewport, matching the actual bullet hit sphere radius and center height
+- Red circles are drawn around remote player dots in the overhead debug minimap
 
 ---
 
