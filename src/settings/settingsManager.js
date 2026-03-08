@@ -791,6 +791,25 @@ function applySettings(s) {
     applyUIScales();
 }
 
+// Apply player height (and related values) from settings.json, overriding any saved setting.
+// Called for all users so the canonical values in settings.json always win.
+function _applyPlayerHeightFromJson() {
+    var s = ConfigLoader.settings;
+    if (!s || !s.player) return;
+    if (s.player.playerHeight !== undefined) {
+        playerHeightOffset = s.player.playerHeight;
+        var el = document.getElementById('playerHeight');
+        if (el) {
+            el.value = s.player.playerHeight;
+            document.getElementById('playerHeight-value').innerText = wuLabelCm(s.player.playerHeight);
+        }
+    }
+    if (s.player.normalHeight !== undefined) player.normalHeight   = s.player.normalHeight;
+    if (s.player.crouchHeight !== undefined) player.crouchHeight   = s.player.crouchHeight;
+    if (s.player.jumpMin     !== undefined) player.jumpMinStrength = s.player.jumpMin;
+    if (s.player.jumpMax     !== undefined) player.jumpMaxStrength = s.player.jumpMax;
+}
+
 // Load settings from localStorage, Nakama, or JSON
 async function loadSettings() {
     var jsonLoaded = await ConfigLoader.loadAll();
@@ -804,6 +823,7 @@ async function loadSettings() {
                 console.log('Loading saved settings from localStorage');
                 applySettings(savedSettings);
                 if (jsonLoaded) { ConfigLoader.applyWeapons(); ConfigLoader.applyGamepad(); }
+                _applyPlayerHeightFromJson();
                 return;
             } catch(e) {
                 console.log('Could not load saved settings from localStorage:', e);
@@ -821,6 +841,7 @@ async function loadSettings() {
                     console.log('Loading saved settings from Nakama admin storage');
                     applySettings(savedSettings);
                     if (jsonLoaded) { ConfigLoader.applyWeapons(); ConfigLoader.applyGamepad(); }
+                    _applyPlayerHeightFromJson();
                     return;
                 }
             } catch(e) {
@@ -835,18 +856,9 @@ async function loadSettings() {
         ConfigLoader.applyWeapons();
         ConfigLoader.applyGamepad();
 
-        // Apply player scale settings from settings.json.
-        // Camera settings (fov, pitchOffset, targetFPS) are NOT applied here — those are
-        // admin-calibrated values that should not override the defaults for regular users.
-        // We apply directly (not via applySettings) to avoid touching admin-only DOM sliders.
-        var s = ConfigLoader.settings;
-        if (s && s.player) {
-            if (s.player.playerHeight !== undefined) playerHeightOffset    = s.player.playerHeight;
-            if (s.player.normalHeight !== undefined) player.normalHeight   = s.player.normalHeight;
-            if (s.player.crouchHeight !== undefined) player.crouchHeight   = s.player.crouchHeight;
-            if (s.player.jumpMin     !== undefined) player.jumpMinStrength = s.player.jumpMin;
-            if (s.player.jumpMax     !== undefined) player.jumpMaxStrength = s.player.jumpMax;
-        }
+        // Apply player scale from settings.json (camera settings are NOT applied — those are
+        // admin-calibrated and must not override defaults for regular users).
+        _applyPlayerHeightFromJson();
 
         console.log('Settings loaded from data/*.json files');
     }
