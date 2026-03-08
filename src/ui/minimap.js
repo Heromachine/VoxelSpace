@@ -320,6 +320,15 @@ function DrawDebugMinimap() {
                 ctx.strokeStyle = 'white';
                 ctx.lineWidth = 1;
                 ctx.stroke();
+                // Hit sphere radius circle
+                if (showHitRanges) {
+                    var rpHitR = playerHeightOffset * (25 / 70) * scale;
+                    ctx.beginPath();
+                    ctx.arc(pcx + rpx, pcy + rpy, Math.max(2, rpHitR), 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(255, 80, 80, 0.85)';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                }
             }
         }
     }
