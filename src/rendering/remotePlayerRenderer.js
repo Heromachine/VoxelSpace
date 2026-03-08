@@ -187,5 +187,23 @@ function RenderRemotePlayerOverlays() {
                 break;
             }
         }
+
+        // Debug: draw hit sphere outline when showHitRanges is on
+        if (showHitRanges) {
+            var rpHitRadius = playerHeightOffset * (25 / 70);
+            var rpMidZ      = rp.height - playerHeightOffset * (10 / 70);
+            var camH = camera.height;
+            var fwd  = sd.fwd;
+            var cx   = sd.screenX;
+            var cy   = camera.horizon - (rpMidZ - camH) / fwd * fl;
+            var r    = rpHitRadius * fl / fwd;
+            ctx.save();
+            ctx.strokeStyle = "rgba(255, 80, 80, 0.85)";
+            ctx.lineWidth   = 1.5;
+            ctx.beginPath();
+            ctx.arc(cx, cy, Math.max(1, r), 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
     }
 }
