@@ -79,8 +79,8 @@ function RenderItems(extraItems){
             scaleY *= 12;  // much taller trees (stretched)
         }
         if (it.type === "player") {
-            scaleX *= 2;   // ~24 units wide
-            scaleY *= 6.5; // ~78 units tall
+            scaleX *= playerHeightOffset * (2 / 70);    // proportional width
+            scaleY *= playerHeightOffset * (6.5 / 70);  // proportional height
         }
         if (it.type === "enemy") {
             // Vertical: 6.5 × (20/32.3) ≈ 4.0 → 62% of player height (enemy diameter = 2×hitRadius)
