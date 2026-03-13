@@ -205,15 +205,17 @@ function RenderGunViewmodel(ctx) {
         ctx.stroke();
     });
 
-    // Mechanics barrel dot — shows where bullets actually come from (independent from visual model)
-    var barrelScreen = getBarrelScreenPos();
-    ctx.beginPath();
-    ctx.arc(barrelScreen.x, barrelScreen.y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = 'cyan';
-    ctx.fill();
-    ctx.strokeStyle = 'white';
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    // Reticle dot — only shown in ADS mode (hip-fire has no reticle)
+    if (gunModel.pivotMode === 'barrel') {
+        var barrelScreen = getBarrelScreenPos();
+        ctx.beginPath();
+        ctx.arc(barrelScreen.x, barrelScreen.y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = 'cyan';
+        ctx.fill();
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    }
 }
 
 // Render ground weapons (floating pickups)
