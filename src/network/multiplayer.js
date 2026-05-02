@@ -38,6 +38,7 @@ var Multiplayer = (function () {
     // ── Init ─────────────────────────────────────────────────
 
     async function init(isAnonymous) {
+        _intentionalExit = false;
         _isAnonymous = isAnonymous;
 
         try {
@@ -305,7 +306,6 @@ var Multiplayer = (function () {
             nakamaState.remotePlayers = {};
         }
         if (_intentionalExit) {
-            _intentionalExit = false;
             return;
         }
         showKickScreen("Disconnected from server.");
