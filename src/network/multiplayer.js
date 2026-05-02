@@ -21,10 +21,11 @@ var Multiplayer = (function () {
     var OP_PONG   = 12;
     var OP_SHOOT  = 13;
 
-    var _matchId     = null;
-    var _connected   = false;
-    var _isAnonymous = false;
-    var _respawnInterval = null;
+    var _matchId          = null;
+    var _connected        = false;
+    var _isAnonymous      = false;
+    var _respawnInterval  = null;
+    var _intentionalExit  = false;
 
     // Position broadcast throttle
     var POSITION_INTERVAL_MS = 100;  // 10 Hz
@@ -62,10 +63,10 @@ var Multiplayer = (function () {
     // ── Disconnect ────────────────────────────────────────────
 
     function disconnect() {
+        _intentionalExit = true;
         _connected = false;
         _matchId   = null;
         NakamaClient.disconnect();
-        // Clear remote players
         nakamaState.remotePlayers = {};
     }
 
@@ -301,8 +302,11 @@ var Multiplayer = (function () {
     function onDisconnect() {
         _connected = false;
         if (_isAnonymous) {
-            // Wipe anon player data
             nakamaState.remotePlayers = {};
+        }
+        if (_intentionalExit) {
+            _intentionalExit = false;
+            return;
         }
         showKickScreen("Disconnected from server.");
     }
