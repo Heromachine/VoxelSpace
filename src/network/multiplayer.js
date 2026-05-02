@@ -7,6 +7,7 @@
 var Multiplayer = (function () {
 
     // Opcodes (must match match_handler.lua)
+    // ── Existing opcodes (freeplay match) ────────────────────
     var OP_POSITION      = 1;
     var OP_CHAT          = 2;
     var OP_HIT           = 3;
@@ -16,10 +17,34 @@ var Multiplayer = (function () {
     var OP_PLAYER_KICKED = 7;
     var OP_DAMAGE        = 8;
     var OP_RADAR_REVEAL  = 9;
-    var OP_KILL   = 10;
-    var OP_PING   = 11;
-    var OP_PONG   = 12;
-    var OP_SHOOT  = 13;
+    var OP_KILL          = 10;
+    var OP_PING          = 11;
+    var OP_PONG          = 12;
+    var OP_SHOOT         = 13;
+
+    // ── Node War opcodes — Client → Server ───────────────────
+    var NW_NODE_ACTIVATE_START       = 14;
+    var NW_NODE_ACTIVATE_COMPLETE    = 15;
+    var NW_NODE_DEACTIVATE_START     = 16;
+    var NW_NODE_DEACTIVATE_COMPLETE  = 17;
+    var NW_MAINFRAME_ACTIVATE_START  = 18;
+    var NW_MAINFRAME_ACTIVATE_COMPLETE = 19;
+    var NW_MAINFRAME_DEACTIVATE_START  = 20;
+    var NW_MAINFRAME_DEACTIVATE_COMPLETE = 21;
+    var NW_KEY_PICKUP_REQUEST        = 22;
+
+    // ── Node War opcodes — Server → All Clients ──────────────
+    var NW_NODE_STATE_UPDATE   = 23;
+    var NW_KEY_ISSUED          = 24;
+    var NW_KEY_HOLDER_UPDATE   = 25;
+    var NW_KEY_DESTROYED       = 26;
+    var NW_MAINFRAME_ACTIVATED = 27;
+    var NW_MAINFRAME_DEACTIVATED = 28;
+    var NW_COUNTDOWN_UPDATE    = 29;
+    var NW_FULL_RESET          = 30;
+    var NW_OP_BUFF_UPDATE      = 31;
+    var NW_FACTION_KICK        = 32;
+    var NW_MATCH_WIN           = 33;
 
     var _matchId          = null;
     var _connected        = false;
@@ -139,6 +164,53 @@ var Multiplayer = (function () {
             targetId: targetUserId,
             damage:   damage
         });
+    }
+
+    // ── Node War — Client → Server sends ─────────────────────
+
+    function nwNodeActivateStart(facilityId) {
+        if (!_connected || !_matchId) return;
+        NakamaClient.sendMatchData(_matchId, NW_NODE_ACTIVATE_START, { facilityId: facilityId });
+    }
+
+    function nwNodeActivateComplete(facilityId) {
+        if (!_connected || !_matchId) return;
+        NakamaClient.sendMatchData(_matchId, NW_NODE_ACTIVATE_COMPLETE, { facilityId: facilityId });
+    }
+
+    function nwNodeDeactivateStart(facilityId) {
+        if (!_connected || !_matchId) return;
+        NakamaClient.sendMatchData(_matchId, NW_NODE_DEACTIVATE_START, { facilityId: facilityId });
+    }
+
+    function nwNodeDeactivateComplete(facilityId) {
+        if (!_connected || !_matchId) return;
+        NakamaClient.sendMatchData(_matchId, NW_NODE_DEACTIVATE_COMPLETE, { facilityId: facilityId });
+    }
+
+    function nwMainframeActivateStart() {
+        if (!_connected || !_matchId) return;
+        NakamaClient.sendMatchData(_matchId, NW_MAINFRAME_ACTIVATE_START, {});
+    }
+
+    function nwMainframeActivateComplete() {
+        if (!_connected || !_matchId) return;
+        NakamaClient.sendMatchData(_matchId, NW_MAINFRAME_ACTIVATE_COMPLETE, {});
+    }
+
+    function nwMainframeDeactivateStart() {
+        if (!_connected || !_matchId) return;
+        NakamaClient.sendMatchData(_matchId, NW_MAINFRAME_DEACTIVATE_START, {});
+    }
+
+    function nwMainframeDeactivateComplete() {
+        if (!_connected || !_matchId) return;
+        NakamaClient.sendMatchData(_matchId, NW_MAINFRAME_DEACTIVATE_COMPLETE, {});
+    }
+
+    function nwKeyPickupRequest(groundPos) {
+        if (!_connected || !_matchId) return;
+        NakamaClient.sendMatchData(_matchId, NW_KEY_PICKUP_REQUEST, { groundPos: groundPos });
     }
 
     // ── Message handler ───────────────────────────────────────
@@ -297,6 +369,70 @@ var Multiplayer = (function () {
                 stopDistance: null,
                 remote: true
             });
+
+        // ── Node War — Server → Client handlers ──────────────
+
+        } else if (opCode === NW_NODE_STATE_UPDATE) {
+            // { facilityId, status, team } — update local node state
+            var node = nakamaState.nw.nodes.find(function(n) { return n.facilityId === data.facilityId; });
+            if (node) {
+                node.status = data.status;
+                node.team   = data.team;
+            }
+
+        } else if (opCode === NW_KEY_ISSUED) {
+            // { teamOwner, holderUserId } — a team earned the Key
+            nakamaState.nw.key = { exists: true, teamOwner: data.teamOwner, holderUserId: data.holderUserId, groundPos: null };
+
+        } else if (opCode === NW_KEY_HOLDER_UPDATE) {
+            // { holderUserId, team, groundPos } — Key changed hands or was dropped
+            if (nakamaState.nw.key) {
+                nakamaState.nw.key.holderUserId = data.holderUserId || null;
+                nakamaState.nw.key.groundPos    = data.groundPos || null;
+            }
+
+        } else if (opCode === NW_KEY_DESTROYED) {
+            // { cause } — Key trashed, full reset incoming
+            nakamaState.nw.key = null;
+
+        } else if (opCode === NW_MAINFRAME_ACTIVATED) {
+            // { countdownSeconds, opBuffUserId } — Mainframe on, countdown started
+            nakamaState.nw.mainframe    = { active: true, countdownSeconds: data.countdownSeconds };
+            nakamaState.nw.opBuffHolder = data.opBuffUserId;
+
+        } else if (opCode === NW_MAINFRAME_DEACTIVATED) {
+            // {} — Mainframe cancelled, full reset incoming
+            if (nakamaState.nw.mainframe) nakamaState.nw.mainframe.active = false;
+
+        } else if (opCode === NW_COUNTDOWN_UPDATE) {
+            // { secondsRemaining } — periodic tick from server
+            if (nakamaState.nw.mainframe) nakamaState.nw.mainframe.countdownSeconds = data.secondsRemaining;
+
+        } else if (opCode === NW_FULL_RESET) {
+            // { npcPositions: [{ facilityId, hasNpc }] } — all state cleared, new NPC layout
+            nakamaState.nw.nodes.forEach(function(n) { n.status = 'neutral'; n.team = null; });
+            nakamaState.nw.key          = null;
+            nakamaState.nw.mainframe    = null;
+            nakamaState.nw.opBuffHolder = null;
+            nakamaState.nw.npcPositions = {};
+            if (data.npcPositions) {
+                data.npcPositions.forEach(function(p) {
+                    nakamaState.nw.npcPositions[p.facilityId] = p.hasNpc;
+                });
+            }
+
+        } else if (opCode === NW_OP_BUFF_UPDATE) {
+            // { userId, active } — OP buff granted or removed
+            nakamaState.nw.opBuffHolder = data.active ? data.userId : null;
+
+        } else if (opCode === NW_FACTION_KICK) {
+            // {} — this client's Guest player was killed (permadeath)
+            showKickScreen("You were eliminated.");
+            disconnect();
+
+        } else if (opCode === NW_MATCH_WIN) {
+            // { winningTeam } — countdown reached zero
+            nakamaState.nw.winningTeam = data.winningTeam;
         }
     }
 
@@ -378,7 +514,18 @@ var Multiplayer = (function () {
         sendChat:   sendChat,
         sendShoot:  sendShoot,
         reportHit:  reportHit,
-        isConnected: function () { return _connected; }
+        isConnected: function () { return _connected; },
+
+        // Node War — Client → Server
+        nwNodeActivateStart:         nwNodeActivateStart,
+        nwNodeActivateComplete:      nwNodeActivateComplete,
+        nwNodeDeactivateStart:       nwNodeDeactivateStart,
+        nwNodeDeactivateComplete:    nwNodeDeactivateComplete,
+        nwMainframeActivateStart:    nwMainframeActivateStart,
+        nwMainframeActivateComplete: nwMainframeActivateComplete,
+        nwMainframeDeactivateStart:  nwMainframeDeactivateStart,
+        nwMainframeDeactivateComplete: nwMainframeDeactivateComplete,
+        nwKeyPickupRequest:          nwKeyPickupRequest,
     };
 
 })();

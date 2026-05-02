@@ -496,6 +496,17 @@ var nakamaState = {
     radarReveals:  {},   // userId -> { x, y, expiry } — players revealed by shout
     myKills: 0,
     myPing:  null,
+
+    // Node War state (server-authoritative, updated via opcodes)
+    nw: {
+        nodes:        [],   // [{ facilityId, status:'neutral'|'active'|'deactivating', team:null|'clan1'|'clan2' }]
+        npcPositions: {},   // facilityId → hasNpc (bool) — rebroadcast by server on full reset
+        key:          null, // { exists, teamOwner, holderUserId, groundPos:{x,y} }
+        mainframe:    null, // { active, countdownSeconds }
+        opBuffHolder: null, // userId of current OP buff holder
+        factions:     {},   // userId → 'clan1'|'clan2'|'guest'
+        winningTeam:  null, // set on MATCH_WIN
+    },
 };
 
 // ===============================
