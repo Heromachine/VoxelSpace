@@ -145,9 +145,11 @@ function OnResizeWindow(){
 }
 
 var _loopActive = false;
+var gameMode = 'freeplay'; // 'freeplay' | 'nodewar'
 
 function exitGame() {
     _loopActive = false;
+    gameMode = 'freeplay';
     if (typeof Multiplayer !== 'undefined' && Multiplayer.isConnected()) {
         Multiplayer.disconnect();
     }
@@ -357,6 +359,43 @@ async function beginGame(isAnonymous) {
     }
 
     // Start the game loop
+    Init();
+    requestAnimationFrame(Draw);
+}
+
+async function StartNodeWar() {
+    gameMode = 'nodewar';
+    LoginScreen.show(async function (isAnonymous) {
+        var savedData = null;
+        if (!isAnonymous) {
+            savedData = await NakamaClient.readPlayerData();
+        }
+        var hasClan = savedData && savedData.clan;
+        if (hasClan) {
+            nakamaState.myClan = savedData.clan;
+            beginNodeWarGame(isAnonymous);
+        } else {
+            ClanScreen.show(isAnonymous, function (clanId) {
+                beginNodeWarGame(isAnonymous);
+            });
+        }
+    });
+}
+
+async function beginNodeWarGame(isAnonymous) {
+    try {
+        await Multiplayer.init(isAnonymous);
+    } catch (e) {
+        console.warn("Node War: multiplayer failed, running offline:", e);
+    }
+    isAdmin = (NakamaClient.getUsername() === "heromachine");
+    if (isAdmin) {
+        DisplayConfig.load();
+    } else {
+        showGMD        = false;
+        showHitRanges  = false;
+        testTarget.enabled = false;
+    }
     Init();
     requestAnimationFrame(Draw);
 }

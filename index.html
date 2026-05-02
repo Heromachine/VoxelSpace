@@ -219,6 +219,12 @@
             background: rgba(80,140,200,0.1);
             border-color: rgba(180,80,255,0.35);
         }
+        .mode-card--nodewar { border-color: rgba(200,160,40,0.2); }
+        .mode-card--nodewar:hover {
+            background: rgba(200,150,30,0.08);
+            border-color: rgba(220,180,50,0.45);
+        }
+        .mode-card--nodewar .mode-card-label { color: rgba(220,180,60,0.5); }
         .mode-card-label {
             font-size: 0.55rem;
             letter-spacing: 4px;
@@ -829,6 +835,11 @@
       <div class="mode-card-title">Multiplayer</div>
       <div class="mode-card-desc">Battle online with others</div>
     </button>
+    <button class="mode-card mode-card--nodewar" id="mode-nodewar">
+      <div class="mode-card-label">War</div>
+      <div class="mode-card-title">Node War</div>
+      <div class="mode-card-desc">Team objectives</div>
+    </button>
     <button class="mode-card" id="mode-admin">
       <div class="mode-card-label">Dev</div>
       <div class="mode-card-title">Admin</div>
@@ -1349,7 +1360,7 @@
 <!-- ===================================== -->
 <!-- src/ files - Main Entry Point        -->
 <!-- ===================================== -->
-<script src="src/main.js?v=3"></script>
+<script src="src/main.js?v=4"></script>
 
 <!-- ── Splash screen dismiss ── -->
 <script>

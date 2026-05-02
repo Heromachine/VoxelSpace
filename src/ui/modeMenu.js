@@ -42,6 +42,14 @@ var ModeMenu = (function () {
             });
         }
 
+        var nwBtn = document.getElementById('mode-nodewar');
+        if (nwBtn) {
+            nwBtn.addEventListener('click', function () {
+                hide();
+                StartNodeWar();
+            });
+        }
+
         var adminBtn = document.getElementById('mode-admin');
         if (adminBtn) {
             adminBtn.addEventListener('click', function () {
