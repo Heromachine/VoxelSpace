@@ -384,7 +384,7 @@ async function StartNodeWar() {
 
 async function beginNodeWarGame(isAnonymous) {
     try {
-        await Multiplayer.init(isAnonymous);
+        await Multiplayer.init(isAnonymous, 'nodewar');
     } catch (e) {
         console.warn("Node War: multiplayer failed, running offline:", e);
     }

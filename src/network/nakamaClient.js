@@ -99,10 +99,17 @@ var NakamaClient = (function () {
 
     async function joinOrCreateMatch() {
         if (!_socket) throw new Error("Socket not connected");
-        // Try to find existing open world match by label
         var result = await _socket.rpc("find_or_create_match", "{}");
         var data = JSON.parse(result.payload);
         var match = await _socket.joinMatch(data.match_id);
+        return match;
+    }
+
+    async function joinOrCreateNodeWarMatch() {
+        if (!_socket) throw new Error("Socket not connected");
+        var result = await _socket.rpc("find_or_create_nw_match", "{}");
+        var data = JSON.parse(result.payload);
+        var match = await _socket.joinMatch(data.matchId);
         return match;
     }
 
@@ -199,7 +206,8 @@ var NakamaClient = (function () {
         getUsername:       getUsername,
         isLoggedIn:        isLoggedIn,
         connect:           connect,
-        joinOrCreateMatch: joinOrCreateMatch,
+        joinOrCreateMatch:        joinOrCreateMatch,
+        joinOrCreateNodeWarMatch: joinOrCreateNodeWarMatch,
         sendMatchData:     sendMatchData,
         readPlayerData:    readPlayerData,
         writePlayerData:   writePlayerData,

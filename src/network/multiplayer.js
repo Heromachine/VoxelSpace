@@ -62,13 +62,15 @@ var Multiplayer = (function () {
 
     // ── Init ─────────────────────────────────────────────────
 
-    async function init(isAnonymous) {
+    async function init(isAnonymous, matchType) {
         _intentionalExit = false;
         _isAnonymous = isAnonymous;
 
         try {
             await NakamaClient.connect(onMessage, onDisconnect);
-            var match = await NakamaClient.joinOrCreateMatch();
+            var match = (matchType === 'nodewar')
+                ? await NakamaClient.joinOrCreateNodeWarMatch()
+                : await NakamaClient.joinOrCreateMatch();
             _matchId   = match.match_id;
             _connected = true;
             console.log("Multiplayer connected, match:", _matchId);
@@ -409,17 +411,30 @@ var Multiplayer = (function () {
             if (nakamaState.nw.mainframe) nakamaState.nw.mainframe.countdownSeconds = data.secondsRemaining;
 
         } else if (opCode === NW_FULL_RESET) {
-            // { npcPositions: [{ facilityId, hasNpc }] } — all state cleared, new NPC layout
-            nakamaState.nw.nodes.forEach(function(n) { n.status = 'neutral'; n.team = null; });
-            nakamaState.nw.key          = null;
-            nakamaState.nw.mainframe    = null;
-            nakamaState.nw.opBuffHolder = null;
+            // joinSync=true: sent to new joiners to sync current state — don't wipe ongoing game
+            // joinSync=false (or absent): actual reset — clear everything
+            if (!data.joinSync) {
+                nakamaState.nw.nodes.forEach(function(n) { n.status = 'neutral'; n.team = null; });
+                nakamaState.nw.key          = null;
+                nakamaState.nw.mainframe    = null;
+                nakamaState.nw.opBuffHolder = null;
+            }
             nakamaState.nw.npcPositions = {};
             if (data.npcPositions) {
                 data.npcPositions.forEach(function(p) {
                     nakamaState.nw.npcPositions[p.facilityId] = p.hasNpc;
                 });
             }
+            // Apply node states sent in join sync
+            if (data.nodes) {
+                data.nodes.forEach(function(n) {
+                    var node = nakamaState.nw.nodes.find(function(x) { return x.facilityId === n.facilityId; });
+                    if (node) { node.status = n.status; node.team = n.team; }
+                });
+            }
+            if (data.key !== undefined)       nakamaState.nw.key          = data.key;
+            if (data.mainframe !== undefined)  nakamaState.nw.mainframe    = data.mainframe;
+            if (data.opBuffHolder !== undefined) nakamaState.nw.opBuffHolder = data.opBuffHolder;
 
         } else if (opCode === NW_OP_BUFF_UPDATE) {
             // { userId, active } — OP buff granted or removed

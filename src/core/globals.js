@@ -499,7 +499,14 @@ var nakamaState = {
 
     // Node War state (server-authoritative, updated via opcodes)
     nw: {
-        nodes:        [],   // [{ facilityId, status:'neutral'|'active'|'deactivating', team:null|'clan1'|'clan2' }]
+        nodes: [
+            { facilityId: 'fac_1', x:  250, y:  180, status: 'neutral', team: null },
+            { facilityId: 'fac_2', x: -250, y:  180, status: 'neutral', team: null },
+            { facilityId: 'fac_3', x:    0, y:  300, status: 'neutral', team: null },
+            { facilityId: 'fac_4', x:  250, y: -180, status: 'neutral', team: null },
+            { facilityId: 'fac_5', x: -250, y: -180, status: 'neutral', team: null },
+            { facilityId: 'fac_6', x:    0, y: -300, status: 'neutral', team: null },
+        ],
         npcPositions: {},   // facilityId → hasNpc (bool) — rebroadcast by server on full reset
         key:          null, // { exists, teamOwner, holderUserId, groundPos:{x,y} }
         mainframe:    null, // { active, countdownSeconds }
