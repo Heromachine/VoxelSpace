@@ -316,6 +316,12 @@ var InGameMenu = (function () {
         var resumeBtn = document.getElementById('ingame-resume');
         if (resumeBtn) resumeBtn.addEventListener('click', hide);
 
+        var exitBtn = document.getElementById('ingame-exit');
+        if (exitBtn) exitBtn.addEventListener('click', function () {
+            hide();
+            if (typeof exitGame === 'function') exitGame();
+        });
+
         // Escape closes the menu (independent of dialog Escape handler)
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape' && _open) hide();

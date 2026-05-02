@@ -144,8 +144,22 @@ function OnResizeWindow(){
     hiddeny=new Int32Array(screendata.canvas.width);
 }
 
+var _loopActive = false;
+
+function exitGame() {
+    _loopActive = false;
+    if (typeof Multiplayer !== 'undefined' && Multiplayer.isConnected()) {
+        Multiplayer.disconnect();
+    }
+    if (document.exitPointerLock) document.exitPointerLock();
+    var gameContainer = document.getElementById('game-container');
+    if (gameContainer) gameContainer.style.display = 'none';
+    ModeMenu.show();
+}
+
 // Main draw loop
 function Draw(timestamp){
+    if (!_loopActive) return;
     updaterunning=true;
     if(timestamp-lastFrameTime>=frameDuration){
         lastFrameTime=timestamp;
@@ -206,6 +220,9 @@ function Draw(timestamp){
 
 // Initialize game
 function Init(){
+    _loopActive = true;
+    var _gc = document.getElementById('game-container');
+    if (_gc) _gc.style.display = '';
     for(var i=0;i<map.width*map.height;i++){map.color[i]=0xFF007050;map.altitude[i]=0;}
     LoadMap("CE;DE");
     OnResizeWindow();
