@@ -5,7 +5,7 @@
 
 var NakamaClient = (function () {
 
-    var SERVER_HOST = "calcium-hybrid-constitutional-bracelet.trycloudflare.com";
+    var SERVER_HOST = "vbulletin-aberdeen-carrying-mount.trycloudflare.com";
     var SERVER_PORT = "443";
     var SERVER_KEY  = "1eebcf80e66915369084f9fa";
     var USE_SSL     = true;
