@@ -5,7 +5,7 @@
 
 var NakamaClient = (function () {
 
-    var SERVER_HOST = "you-cruz-soft-dealt.trycloudflare.com";
+    var SERVER_HOST = "effects-theoretical-patterns-molecular.trycloudflare.com";
     var SERVER_PORT = "443";
     var SERVER_KEY  = "1eebcf80e66915369084f9fa";
     var USE_SSL     = true;
