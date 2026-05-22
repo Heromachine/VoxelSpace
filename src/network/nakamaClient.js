@@ -5,7 +5,7 @@
 
 var NakamaClient = (function () {
 
-    var SERVER_HOST = "displays-entitled-jack-delivering.trycloudflare.com";
+    var SERVER_HOST = "ash-browsing-masters-yet.trycloudflare.com";
     var SERVER_PORT = "443";
     var SERVER_KEY  = "1eebcf80e66915369084f9fa";
     var USE_SSL     = true;
